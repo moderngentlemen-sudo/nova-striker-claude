@@ -3,7 +3,7 @@
 // the uppercut's boot jets. Presentation only: reads the sim, never changes it.
 import * as THREE from 'three';
 import { SUB, SUB_LOOK, CHARS } from './config.js';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir, LANE } from './space.js';
 import { Strip } from './beamfx.js';
 
 const GOLD = CHARS.nova.energy, PHASE = '#cfeeff', SLOW = '#9fdcff';
@@ -123,11 +123,11 @@ export class SubFX {
   // ---- Chain lightning ----
   chain(ev) {
     const F = this.fx, b = this.bolts.find(q => q.life <= 0) || this.bolts.reduce((a, c) => (a.life < c.life ? a : c));
-    b.pts = ev.pts.map(q => ({ x: q.x, y: q.y })); b.level = ev.level || 0; b.life = b.max = 0.2 + 0.05 * b.level + (ev.perfect ? 0.08 : 0);
+    b.pts = ev.pts.map(q => ({ x: q.x, y: q.y, z: q.z ?? 0 })); b.level = ev.level || 0; b.life = b.max = 0.2 + 0.05 * b.level + (ev.perfect ? 0.08 : 0);
     const c = SUB_LOOK.chain.tint, s = ev.pts[0];
     F.sprite(s.x, s.y, 'star', '#fff6cc', 0.5 + 0.1 * b.level, 0.1, 1.4);
     for (let i = 1; i < ev.pts.length; i++) {
-      const q = ev.pts[i];
+      const q = ev.pts[i]; LANE.z = q.z ?? LANE.z;
       if (q.fizzle) { F.burst(q.x, q.y, c, 8, 4, 0.2, 0.22); continue; }
       F.sprite(q.x, q.y, 'star', '#fff6cc', 0.6 + 0.1 * b.level, 0.12, 1.4); F.sprite(q.x, q.y, 'ring', c, 0.35 + 0.08 * b.level, 0.16, 2);
       F.burst(q.x, q.y, Math.random() < 0.5 ? '#ffffff' : c, 8 + 2 * b.level, 6 + b.level, 0.18, 0.22);
@@ -137,13 +137,13 @@ export class SubFX {
   // most in the middle of the leg; it is redrawn every frame, so the bolt flickers
   jag(b) {
     const out = b.w; let n = 0; const P = b.pts;
-    const put = (x, y) => { if (!out[n]) out[n] = new THREE.Vector3(); toWorld(x, y, 0.25, out[n]); n++; };
+    const put = (x, y, z) => { if (!out[n]) out[n] = new THREE.Vector3(); toWorldZ(x, y, z, out[n]); n++; };
     for (let i = 0; i < P.length - 1 && n < 70; i++) {
-      const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy) || 1;
+      const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, dz = c.z - a.z, len = Math.hypot(dx, dy, dz) || 1;
       const m = Math.max(2, Math.min(10, Math.ceil(len / 0.45))), nx = -dy / len, ny = dx / len;
       for (let j = i ? 1 : 0; j <= m && n < 72; j++) {
         const u = j / m, amp = j === 0 || j === m ? 0 : (0.16 + 0.05 * b.level) * Math.sin(Math.PI * u) * (Math.random() * 2 - 1) * Math.min(1.6, len / 2);
-        put(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp);
+        put(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp, a.z + dz * u + amp * 0.6 * Math.sin(j * 2.3));
       }
     }
     return out.slice(0, n);
@@ -164,8 +164,8 @@ export class SubFX {
     for (const w of world.wells) {
       seen.add(w);
       const M = this.wells.get(w) || this.makeWell(w);
-      const x = w.px + (w.x - w.px) * alpha, y = w.py + (w.y - w.py) * alpha;
-      toWorld(x, y, 0.2, M.g.position);
+      const x = w.px + (w.x - w.px) * alpha, y = w.py + (w.y - w.py) * alpha, z = (w.pz ?? w.z) + (w.z - (w.pz ?? w.z)) * alpha;
+      LANE.z = z; toWorldZ(x, y, z, M.g.position);
       if (w.phase === 'orb') {
         // The orb: a small black heart in a gold glow, shedding sparks
         M.core.scale.setScalar(0.13); M.glow.scale.setScalar(0.9 + 0.15 * Math.sin(this.t * 30)); M.disc.visible = M.rim.visible = M.halo.visible = false;
@@ -182,7 +182,7 @@ export class SubFX {
       M.rim.scale.setScalar((0.85 + 0.12 * L) * open); M.glow.scale.setScalar((1.6 + 0.3 * L) * open);
       M.halo.scale.setScalar(w.r * 2 * open); M.halo.material.rotation = this.t * 0.6;
       for (let i = 0; i < 3 + L; i++) {
-        const a = Math.random() * Math.PI * 2, r = w.r * (0.55 + Math.random() * 0.45), wp = toWorld(x + Math.cos(a) * r, y + Math.sin(a) * r, 0.2, this.v);
+        const a = Math.random() * Math.PI * 2, r = w.r * (0.55 + Math.random() * 0.45), wp = toWorldZ(x + Math.cos(a) * r, y + Math.sin(a) * r, z + (Math.random() - 0.5) * r, this.v);
         const P = F.particle(wp, Math.random() < 0.3 ? '#ffffff' : GOLD, 0.14, 0.4);
         const s = r * 2.4; planeDir(x, -Math.cos(a) * s - Math.sin(a) * s * 0.8, -Math.sin(a) * s + Math.cos(a) * s * 0.8, P.v); P.drag = 0.97;
       }
@@ -207,6 +207,7 @@ export class SubFX {
     const seen = new Set();
     for (const e of world.enemies) {
       if (e.dead) continue;
+      LANE.z = e.z || 0;
       if (e.shockT > 0 && Math.random() < 0.55) {
         const w = toWorld(e.x + (Math.random() - 0.5) * e.w, e.y + Math.random() * e.h, 0.3, this.v);
         const P = F.particle(w, Math.random() < 0.5 ? '#ffffff' : SUB_LOOK.chain.tint, 0.14, 0.12); P.v.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, 0); P.drag = 0.8;
@@ -225,6 +226,7 @@ export class SubFX {
     // Players: the dodge's afterimages, and the Solar Uppercut's boot jets and column of light
     for (const p of world.players) {
       const rig = view.rigs.get(p); if (!rig || !rig.root.visible) continue;
+      LANE.z = p.z || 0;
       if (p.state === 'dodge' && p.dodge && p.dodge.t % 2 === 0 && p.dodge.t <= 12 && this.ghostTick.get(p) !== world.tick) {
         this.ghostTick.set(p, world.tick);
         F.ghosts.spawn(rig, p.dodge.perfect ? '#ffffff' : PHASE, p.dodge.perfect ? 0.55 : 0.34, 0.24);
@@ -238,12 +240,13 @@ export class SubFX {
       }
       if (p.st >= m.su && p.st < m.su + m.ac) {
         for (const dz of [-0.13, 0.13]) {
-          const w = toWorld(p.x + (Math.random() - 0.5) * 0.12, p.y - 0.05, dz, this.v2);
+          const w = toWorldZ(p.x + (Math.random() - 0.5) * 0.12, p.y - 0.05, p.z + dz, this.v2);
           const P = F.particle(w, Math.random() < 0.5 ? '#fff1c9' : GOLD, 0.34, 0.2); P.v.set((Math.random() - 0.5) * 0.8, -7 - Math.random() * 4, (Math.random() - 0.5) * 0.8); P.drag = 0.86;
         }
         if (Math.random() < 0.5) F.smoke(p.x, p.y - 0.2, '#8e97a3', 1, 0.8, 0.4, 0.5, { dir: -Math.PI / 2, spread: 1, op: 0.35 });
       }
     }
+    LANE.z = 0;
   }
 
   // Warm-up stand-ins (compiles the bolt strips and the well's materials at load)

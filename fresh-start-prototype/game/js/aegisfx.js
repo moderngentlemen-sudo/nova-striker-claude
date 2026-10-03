@@ -7,7 +7,7 @@
 // shader flies detached panels on their own in world space. Presentation only: reads the sim, never changes it.
 import * as THREE from 'three';
 import { AEGIS, CHARS } from './config.js';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir3, yawOf } from './space.js';
 import { pathFrame } from './level.js';
 
 const DETAIL = 3;
@@ -173,13 +173,13 @@ export class AegisFX {
 
   // The shield's centre (his chest) in world space
   place(p, d) {
-    toWorld(p.x, p.y + p.h * 0.62, 0, d.mesh.position);
-    const f = pathFrame(p.x); d.mesh.rotation.y = Math.atan2(-f.tz, f.tx);
+    toWorldZ(p.x, p.y + p.h * 0.62, p.z || 0, d.mesh.position);
+    d.mesh.rotation.y = yawOf(p.x);
     d.mesh.updateMatrixWorld(true);
   }
   // A sim-plane direction (dx, dy) at x as a unit vector in the dome's own space
-  localDir(p, d, dx, dy) {
-    return planeDir(p.x, dx, dy, this.v).normalize().applyQuaternion(d.mesh.getWorldQuaternion(this.q).invert());
+  localDir(p, d, dx, dy, dz = 0) {
+    return planeDir3(p.x, dx, dy, dz, this.v).normalize().applyQuaternion(d.mesh.getWorldQuaternion(this.q).invert());
   }
 
   onEvent(ev) {
@@ -197,7 +197,7 @@ export class AegisFX {
       case 'aegisHit': {
         const d = this.of(p); if (d.state !== 'up') break;
         this.place(p, d);
-        const L = this.localDir(p, d, ev.dx, ev.dy), now = this.t;
+        const L = this.localDir(p, d, ev.dx, ev.dy, ev.dz || 0), now = this.t;
         d.u.uHits.value[d.hitI].set(L.x, L.y, L.z, now); d.hitI = (d.hitI + 1) % 4;
         // Crack the panels around the impact, most at its centre; the whole dome crazes as it weakens
         const amount = 0.35 + ev.dmg / AEGIS.hp * 3.2, cos = Math.cos(0.95), floor = (1 - ev.frac) * 0.42;

@@ -8,7 +8,7 @@
 // changes it.
 import * as THREE from 'three';
 import { CHARS, RAM, ULT } from './config.js';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir, planeDir3, yawOf, LANE } from './space.js';
 import { pathFrame, groundBelow, pointInSolid } from './level.js';
 import { chest } from './player.js';
 import { Strip } from './beamfx.js';
@@ -129,7 +129,7 @@ export class RamFX {
     }
     // Sparks: thin streaks stretched along their flight (one instanced mesh, ordinary blending so they read on
     // bright floors as well as dark ones); they fall, bounce off the floor and cool from white-hot to red
-    this.spk = Array.from({ length: 160 }, () => ({ life: 0, max: 1, x: 0, y: 0, vx: 0, vy: 0, d: 0, c: new THREE.Color() }));
+    this.spk = Array.from({ length: 160 }, () => ({ life: 0, max: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, c: new THREE.Color() }));
     this.si = 0;
     this.spkMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), this.spk.length);
     this.spkMesh.frustumCulled = false; this.spkMesh.renderOrder = 6;
@@ -139,12 +139,20 @@ export class RamFX {
     this.v = new THREE.Vector3(); this.v2 = new THREE.Vector3(); this.m4 = new THREE.Matrix4();
   }
 
-  // A camera-facing quad along a sim-plane direction: `len` m along (tx, ty), `wid` m across it, centred at (x, y)
-  place(mesh, x, y, tx, ty, depth = 0.3) {
-    const T = planeDir(x, tx, ty, this.v).normalize(), f = pathFrame(x), Z = this.v2.set(f.nx, 0, f.nz).normalize();
-    const X = new THREE.Vector3().crossVectors(T, Z).normalize();
-    this.m4.makeBasis(X, T, Z); mesh.quaternion.setFromRotationMatrix(this.m4);
-    toWorld(x, y, depth, mesh.position);
+  // A plane (or a mesh along its local Y) at sim point (x, y, z): its face toward sim direction N, its local Y
+  // toward `up` (made square to N)
+  orient(mesh, x, y, z, N, up = [0, 1, 0]) {
+    const Z = planeDir3(x, N[0], N[1], N[2], this.v).normalize(), U = planeDir3(x, up[0], up[1], up[2], this.v2);
+    U.addScaledVector(Z, -U.dot(Z)); if (U.lengthSq() < 1e-6) U.set(0, 1, 0); U.normalize();
+    const X = new THREE.Vector3().crossVectors(U, Z).normalize();
+    this.m4.makeBasis(X, U, Z); mesh.quaternion.setFromRotationMatrix(this.m4);
+    toWorldZ(x, y, z, mesh.position);
+  }
+  // The Rampart's frame: its centre and its normal (the guard), and the way up across its face
+  paneFrame(p) {
+    const G = RAM.guard, c = chest(p), g = p.guardDir || [p.facing, 0, p.facingZ || 0], N = [g[0], g[1], g[2] || 0];
+    const up = [-N[1] * N[0], 1 - N[1] * N[1], -N[1] * N[2]], um = Math.hypot(...up) || 1;
+    return { c: { x: c.x + N[0] * G.reach, y: c.y + N[1] * G.reach, z: c.z + N[2] * G.reach }, N, U: up.map(v => v / um) };
   }
   paneOf(p) {
     let P = this.panes.get(p); if (P) return P;
@@ -157,15 +165,15 @@ export class RamFX {
   onEvent(ev) {
     const F = this.fx, p = ev.p;
     switch (ev.type) {
-      case 'guardOn': { const c = chest(p); F.sprite(c.x + p.guardDir[0] * 0.8, c.y + p.guardDir[1] * 0.8, 'ring', BLUE, 1.0, 0.18, 2.2); break; }
+      case 'guardOn': { const c = chest(p); LANE.z = c.z + (p.guardDir[2] || 0) * 0.8; F.sprite(c.x + p.guardDir[0] * 0.8, c.y + p.guardDir[1] * 0.8, 'ring', BLUE, 1.0, 0.18, 2.2); break; }
       case 'guardBlock': {
         const P = this.paneOf(p); P.flash = Math.min(1, P.flash + 0.5 + ev.dmg * 0.03);
-        this.crackAt(p, P, ev.x, ev.y, ev.dmg, ev.frac);
+        this.crackAt(p, P, ev.x, ev.y, ev.z, ev.dmg, ev.frac);
         // Clusters chip off as its strength drops past two thirds and one third
-        if ((P.frac > 2 / 3 && ev.frac <= 2 / 3) || (P.frac > 1 / 3 && ev.frac <= 1 / 3)) this.shatter(p, ev.x, ev.y, 7, 0.5);
+        if ((P.frac > 2 / 3 && ev.frac <= 2 / 3) || (P.frac > 1 / 3 && ev.frac <= 1 / 3)) this.shatter(p, ev.x, ev.y, ev.z, 7, 0.5);
         P.frac = ev.frac;
         // A blow that shoves him back drags the shield along the floor
-        if (p.onGround) this.sparks(p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.06, -p.facing, 3 + Math.min(8, ev.dmg / 2 | 0), 0.9);
+        if (p.onGround) { LANE.z = p.z + (p.facingZ || 0) * (p.w / 2 + 0.3); this.sparks(p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.06, -p.facing, 3 + Math.min(8, ev.dmg / 2 | 0), 0.9, -(p.facingZ || 0)); LANE.z = ev.z; }
         F.burst(ev.x, ev.y, ev.heavy ? WHITE : PALE, ev.heavy ? 18 : 10, ev.heavy ? 9 : 6, 0.3, 0.28, { dir: Math.atan2(p.guardDir[1], p.guardDir[0]), spread: 1.6, grav: 6 });
         F.sprite(ev.x, ev.y, 'star', WHITE, ev.heavy ? 1.3 : 0.8, 0.12, 1.4);
         break;
@@ -178,38 +186,41 @@ export class RamFX {
       }
       case 'rampartBreak': {
         // The pane shatters into shards of hard light: every remaining piece of it bursts outward
-        const c = chest(p), [nx, ny] = p.guardDir || [p.facing, 0], P = this.paneOf(p);
-        this.shatter(p, null, null, 30, 1); P.frac = 0;
+        const { c, N, U } = this.paneFrame(p), P = this.paneOf(p);
+        this.shatter(p, null, null, null, 30, 1); P.frac = 0;
         for (const k of P.cracks) k.at = -1;
         for (let i = 0; i < 28; i++) {
-          const u = (Math.random() - 0.5) * 2.6, x = c.x + nx * 0.8 - ny * u, y = c.y + ny * 0.8 + nx * u;
-          F.burst(x, y, Math.random() < 0.5 ? PALE : BLUE, 1, 7, 0.3, 0.5, { dir: Math.atan2(ny, nx) + (Math.random() - 0.5) * 2, spread: 0.5, grav: 12 });
+          const u = (Math.random() - 0.5) * 2.6;
+          LANE.z = c.z + U[2] * u;
+          F.burst(c.x + U[0] * u, c.y + U[1] * u, Math.random() < 0.5 ? PALE : BLUE, 1, 7, 0.3, 0.5, { dir: Math.atan2(N[1], N[0]) + (Math.random() - 0.5) * 2, spread: 0.5, grav: 12 });
         }
-        F.sprite(c.x + nx * 0.8, c.y + ny * 0.8, 'ring', WHITE, 1.6, 0.35, 3); F.popText(c.x, c.y + 1.2, 'BROKEN', '#ff8aa8', 0.8);
+        LANE.z = c.z; F.sprite(c.x, c.y, 'ring', WHITE, 1.6, 0.35, 3); F.popText(c.x, c.y + 1.2, 'BROKEN', '#ff8aa8', 0.8);
         break;
       }
       case 'rampartReady': { this.paneOf(p).frac = 1; const c = chest(p); F.sprite(c.x, c.y, 'ring', BLUE, 1.2, 0.3, 2.4); F.burst(c.x, c.y, PALE, 12, 4, 0.25, 0.3); break; }
       case 'kineticRelease': {
         // The cone of force: a shock ring along the guard, sparks fanning out through the cone, a flash
-        const k = ev.k, a0 = Math.atan2(ev.ny, ev.nx), at = toWorld(ev.x, ev.y, 0.3, new THREE.Vector3());
-        F.charge.shockRing(at, planeDir(ev.x, ev.nx, ev.ny, new THREE.Vector3()).normalize(), WHITE, 0.4, 1.4 + 2.2 * k, 0.3, ev.r * 0.6);
-        F.charge.shockRing(at.clone(), planeDir(ev.x, ev.nx, ev.ny, new THREE.Vector3()).normalize(), BLUE, 0.3, 1.0 + 1.8 * k, 0.38, ev.r * 0.8);
+        const k = ev.k, a0 = Math.atan2(ev.ny, ev.nx), at = toWorldZ(ev.x, ev.y, ev.z, new THREE.Vector3()), nd = planeDir3(ev.x, ev.nx, ev.ny, ev.nz || 0, new THREE.Vector3()).normalize();
+        F.charge.shockRing(at, nd, WHITE, 0.4, 1.4 + 2.2 * k, 0.3, ev.r * 0.6);
+        F.charge.shockRing(at.clone(), nd, BLUE, 0.3, 1.0 + 1.8 * k, 0.38, ev.r * 0.8);
         F.sprite(ev.x, ev.y, 'star', WHITE, 1.6 + 2 * k, 0.2, 1.5); F.sprite(ev.x, ev.y, 'glow', BLUE, 2 + 3 * k, 0.3, 1.6);
         for (let i = 0; i < 30 + 50 * k; i++) {
           const a = a0 + (Math.random() - 0.5) * ev.cone * 2, d = Math.random() * ev.r;
-          F.burst(ev.x + Math.cos(a) * d * 0.3, ev.y + Math.sin(a) * d * 0.3, Math.random() < 0.4 ? WHITE : BLUE, 1, 10 + 12 * k, 0.32, 0.32, { dir: a, spread: 0.15 });
+          LANE.z = ev.z + (ev.nz || 0) * d * 0.3; F.burst(ev.x + Math.cos(a) * d * 0.3, ev.y + Math.sin(a) * d * 0.3, Math.random() < 0.4 ? WHITE : BLUE, 1, 10 + 12 * k, 0.32, 0.32, { dir: a, spread: 0.15 });
         }
         F.dust(ev.x, ev.y - 1.2, 0.4 + 0.6 * k, [ev.nx >= 0 ? 0 : Math.PI], { reach: 2 });
         break;
       }
       case 'rush': {
-        const L = ev.level, x = p.x - ev.dx * 0.6;
+        const L = ev.level, dz = ev.dz || 0, x = p.x - ev.dx * 0.6; LANE.z = p.z - dz * 0.6;
         F.dust(p.x, p.y, 0.4 + 0.2 * L, [ev.dx > 0 ? Math.PI : 0], { noRing: L < 2 });
         F.smoke(x, p.y + 0.3, '#8e97a3', 4 + 3 * L, 3 + L, 0.5, 0.5, { dir: ev.dx > 0 ? Math.PI : 0, spread: 0.8, op: 0.45 });
         if (L) { F.sprite(p.x, p.y + 1.2, 'ring', BLUE, 0.8 + 0.3 * L, 0.2, 2.4); F.burst(p.x, p.y + 1.2, BLUE, 12 + 8 * L, 8 + 3 * L, 0.3, 0.3, { dir: ev.dx > 0 ? Math.PI : 0, spread: 1.1 }); }
         // The shield's edge bites the floor: a spray of sparks
-        if (p.onGround) this.sparks(p.x + ev.dx * (p.w / 2 + 0.2), p.y + 0.08, ev.dx, 10 + 6 * L, 1.2);
+        LANE.z = p.z + dz * (p.w / 2 + 0.2);
+        if (p.onGround) this.sparks(p.x + ev.dx * (p.w / 2 + 0.2), p.y + 0.08, ev.dx, 10 + 6 * L, 1.2, dz);
         // The exhaust stacks roar
+        LANE.z = p.z - dz * 0.55;
         for (let i = 0; i < 6; i++) F.smoke(p.x - p.facing * 0.55, p.y + 2.25, '#6f7883', 1, 2, 0.4, 0.6, { dir: Math.PI / 2 + (ev.dx > 0 ? 0.6 : -0.6), spread: 0.5, op: 0.45, grav: -1.2 });
         break;
       }
@@ -220,7 +231,7 @@ export class RamFX {
         F.burst(ev.x, ev.y, '#5d6674', 20, 9, 0.32, 0.6, { dir: Math.PI / 2, spread: 2.4, grav: 18 }); F.burst(ev.x, ev.y, BLUE, 26, 11, 0.32, 0.35);
         F.dust(ev.x, p.y, 0.9, [0, Math.PI], { reach: 1.5 }); F.smoke(ev.x, ev.y, '#8e97a3', 8, 1.8, 0.7, 0.9, { op: 0.45, grow: 2.4, grav: -0.6 });
         F.popText(ev.x, ev.y + 1.1, 'SLAM', PALE, 0.65);
-        this.wallCrater(ev.x, ev.y, Math.sign(ev.x - p.x) || p.facing, 0.75 + 0.12 * Math.min(4, ev.n) + 0.1 * ev.level);
+        this.wallCrater(ev.x, ev.y, ev.z, ev.x - p.x, ev.z - p.z, 0.75 + 0.12 * Math.min(4, ev.n) + 0.1 * ev.level);
         break;
       }
       case 'ramBonk': { F.sprite(ev.x, ev.y, 'star', WHITE, 1.6, 0.14, 1.5); F.sprite(ev.x, ev.y, 'ring', PALE, 1.0, 0.25, 2.6); F.burst(ev.x, ev.y, PALE, 18, 8, 0.28, 0.3, { grav: 8 }); break; }
@@ -284,27 +295,27 @@ export class RamFX {
   }
 
   update(dt, world, view) {
-    this.t += dt;
+    this.t += dt; this.camPos = view.camera.position;
     this.updateCraters(dt); this.updateSparks(dt); this.updateShards(dt);
     const F = this.fx, cam = view.camera.position, seenP = new Set(), seenW = new Set(), seenL = new Set();
     for (const p of world.players) {
       if (p.char !== 'ram') continue;
       const rig = view.rigs.get(p), vis = !!rig && rig.root.visible && p.state !== 'dead';
+      LANE.z = p.z;
       // ---- The Rampart's pane ----
       const P = this.paneOf(p); seenP.add(p);
       const up = vis && p.state === 'guard';
       P.k += ((up ? 1 : 0) - P.k) * (1 - Math.exp(-dt * (up ? 30 : 14)));
       P.flash = Math.max(0, P.flash - dt * 5);
       if (P.k > 0.02) {
-        const G = RAM.guard, c = chest(p), [nx, ny] = p.guardDir || [p.facing, 0], cx = c.x + nx * G.reach, cy = c.y + ny * G.reach;
+        const G = RAM.guard, { c: C, N, U } = this.paneFrame(p), cx = C.x, cy = C.y, cz = C.z;
         const frac = Math.max(0, p.integrity / G.integrity), weak = frac < 0.35 ? (Math.sin(this.t * 40) > 0 ? 1 : 0.55) : 1;
-        const len = G.half * 2 * (0.6 + 0.4 * P.k);
-        // Just in front of the shield he holds (the pose puts it on the guard plane), so the hard light wraps it
-        const dz = rig ? rig.extra.shield.position.z * CHARS.ram.scale + 0.16 : 0.3;
-        // (a broad slab of light a little wider than the shield itself, its bright rim on the outer edge)
-        this.place(P.face, cx, cy, -ny, nx, dz); P.face.scale.set(1.1, len, 1);
-        this.place(P.rim, cx + nx * 0.55, cy + ny * 0.55, -ny, nx, dz + 0.02); P.rim.scale.set(0.05, len, 1);
-        this.place(P.crack, cx, cy, -ny, nx, dz + 0.01); P.crack.scale.set(1.1, len, 1);
+        const len = G.half * 2 * (0.6 + 0.4 * P.k), wid = G.half * 1.5;
+        // A slab of hard light across the guard, a little wider than the shield itself, its bright rim along the top
+        const at = (u, w, d = 0) => [cx + U[0] * u + N[0] * d, cy + U[1] * u + N[1] * d, cz + U[2] * u + N[2] * d];
+        this.orient(P.face, ...at(0, 0, 0.02), N, U); P.face.scale.set(wid, len, 1);
+        this.orient(P.rim, ...at(len / 2, 0, 0.04), N, U); P.rim.scale.set(wid, 0.06, 1);
+        this.orient(P.crack, ...at(0, 0, 0.03), N, U); P.crack.scale.set(wid, len, 1);
         this.mat.pane.opacity = (0.32 + 0.3 * frac + 0.6 * P.flash) * P.k * weak;
         this.mat.crack.opacity = Math.max(0, 0.75 - frac) * P.k * weak;
         this.mat.edge.opacity = (0.55 + 0.45 * P.flash) * P.k;
@@ -316,19 +327,22 @@ export class RamFX {
           k.o += ((on ? 1 : 0) - k.o) * (1 - Math.exp(-dt * (on ? 30 : 3)));
           k.m.visible = k.o > 0.02;
           if (!k.m.visible) continue;
-          const u = Math.max(-len / 2, Math.min(len / 2, k.u));
-          this.place(k.m, cx - ny * u + nx * k.w, cy + nx * u + ny * k.w, -ny, nx, dz + 0.025);
+          const u = Math.max(-len / 2, Math.min(len / 2, k.u)), sx = Math.max(-wid / 2, Math.min(wid / 2, k.s || 0));
+          const A = at(u, 0, 0.05);
+          const X = [U[1] * N[2] - U[2] * N[1], U[2] * N[0] - U[0] * N[2], U[0] * N[1] - U[1] * N[0]];   // across the pane
+          this.orient(k.m, A[0] + X[0] * sx, A[1] + X[1] * sx, A[2] + X[2] * sx, N, U);
           k.m.rotateZ(k.rot); k.m.scale.setScalar(k.size * (1 + 0.6 * (1 - frac)));
           k.m.material.opacity = k.o * P.k * weak * (0.6 + 0.4 * (1 - frac)) * (1 + P.flash);
         }
         // Pushed along the floor behind the shield, its lower edge grinds out sparks
-        if (p.onGround && Math.abs(p.vx) > 0.4 && Math.random() < Math.min(1, Math.abs(p.vx) / 2.2)) {
-          const bot = ny * nx >= 0 ? -1 : 1, ex = cx - ny * bot * len / 2;
-          this.sparks(Math.abs(ny) > 0.5 ? ex : p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.05, Math.sign(p.vx), 1 + (Math.abs(p.vx) > 1.5 ? 1 : 0), 0.75);
+        const sp = Math.hypot(p.vx, p.vz || 0);
+        if (p.onGround && sp > 0.4 && Math.random() < Math.min(1, sp / 2.2)) {
+          LANE.z = p.z + (p.facingZ || 0) * (p.w / 2 + 0.3);
+          this.sparks(p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.05, p.vx / sp, 1 + (sp > 1.5 ? 1 : 0), 0.75, (p.vz || 0) / sp);
         }
         // Stored Kinetic: motes drift up the pane
         if (p.kinetic > 10 && Math.random() < p.kinetic / 120) {
-          const u = (Math.random() - 0.5) * len, w = toWorld(cx - ny * u, cy + nx * u, dz + 0.04, this.v);
+          const u = (Math.random() - 0.5) * len, A = at(u, 0, 0.06), w = toWorldZ(A[0], A[1], A[2], this.v);
           const pt = F.particle(w, Math.random() < 0.5 ? WHITE : BLUE, 0.16, 0.4); pt.v.set(0, 1.2, 0); pt.drag = 1;
         }
       } else { P.face.visible = P.rim.visible = P.crack.visible = false; for (const k of P.cracks) k.m.visible = false; }
@@ -339,14 +353,17 @@ export class RamFX {
         W = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.4, 4, 1, true), this.mat.wedge); W.visible = false; W.renderOrder = 5; this.scene.add(W); this.wedges.set(p, W);
       }
       if (rushing || (ult && p.ultRun.t > ULT.ram.brace && !p.ultRun.slamT)) {
-        const L = rushing ? p.rush.level : 3, dir = rushing ? p.rush.dx : p.ultRun.dx, s = (0.8 + 0.18 * L) * (ult ? 1.6 : 1);
-        this.place(W, p.x + dir * (p.w / 2 + 0.55 * s), p.y + 1.2, dir, 0, 0.3);   // the cone's point leads
+        const L = rushing ? p.rush.level : 3, dir = rushing ? p.rush.dx : p.ultRun.dx, dz = (rushing ? p.rush.dz : p.ultRun.dz) || 0, s = (0.8 + 0.18 * L) * (ult ? 1.6 : 1);
+        const off = p.w / 2 + 0.55 * s;
+        toWorldZ(p.x + dir * off, p.y + 1.2, p.z + dz * off, W.position);   // the cone's point leads
+        W.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), planeDir3(p.x, dir, 0, dz, this.v).normalize());
         W.scale.set(s * (1 + 0.08 * Math.sin(this.t * 40)), s, s * 0.5); W.visible = true;
         this.mat.wedge.opacity = 0.32 + 0.08 * L;
+        LANE.z = p.z + dz * (p.w / 2 + 0.4);
         for (let i = 0; i < 2 + L; i++) F.burst(p.x + dir * (p.w / 2 + 0.4), p.y + 0.3 + Math.random() * p.h, Math.random() < 0.5 ? WHITE : BLUE, 1, 14 + 4 * L, 0.2, 0.14, { dir: dir > 0 ? Math.PI : 0, spread: 0.12 });
         if (p.onGround && Math.random() < 0.7) F.dust(p.x - dir * 0.3, p.y, 0.3 + 0.08 * L, [dir > 0 ? Math.PI : 0], { noRing: true, op: 0.45 });
         // Sparks: the shield's lower edge and his boots grind along the floor; in the air the shield's rim crackles
-        if (p.onGround) { this.sparks(p.x + dir * (p.w / 2 + 0.25), p.y + 0.06, dir, 3 + L, 1); if (Math.random() < 0.6) this.sparks(p.x - dir * 0.15, p.y + 0.04, dir, 1, 0.7); }
+        if (p.onGround) { this.sparks(p.x + dir * (p.w / 2 + 0.25), p.y + 0.06, dir, 3 + L, 1, dz); if (Math.random() < 0.6) this.sparks(p.x - dir * 0.15, p.y + 0.04, dir, 1, 0.7, dz); }
         else if (Math.random() < 0.6) F.burst(p.x + dir * (p.w / 2 + 0.3), p.y + 0.4 + Math.random() * 1.6, Math.random() < 0.5 ? WHITE : PALE, 2, 6, 0.14, 0.18, { dir: dir > 0 ? Math.PI : 0, spread: 1.6, grav: 6 });
         const last = this.ghostTick.get(p) ?? -99;
         if (rig && world.tick - last >= (L >= 2 ? 3 : 4)) { this.ghostTick.set(p, world.tick); F.ghosts.spawn(rig, new THREE.Color(BLUE).multiplyScalar(1.2 + 0.25 * L), 0.22 + 0.06 * L, 0.18); }
@@ -354,7 +371,7 @@ export class RamFX {
       // The Hydraulic Uplift's leg jets
       if (vis && p.state === 'attack' && p.moveId === 'ram_rise' && p.st >= p.move.su && p.st < p.move.su + p.move.ac) {
         for (const dz of [-0.2, 0.2]) {
-          const w = toWorld(p.x + (Math.random() - 0.5) * 0.3, p.y - 0.05, dz, this.v), pt = F.particle(w, Math.random() < 0.5 ? WHITE : BLUE, 0.3, 0.16);
+          const w = toWorldZ(p.x + (Math.random() - 0.5) * 0.3, p.y - 0.05, p.z + dz, this.v), pt = F.particle(w, Math.random() < 0.5 ? WHITE : BLUE, 0.3, 0.16);
           pt.v.set((Math.random() - 0.5) * 0.8, -6 - Math.random() * 3, 0); pt.drag = 0.86;
         }
         if (Math.random() < 0.5) F.smoke(p.x, p.y - 0.1, '#8e97a3', 1, 1, 0.5, 0.6, { dir: -Math.PI / 2, spread: 1.2, op: 0.4 });
@@ -375,12 +392,12 @@ export class RamFX {
         const a = chest(p), q = p.link.q, b = chest(q), n = 16, pts = L.pts; pts.length = 0;
         for (let i = 0; i <= n; i++) {
           const u = i / n, sag = Math.sin(u * Math.PI) * 0.6;
-          pts.push(toWorld(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u - sag + Math.sin(this.t * 7 + u * 9) * 0.05, 0.25, new THREE.Vector3()));
+          pts.push(toWorldZ(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u - sag + Math.sin(this.t * 7 + u * 9) * 0.05, a.z + (b.z - a.z) * u, new THREE.Vector3()));
         }
         const k = Math.min(1, p.link.t / 40);
         L.glow.build(pts, cam, () => 0.12 + 0.08 * L.flash, i => [0.35, 0.65, 1.0, (0.22 + 0.4 * L.flash) * k]);
         L.core.build(pts, cam, () => 0.035, i => { const on = ((i + Math.floor(this.t * 14)) % 3) !== 0; return [0.8, 0.92, 1.0, (on ? 0.9 : 0.25) * k]; });
-        if (Math.random() < 0.15) F.sprite(b.x, b.y + 0.9, 'ring', BLUE, 0.55, 0.3, 1.6);
+        if (Math.random() < 0.15) { LANE.z = b.z; F.sprite(b.x, b.y + 0.9, 'ring', BLUE, 0.55, 0.3, 1.6); LANE.z = p.z; }
       }
     }
     for (const [p, L] of this.links) {
@@ -407,18 +424,22 @@ export class RamFX {
       }
       W.flash = Math.max(0, W.flash - dt * 5);
       const grow = Math.min(1, (this.t - W.born) / 0.18), H = b.half * 2 * grow, cy = b.y - b.half + H / 2, frac = Math.max(0, b.hp / b.maxHp), endK = Math.min(1, b.ttl / 30);
-      const D = 0.36, blink = b.ttl < 60 && b.ttl % 10 < 5 ? 0.6 : 1, [face, crack, edge] = W.mats;
-      this.place(W.face, b.x, cy, 0, 1, 0.1); W.face.scale.set(D * 2, H, 1);
-      this.place(W.crack, b.x, cy, 0, 1, 0.11); W.crack.scale.set(D * 2, H, 1);
-      this.place(W.rimA, b.x - D, cy, 0, 1, 0.12); W.rimA.scale.set(0.05, H, 1);
-      this.place(W.rimB, b.x + D, cy, 0, 1, 0.12); W.rimB.scale.set(0.05, H, 1);
-      this.place(W.top, b.x, b.y - b.half + H, 1, 0, 0.12); W.top.scale.set(0.05, D * 2 + 0.05, 1);
-      this.place(W.base, b.x, b.y - b.half + 0.04, 1, 0, 0.12); W.base.scale.set(0.1, D * 2 + 0.6, 1);
+      const D = b.wide || 2, blink = b.ttl < 60 && b.ttl % 10 < 5 ? 0.6 : 1, [face, crack, edge] = W.mats;
+      // A wall of light standing across the way he faced: its face toward that way, D m either side of its middle
+      const N = [b.nx, 0, b.nz || 0], A = [-(b.nz || 0), 0, b.nx], bz = b.z || 0;
+      const side = (u, y) => [b.x + A[0] * u, y, bz + A[2] * u];
+      LANE.z = bz;
+      this.orient(W.face, ...side(0, cy), N); W.face.scale.set(D * 2, H, 1);
+      this.orient(W.crack, ...side(0, cy), N); W.crack.scale.set(D * 2, H, 1);
+      this.orient(W.rimA, ...side(-D, cy), N); W.rimA.scale.set(0.06, H, 1);
+      this.orient(W.rimB, ...side(D, cy), N); W.rimB.scale.set(0.06, H, 1);
+      this.orient(W.top, ...side(0, b.y - b.half + H), N); W.top.scale.set(D * 2 + 0.06, 0.06, 1);
+      this.orient(W.base, ...side(0, b.y - b.half + 0.05), N); W.base.scale.set(D * 2 + 0.6, 0.1, 1);
       face.opacity = (0.45 + 0.35 * frac + 0.5 * W.flash) * endK * blink;
       crack.opacity = Math.max(0, 0.75 - frac) * endK;
       edge.opacity = (0.75 + 0.25 * W.flash) * endK * blink;
       this.mat.wall.map.offset.y = this.t * 0.2;
-      if (Math.random() < 0.3) F.burst(b.x + (Math.random() - 0.5) * D * 2, b.y - b.half + Math.random() * H, PALE, 1, 0.8, 0.16, 0.4, { dir: Math.PI / 2, spread: 0.3 });
+      if (Math.random() < 0.3) { const u = (Math.random() - 0.5) * D * 2; LANE.z = bz + A[2] * u; F.burst(b.x + A[0] * u, b.y - b.half + Math.random() * H, PALE, 1, 0.8, 0.16, 0.4, { dir: Math.PI / 2, spread: 0.3 }); }
     }
     for (const [b, W] of this.walls) if (!seenW.has(b)) { for (const m of W.meshes) this.scene.remove(m); for (const m of W.mats) m.dispose(); W.geo.dispose(); this.walls.delete(b); }
     // ---- Siege Breaker's ram's head: horns of hard light over the wedge ----
@@ -435,16 +456,18 @@ export class RamFX {
       }
       const U = ULT.ram, form = R.slamT ? Math.max(0, 1 - (R.t - R.slamT) / 10) : Math.min(1, R.t / U.brace);
       if (form <= 0.01) { H.g.visible = false; continue; }
-      toWorld(p.x + R.dx * 1.6, p.y + 1.5, 0.3, H.g.position);
-      H.g.rotation.y = (rig => (rig ? rig.root.rotation.y : 0))(view.rigs.get(p)) + (R.dx > 0 ? 0 : Math.PI);
+      toWorldZ(p.x + R.dx * 1.6, p.y + 1.5, p.z + (R.dz || 0) * 1.6, H.g.position);
+      H.g.rotation.y = yawOf(p.x, R.dx, R.dz || 0);
       H.g.scale.setScalar(1.6 * form * (1 + 0.05 * Math.sin(this.t * 30))); H.g.visible = true;
     }
+    LANE.z = 0;
   }
 
   // A hit on the Rampart cracks it where it landed: a new crack, or the one already there spreads
-  crackAt(p, P, x, y, dmg, frac) {
-    const G = RAM.guard, c = chest(p), [nx, ny] = p.guardDir || [p.facing, 0], cx = c.x + nx * G.reach, cy = c.y + ny * G.reach;
-    const u = Math.max(-G.half * 0.9, Math.min(G.half * 0.9, (x - cx) * -ny + (y - cy) * nx));
+  crackAt(p, P, x, y, z, dmg, frac) {
+    const G = RAM.guard, { c, N, U } = this.paneFrame(p), rx = x - c.x, ry = y - c.y, rz = (z ?? c.z) - c.z;
+    const u = Math.max(-G.half * 0.9, Math.min(G.half * 0.9, rx * U[0] + ry * U[1] + rz * U[2]));
+    const X = [U[1] * N[2] - U[2] * N[1], U[2] * N[0] - U[0] * N[2], U[0] * N[1] - U[1] * N[0]], sx = rx * X[0] + ry * X[1] + rz * X[2];
     const at = frac * G.integrity + 12;   // it shows until the Integrity grows back past this
     let k = P.cracks.find(q => q.at > p.integrity && Math.abs(q.u - u) < 0.35);
     if (k) { k.size = Math.min(1.3, k.size + 0.08 + dmg * 0.01); k.at = Math.max(k.at, at); return; }
@@ -455,25 +478,27 @@ export class RamFX {
     }
     if (!k) k = P.cracks.reduce((a, b) => (a.at < b.at ? a : b));
     k.m.material.map = this.crackTex[(Math.random() * this.crackTex.length) | 0]; k.m.material.needsUpdate = true;
-    Object.assign(k, { u, w: (Math.random() - 0.5) * 0.35, size: 0.4 + Math.min(0.5, dmg * 0.025), rot: Math.random() * Math.PI * 2, at });
+    Object.assign(k, { u, s: sx, w: (Math.random() - 0.5) * 0.35, size: 0.4 + Math.min(0.5, dmg * 0.025), rot: Math.random() * Math.PI * 2, at });
   }
   // Shards of the pane fly off: `n` of them, from (x, y) on it (a chip), or from all over it (null: it shatters)
-  shatter(p, x, y, n, power) {
-    const G = RAM.guard, c = chest(p), [nx, ny] = p.guardDir || [p.facing, 0], cx = c.x + nx * G.reach, cy = c.y + ny * G.reach;
+  shatter(p, x, y, z, n, power) {
+    const G = RAM.guard, { c, N, U } = this.paneFrame(p), cx = c.x, cy = c.y, cz = c.z;
+    const X = [U[1] * N[2] - U[2] * N[1], U[2] * N[0] - U[0] * N[2], U[0] * N[1] - U[1] * N[0]];
     const P = this.paneOf(p), q = P.face.quaternion;
     for (let i = 0; i < n; i++) {
       const S = this.shards[this.si2]; this.si2 = (this.si2 + 1) % this.shards.length;
-      const u = x === null ? (Math.random() - 0.5) * G.half * 2 : (x - cx) * -ny + (y - cy) * nx + (Math.random() - 0.5) * 0.5;
-      const w = (Math.random() - 0.5) * 0.5, sx = cx - ny * u + nx * w, sy = cy + nx * u + ny * w;
-      toWorld(sx, sy, 0.35, S.m.position); S.m.quaternion.copy(q);
-      const sp = (3 + Math.random() * 6) * power, a = Math.atan2(ny, nx) + (Math.random() - 0.5) * 1.6;
-      planeDir(sx, Math.cos(a) * sp, Math.sin(a) * sp + 2 + Math.random() * 3, S.v); S.v.z += (Math.random() - 0.2) * 3;
+      const u = x === null ? (Math.random() - 0.5) * G.half * 2 : (x - cx) * U[0] + (y - cy) * U[1] + ((z ?? cz) - cz) * U[2] + (Math.random() - 0.5) * 0.5;
+      const w = (Math.random() - 0.5) * G.half * 1.4, sx = cx + U[0] * u + X[0] * w, sy = cy + U[1] * u + X[1] * w, sz = cz + U[2] * u + X[2] * w;
+      toWorldZ(sx, sy, sz, S.m.position); S.m.quaternion.copy(q);
+      const sp = (3 + Math.random() * 6) * power;
+      planeDir3(sx, N[0] * sp + X[0] * (Math.random() - 0.5) * sp, N[1] * sp + 2 + Math.random() * 3, N[2] * sp + X[2] * (Math.random() - 0.5) * sp, S.v);
       S.spin.set((Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18);
       S.size = (0.16 + Math.random() * 0.26) * (x === null ? 1.25 : 0.9); S.m.scale.setScalar(S.size);
       S.life = S.max = 0.55 + Math.random() * 0.5; S.m.visible = true;
     }
+    LANE.z = cz;
     if (x === null) { this.fx.sprite(cx, cy, 'glow', BLUE, 2.6, 0.25, 1.6); this.fx.sprite(cx, cy, 'star', WHITE, 2.2, 0.16, 1.5); }
-    else this.fx.sprite(x, y, 'star', WHITE, 1.0, 0.12, 1.4);
+    else { LANE.z = z ?? cz; this.fx.sprite(x, y, 'star', WHITE, 1.0, 0.12, 1.4); }
   }
   updateShards(dt) {
     for (const S of this.shards) {
@@ -487,12 +512,15 @@ export class RamFX {
   }
   // Sparks thrown back from a point scraping along the floor, `dir` the way he is moving (streaks, see updateSparks),
   // with a few glowing particles among them that show on dark backgrounds
-  sparks(x, y, dir, n, k = 1) {
-    const a0 = dir > 0 ? Math.PI - 0.35 : 0.35;
+  // (`dir`, `dirZ`: the way it moves on the ground plane; the sparks fly back from it, in the current lane)
+  sparks(x, y, dir, n, k = 1, dirZ = 0) {
+    const hm = Math.hypot(dir, dirZ) || 1, bx = -dir / hm, bz = -dirZ / hm, z = LANE.z;
     for (let i = 0; i < n; i++) {
       const S = this.spk[this.si]; this.si = (this.si + 1) % this.spk.length;
-      const a = a0 + (Math.random() - 0.5) * 0.9, sp = (6 + Math.random() * 9) * k;
-      Object.assign(S, { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, d: 0.1 + Math.random() * 0.55 });
+      const el = 0.35 + (Math.random() - 0.5) * 0.9, yaw = (Math.random() - 0.5) * 0.9, sp = (6 + Math.random() * 9) * k;
+      const c = Math.cos(yaw), s = Math.sin(yaw), hx = bx * c - bz * s, hz = bx * s + bz * c;
+      Object.assign(S, { x, y, z: z + (Math.random() - 0.5) * 0.4, vx: hx * Math.cos(el) * sp, vy: Math.sin(el) * sp, vz: hz * Math.cos(el) * sp });
+      const a = Math.atan2(S.vy, S.vx);
       S.life = S.max = 0.22 + Math.random() * 0.25; S.c.set(SPARKS[(Math.random() * SPARKS.length) | 0]);
       if (i % 2 === 0) this.fx.burst(x, y, SPARKS[0], 1, sp * 0.8, 0.2, 0.25, { dir: a, spread: 0.3, grav: 18, drag: 0.95 });   // a glow on dark backgrounds
     }
@@ -505,14 +533,17 @@ export class RamFX {
       const S = this.spk[i];
       if (S.life <= 0) { if (S.max) { M.setMatrixAt(i, this.m4.makeScale(0, 0, 0)); S.max = 0; } continue; }
       S.life -= dt; S.vy -= 22 * dt; S.vx *= Math.pow(0.97, dt * 60);
-      S.x += S.vx * dt; S.y += S.vy * dt;
-      const g = groundBelow(S.x, S.y + 0.3);
-      if (S.y < g && S.y > g - 0.3) { S.y = g; S.vy = Math.abs(S.vy) * 0.35; S.vx *= 0.7; }   // skips off the floor
-      const k = Math.max(0, S.life / S.max), spd = Math.hypot(S.vx, S.vy);
-      const T = planeDir(S.x, S.vx, S.vy, this.v).normalize(), f = pathFrame(S.x), Z = this.v2.set(f.nx, 0, f.nz).normalize();
-      const X = new THREE.Vector3().crossVectors(T, Z).normalize();
-      this.q.setFromRotationMatrix(this.m4.makeBasis(X, T, Z));
-      this.m4.compose(toWorld(S.x, S.y, S.d, this.sc.clone()), this.q, this.sc.set(0.06 * (0.5 + 0.5 * k), 0.06 + spd * 0.028, 1));
+      S.vz *= Math.pow(0.97, dt * 60);
+      S.x += S.vx * dt; S.y += S.vy * dt; S.z += S.vz * dt;
+      const g = groundBelow(S.x, S.y + 0.3, S.z);
+      if (S.y < g && S.y > g - 0.3) { S.y = g; S.vy = Math.abs(S.vy) * 0.35; S.vx *= 0.7; S.vz *= 0.7; }   // skips off the floor
+      const k = Math.max(0, S.life / S.max), spd = Math.hypot(S.vx, S.vy, S.vz);
+      // a streak along its flight, turned to face the camera
+      const pos = toWorldZ(S.x, S.y, S.z, this.sc.clone()), T = planeDir3(S.x, S.vx, S.vy, S.vz, this.v).normalize();
+      const Zc = this.v2.copy(this.camPos || pos).sub(pos); Zc.addScaledVector(T, -Zc.dot(T)); if (Zc.lengthSq() < 1e-6) Zc.set(0, 0, 1); Zc.normalize();
+      const X = new THREE.Vector3().crossVectors(T, Zc).normalize();
+      this.q.setFromRotationMatrix(this.m4.makeBasis(X, T, Zc));
+      this.m4.compose(pos, this.q, this.sc.set(0.06 * (0.5 + 0.5 * k), 0.06 + spd * 0.028, 1));
       M.setMatrixAt(i, this.m4);
       M.setColorAt(i, this.col.copy(this.cool).lerp(S.c, Math.min(1, k * 1.6)));
     }
@@ -522,21 +553,22 @@ export class RamFX {
   // makes its cracks glow brighter
   crater(x, y, r, heat = 1) {
     const fl = this.fx.floorUnder(x, y, 2.5); if (fl === null) return;
-    const same = xx => Math.abs(groundBelow(xx, fl + 0.3) - fl) < 0.05;
-    while (r > 0.4 && !(same(x - r) && same(x + r))) r -= 0.1;
+    const z = LANE.z, same = (xx, zz) => Math.abs(groundBelow(xx, fl + 0.3, zz) - fl) < 0.05;
+    while (r > 0.4 && !(same(x - r, z) && same(x + r, z) && same(x, z - r) && same(x, z + r))) r -= 0.1;
     const C = this.nextCrater(r * 3.3);
     toWorld(x, fl + 0.02, 0, C.base.position); C.glow.position.copy(C.base.position);
     C.base.rotation.set(-Math.PI / 2, 0, Math.random() * Math.PI * 2); C.glow.rotation.copy(C.base.rotation);
     C.heat = heat;
   }
   // A crater in the wall a pile was slammed into: found by probing ahead of the impact for solid ground
-  wallCrater(x, y, dir, r) {
-    let wx = null;
-    for (let d = 0; d <= 4; d += 0.05) if (pointInSolid(x + dir * d, y)) { wx = x + dir * (d - 0.02); break; }
+  wallCrater(x, y, z, dx, dz, r) {
+    const m = Math.hypot(dx, dz) || 1; dx /= m; dz /= m;
+    let wx = null, wz = null;
+    for (let d = 0; d <= 4; d += 0.05) if (pointInSolid(x + dx * d, y, z + dz * d)) { wx = x + dx * (d - 0.02); wz = z + dz * (d - 0.02); break; }
     if (wx === null) return;
-    const C = this.nextCrater(r * 3.3), f = pathFrame(wx);
-    toWorld(wx, y, 0, C.base.position); C.glow.position.copy(C.base.position);
-    C.base.lookAt(C.base.position.x - f.tx * dir, C.base.position.y, C.base.position.z - f.tz * dir);
+    const C = this.nextCrater(r * 3.3), D = planeDir3(wx, dx, 0, dz, this.v);
+    toWorldZ(wx, y, wz, C.base.position); C.glow.position.copy(C.base.position);
+    C.base.lookAt(C.base.position.x - D.x, C.base.position.y, C.base.position.z - D.z);
     C.base.rotateZ(Math.random() * Math.PI * 2); C.glow.quaternion.copy(C.base.quaternion);
     C.heat = 1.4;
   }

@@ -4,7 +4,7 @@
 // when it ends it narrows to nothing. Presentation only: reads the sim, never changes it.
 import * as THREE from 'three';
 import { ATTACH_LOOK, MARKSMAN, RAM, CHARS } from './config.js';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir3, LANE } from './space.js';
 
 const MAXP = 72;
 const WHITE = new THREE.Color('#ffffff');
@@ -70,8 +70,8 @@ export class BeamFX {
   path(p, B) {
     const pts = B.pts; pts.length = 0;
     for (const g of p.beam.segs) {
-      const len = Math.hypot(g.x1 - g.x0, g.y1 - g.y0), n = Math.max(1, Math.ceil(len / 0.7));
-      for (let i = pts.length ? 1 : 0; i <= n && pts.length < MAXP; i++) pts.push(toWorld(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, 0.2, new THREE.Vector3()));
+      const z0 = g.z0 || 0, z1 = g.z1 || 0, len = Math.hypot(g.x1 - g.x0, g.y1 - g.y0, z1 - z0), n = Math.max(1, Math.ceil(len / 0.7));
+      for (let i = pts.length ? 1 : 0; i <= n && pts.length < MAXP; i++) pts.push(toWorldZ(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, z0 + (z1 - z0) * i / n, new THREE.Vector3()));
     }
   }
 
@@ -80,7 +80,7 @@ export class BeamFX {
     const cam = view.camera.position;
     for (const [p, B] of this.beams) {
       const live = p.beam && p.state === 'beam' && p.beam.segs && p.beam.segs.length && world.players.includes(p);
-      if (live) { B.age += dt; this.path(p, B); B.segs = p.beam.segs.map(g => ({ ...g })); B.dx = p.beam.dx; B.dy = p.beam.dy; B.px = p.x; }
+      if (live) { B.age += dt; this.path(p, B); B.segs = p.beam.segs.map(g => ({ ...g })); B.dx = p.beam.dx; B.dy = p.beam.dy; B.dz = p.beam.dz || 0; B.px = p.x; }
       else if (B.end < 0 && B.pts.length) B.end = 0;
       if (B.end >= 0) B.end += dt;
       const closing = B.end >= 0 ? Math.max(0, 1 - B.end / 0.16) : 1;
@@ -120,13 +120,13 @@ export class BeamFX {
       B.ringT -= dt;
       if (B.ringT <= 0) {
         B.ringT = 0.07;
-        const dir = planeDir(B.px, B.dx, B.dy, this.v2).normalize();
+        const dir = planeDir3(B.px, B.dx, B.dy, B.dz || 0, this.v2).normalize();
         this.fx.charge.shockRing(a.clone(), dir, '#' + tint.getHexString(), 0.14, 0.38, 0.2, 4.5);
       }
       // Where it meets a wall (and each Prism bounce): sparks thrown back out, smoke, scorch glow
       for (const g of B.segs) {
         if (!g.wall) continue;
-        const out = Math.atan2(g.ny, g.nx);
+        const out = Math.atan2(g.ny, g.nx); LANE.z = (g.z1 || 0) + (g.nz || 0) * 0.2;
         this.fx.burst(g.x1, g.y1, Math.random() < 0.5 ? '#ffffff' : '#' + tint.getHexString(), 3, 9, 0.2, 0.25, { dir: out, spread: 2.2, grav: 12 });
         if (Math.random() < 0.35) this.fx.smoke(g.x1 + g.nx * 0.2, g.y1 + g.ny * 0.2, '#8e97a3', 1, 1.5, 0.5, 0.6, { dir: out, spread: 1.4, op: 0.4 });
       }

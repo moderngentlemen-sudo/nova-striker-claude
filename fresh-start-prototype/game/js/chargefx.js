@@ -6,7 +6,7 @@
 // behind charged projectiles, the rocket apex marker, Echo's laser sight, and the charged-dash aura.
 // Presentation only: reads the sim, never changes it.
 import * as THREE from 'three';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir, planeDir3, LANE } from './space.js';
 import { pointInSolid, rayCast, rayBoxT } from './level.js';
 import { MARKSMAN, ATTACH_LOOK, CHARS, HUNTER, DASH_CHARGE, NOVA, SUB_LOOK, RAM, FIX } from './config.js';
 import { chargeStage, burstStage, marksman, rocketHeight, rifleFocus, chest } from './player.js';
@@ -120,7 +120,7 @@ export class ChargeFX {
   muzzle(p, rig, out) {
     if (rig && (p.char === 'nova' || p.char === 'ram' || p.char === 'fix') && rig.extra.muzzle) return rig.extra.muzzle.getWorldPosition(out);
     if (rig && p.char === 'echo' && rig.extra.staffTip && rig.extra.handStaff.visible) return rig.extra.staffTip.getWorldPosition(out);
-    return toWorld(p.x + p.facing * 0.45, p.y + p.h * 0.62, 0.25, out);
+    return toWorldZ(p.x + p.facing * 0.45, p.y + p.h * 0.62, (p.z || 0) + (p.facingZ || 0) * 0.45, out);
   }
 
   // A player left: take their pieces out of the scene and free them
@@ -144,13 +144,14 @@ export class ChargeFX {
     for (const p of world.players) {
       seen.add(p);
       const S = this.of(p), rig = view.rigs.get(p);
-      this.hide(S);
+      this.hide(S); LANE.z = p.z || 0;
       if (!rig || p.state === 'downed' || p.state === 'dead' || !rig.root.visible) continue;
       if (p.char === 'nova') this.novaCharge(p, S, rig, world, view);
       else if (p.char === 'echo') this.echoRifle(p, S, rig, world);
       else this.weaponCharge(p, S, rig);
       if (p.state === 'dashCharge') this.dashAura(p, S, rig);
     }
+    LANE.z = 0;
     for (const [p, S] of this.state) if (!seen.has(p)) { this.dispose(S); this.state.delete(p); }
     this.updateTrails(dt, view.camera.position);
     this.updateFlashes(dt);
@@ -193,7 +194,7 @@ export class ChargeFX {
     if (l4) this.beamPreview(p, S, at);
     // Energy drawn in from around the muzzle, faster with each level
     const rate = 0.6 + (burst ? 2 : Math.min(level, 3)) * 0.9 + (perfect ? 2 : 0) + (l4 ? 2.5 : 0) + (over ? 0.8 : 0);
-    const dir = planeDir(p.x, p.aimX, p.aimY, this.dir).normalize();   // its own vector: inward() reuses v2
+    const dir = planeDir3(p.x, p.aimX, p.aimY, p.aimZ || 0, this.dir).normalize();   // its own vector: inward() reuses v2
     for (let i = 0; i < rate; i++) {
       if (Math.random() > rate - i) break;
       if (!burst && attach === 'lance') {
@@ -230,8 +231,8 @@ export class ChargeFX {
 
   // Level 4 is ready: a flickering white guide line where the beam will go, to the first wall
   beamPreview(p, S, at) {
-    const c = chest(p), h = rayCast(c.x + p.aimX * 0.6, c.y + p.aimY * 0.6, p.aimX, p.aimY, MARKSMAN.beam.range);
-    const end = toWorld(h.x, h.y, 0.25, this.v3);
+    const c = chest(p), az = p.aimZ || 0, h = rayCast(c.x + p.aimX * 0.6, c.y + p.aimY * 0.6, c.z + az * 0.6, p.aimX, p.aimY, az, MARKSMAN.beam.range);
+    const end = toWorldZ(h.x, h.y, h.z, this.v3);
     this.span(S.sight, at, end); S.sight.material.color.set('#ffffff');
     S.sight.material.opacity = 0.35 + 0.3 * Math.abs(Math.sin(this.t * 22)); S.sight.scale.x = S.sight.scale.z = 1.4;
   }
@@ -244,14 +245,14 @@ export class ChargeFX {
 
   // Dotted path of the Arc shell for the current aim, until it meets something solid
   arcPreview(p, S, level, perfect) {
-    const A = MARKSMAN.arc, c = { x: p.x, y: p.y + p.h * 0.62 };
-    const dx = p.aimX, dy = p.aimY + A.lift, m = Math.hypot(dx, dy) || 1;
-    let x = c.x + p.aimX * 0.7, y = c.y + p.aimY * 0.7, vx = dx / m * A.speed, vy = dy / m * A.speed;
+    const A = MARKSMAN.arc, az = p.aimZ || 0, c = { x: p.x, y: p.y + p.h * 0.62, z: p.z };
+    const dx = p.aimX, dy = p.aimY + A.lift, m = Math.hypot(dx, dy, az) || 1;
+    let x = c.x + p.aimX * 0.7, y = c.y + p.aimY * 0.7, z = c.z + az * 0.7, vx = dx / m * A.speed, vy = dy / m * A.speed, vz = az / m * A.speed;
     const pos = S.dots.geometry.attributes.position.array, dt = 0.045;
     let i = 0, hit = false;
     for (; i < S.dotN; i++) {
-      for (let s = 0; s < 3 && !hit; s++) { vy -= A.gravity * dt / 3; x += vx * dt / 3; y += vy * dt / 3; if (pointInSolid(x, y)) hit = true; }
-      toWorld(x, y, 0.1, this.v3); pos[i * 3] = this.v3.x; pos[i * 3 + 1] = this.v3.y; pos[i * 3 + 2] = this.v3.z;
+      for (let s = 0; s < 3 && !hit; s++) { vy -= A.gravity * dt / 3; x += vx * dt / 3; y += vy * dt / 3; z += vz * dt / 3; if (pointInSolid(x, y, z)) hit = true; }
+      toWorldZ(x, y, z, this.v3); pos[i * 3] = this.v3.x; pos[i * 3 + 1] = this.v3.y; pos[i * 3 + 2] = this.v3.z;
       if (hit) { i++; break; }
     }
     for (let j = i; j < S.dotN; j++) { pos[j * 3] = pos[(i - 1) * 3]; pos[j * 3 + 1] = pos[(i - 1) * 3 + 1]; pos[j * 3 + 2] = pos[(i - 1) * 3 + 2]; }
@@ -260,7 +261,7 @@ export class ChargeFX {
     if (hit) {
       // Where it will burst: the blast radius for this level
       const r = A[level].r * (perfect ? A.perfectRadius : 1);
-      toWorld(x, y + 0.05, 0, S.land.position); S.land.scale.setScalar(r * (1 + Math.sin(this.t * 12) * 0.04));
+      toWorldZ(x, y + 0.05, z, S.land.position); S.land.scale.setScalar(r * (1 + Math.sin(this.t * 12) * 0.04));
       S.land.material.color.set(perfect ? '#ffffff' : ATTACH_LOOK.arc.tint); S.land.visible = true;
     }
   }
@@ -295,15 +296,15 @@ export class ChargeFX {
     const R = HUNTER.rifle;
     if (p.rifleT < R.raise || p.state === 'attack') return;
     const ready = p.rifleCd === 0, k = rifleFocus(p.rifleT), full = k >= 1;
-    const at = this.muzzle(p, rig, this.v), c = chest(p), x0 = c.x + p.aimX * 0.9, y0 = c.y + p.aimY * 0.9;
-    let tEnd = rayCast(x0, y0, p.aimX, p.aimY, R.range).t, hitE = null;
+    const az = p.aimZ || 0, at = this.muzzle(p, rig, this.v), c = chest(p), x0 = c.x + p.aimX * 0.9, y0 = c.y + p.aimY * 0.9, z0 = c.z + az * 0.9;
+    let tEnd = rayCast(x0, y0, z0, p.aimX, p.aimY, az, R.range).t, hitE = null;
     for (const e of world.enemies) {
       if (e.dead) continue;
-      const hb = hurtbox(e), h = rayBoxT(x0, y0, p.aimX, p.aimY, hb.x0 - 0.06, hb.y0 - 0.06, hb.x1 + 0.06, hb.y1 + 0.06);
+      const hb = hurtbox(e), h = rayBoxT(x0, y0, z0, p.aimX, p.aimY, az, { x0: hb.x0 - 0.06, y0: hb.y0 - 0.06, z0: hb.z0 - 0.06, x1: hb.x1 + 0.06, y1: hb.y1 + 0.06, z1: hb.z1 + 0.06 });
       if (h && h.t < tEnd) { tEnd = h.t; hitE = e; }
     }
     const crit = hitE && y0 + p.aimY * (tEnd + 0.15) > hitE.y + hitE.h * R.critZone;
-    const end = toWorld(x0 + p.aimX * tEnd, y0 + p.aimY * tEnd, 0.25, this.v2);
+    const end = toWorldZ(x0 + p.aimX * tEnd, y0 + p.aimY * tEnd, z0 + az * tEnd, this.v2);
     this.span(S.laser, at, end);
     const red = '#ff2414', col = full ? red : '#ff9a1f';
     // Searching: a nervous flicker with dropouts. On a target: steady.
@@ -381,7 +382,7 @@ export class ChargeFX {
     const L = ev.level || 0, perfect = !!ev.perfect, attach = ev.attach || 'lance';
     const at = this.muzzle(p, rig, this.v).clone();
     const tint = ev.rifle ? CHARS.echo.energy : ev.cannon ? CHARS.ram.energy : ev.rivet ? CHARS.fix.energy : ATTACH_LOOK[attach] ? ATTACH_LOOK[attach].tint : CHARS.nova.energy;
-    const dir = planeDir(p.x, ev.ax ?? p.aimX, ev.ay ?? p.aimY, new THREE.Vector3()).normalize();
+    const dir = planeDir3(p.x, ev.ax ?? p.aimX, ev.ay ?? p.aimY, ev.az ?? p.aimZ ?? 0, new THREE.Vector3()).normalize();
     const s = (perfect ? 1.5 : 1) * (0.7 + L * 0.35);
     this.flash(at, 'star', '#ffffff', 0.9 * s, 0.12, 1.4);
     this.flash(at, 'glow', perfect ? '#ffffff' : tint, 1.4 * s, 0.16, 1.8);

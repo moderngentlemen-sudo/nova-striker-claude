@@ -6,7 +6,7 @@
 // Presentation only: reads the sim, never changes it.
 import * as THREE from 'three';
 import { CHARS, FIX, FIX_LOOK, ULT } from './config.js';
-import { toWorld, planeDir } from './space.js';
+import { toWorld, toWorldZ, planeDir, yawOf, LANE } from './space.js';
 import { pathFrame } from './level.js';
 import { chest } from './player.js';
 import { Strip } from './beamfx.js';
@@ -134,7 +134,7 @@ export class FixFX {
         // Bits of scrap fly from the wreck to her
         const c = chest(p), n = 10;
         for (let i = 0; i < n; i++) {
-          const w = toWorld(ev.x + (Math.random() - 0.5) * 0.6, ev.y + (Math.random() - 0.5) * 0.6, 0.3, new THREE.Vector3()), to = toWorld(c.x, c.y, 0.3, new THREE.Vector3());
+          const w = toWorld(ev.x + (Math.random() - 0.5) * 0.6, ev.y + (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, new THREE.Vector3()), to = toWorldZ(c.x, c.y, c.z, new THREE.Vector3());
           const pt = F.particle(w, Math.random() < 0.5 ? HAZARD : '#c8cdd4', 0.16, 0.45); pt.v.copy(to).sub(w).multiplyScalar(2.2); pt.v.y += 2 + Math.random() * 2; pt.drag = 0.97;
         }
         break;
@@ -153,10 +153,10 @@ export class FixFX {
         break;
       }
       case 'repairPulse': F.groundRing(ev.x, ev.y, MINT, 0.3, ev.r, 0.35, 0.8); F.burst(ev.x, ev.y + 0.5, MINT, 14, 4, 0.24, 0.4, { dir: Math.PI / 2, spread: 1.6 }); break;
-      case 'patchOn': case 'patchTarget': if (ev.q) { const c = chest(ev.q); F.sprite(c.x, c.y, 'ring', MINT, 1.0, 0.25, 2.2); } break;
+      case 'patchOn': case 'patchTarget': if (ev.q) { const c = chest(ev.q); LANE.z = c.z; F.sprite(c.x, c.y, 'ring', MINT, 1.0, 0.25, 2.2); } break;
       case 'podCall': {
         // A landing marker for the supply pod
-        const P = this.podOf(p); P.x = ev.x; P.y = ev.y; P.t = 0; P.drop = ev.ticks / 60; P.landed = false; P.alive = true;
+        const P = this.podOf(p); P.x = ev.x; P.y = ev.y; P.z = ev.z || 0; P.t = 0; P.drop = ev.ticks / 60; P.landed = false; P.alive = true;
         F.groundRing(ev.x, ev.y, MINT, 0.5, 2.4, ev.ticks / 60, 0.8);
         break;
       }
@@ -199,14 +199,15 @@ export class FixFX {
   arcBurst(x, y, r) {
     for (let i = 0; i < 4; i++) {
       const a = Math.random() * Math.PI * 2, d = r * (0.6 + Math.random() * 0.4), pts = [];
-      for (let j = 0; j <= 6; j++) { const u = j / 6; pts.push({ x: x + Math.cos(a) * d * u + (Math.random() - 0.5) * 0.3 * (u > 0 && u < 1), y: y + Math.sin(a) * d * u + (Math.random() - 0.5) * 0.3 * (u > 0 && u < 1) }); }
+      const b = Math.random() * Math.PI * 2;   // (out across the floor plane too)
+      for (let j = 0; j <= 6; j++) { const u = j / 6, jt = (Math.random() - 0.5) * 0.3 * (u > 0 && u < 1); pts.push({ x: x + Math.cos(a) * d * u + jt, y: y + Math.sin(a) * d * u * 0.6 + jt, z: LANE.z + Math.sin(b) * d * u }); }
       this.addArc(pts, CYAN, 0.12);
     }
   }
   addArc(pts, color, life) {
     let A = this.arcs.find(a => a.life <= 0);
     if (!A) { if (this.arcs.length >= 10) A = this.arcs[0]; else { A = { glow: new Strip(this.scene, 5), core: new Strip(this.scene, 6), life: 0 }; this.arcs.push(A); } }
-    A.pts = pts.map(q => toWorld(q.x, q.y, 0.3, new THREE.Vector3())); A.life = A.max = life; A.color = new THREE.Color(color);
+    A.pts = pts.map(q => toWorldZ(q.x, q.y, q.z ?? LANE.z, new THREE.Vector3())); A.life = A.max = life; A.color = new THREE.Color(color);
   }
 
   update(dt, world, view) {
@@ -228,7 +229,7 @@ export class FixFX {
         for (let i = 0; i < 3; i++) { const pt = F.particle(tip, Math.random() < 0.6 ? '#fff6d0' : HAZARD, 0.12, 0.3); pt.v.set((Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 2); pt.grav = 9; pt.drag = 0.95; }
         continue;
       }
-      const end = toWorld(q.x, q.y + q.h * (q.state === 'downed' ? 0.3 : 0.55), 0.25, this.v2), n = 18, pts = B.pts; pts.length = 0;
+      const end = toWorldZ(q.x, q.y + q.h * (q.state === 'downed' ? 0.3 : 0.55), q.z, this.v2), n = 18, pts = B.pts; pts.length = 0;
       const tw = tip.clone();
       for (let i = 0; i <= n; i++) {
         const u = i / n, w = new THREE.Vector3().lerpVectors(tw, end, u);
@@ -241,7 +242,7 @@ export class FixFX {
       B.core.build(pts, cam, () => 0.045 * k, () => (downed ? [2.0, 1.8, 1.2, 1] : [0.9, 2.0, 1.5, 1]));
       // Repair rising off whoever she patches
       if (Math.random() < 0.6) {
-        const w = toWorld(q.x + (Math.random() - 0.5) * q.w, q.y + Math.random() * q.h, 0.3, new THREE.Vector3()), pt = F.particle(w, Math.random() < 0.5 ? PALE : MINT, 0.18, 0.5);
+        const w = toWorldZ(q.x + (Math.random() - 0.5) * q.w, q.y + Math.random() * q.h, q.z + (Math.random() - 0.5) * q.w, new THREE.Vector3()), pt = F.particle(w, Math.random() < 0.5 ? PALE : MINT, 0.18, 0.5);
         pt.v.set(0, 1.6, 0); pt.drag = 0.98;
       }
       if (Math.random() < 0.4) { const pt = F.particle(tip, WHITE, 0.14, 0.12); pt.v.set((Math.random() - 0.5) * 3, Math.random() * 2, 0); }
@@ -254,8 +255,8 @@ export class FixFX {
       let G = this.gadgets.get(g);
       if (!G) { G = this.build(g); this.gadgets.set(g, G); }
       const y = g.py + (g.y - g.py) * (view.alpha ?? 1);
-      toWorld(g.x, y, 0, G.root.position);
-      const f = pathFrame(g.x); G.root.rotation.y = Math.atan2(-f.tz, f.tx);
+      toWorldZ(g.x, y, g.z || 0, G.root.position); LANE.z = g.z || 0;
+      G.root.rotation.y = yawOf(g.x);
       const age = this.t - G.born, grow = Math.min(1, age / 0.25), pop = (G.pop = Math.max(0, (G.pop || 0) - dt * 3));
       G.hit = Math.max(0, G.hit - dt * 6);
       G.root.scale.setScalar(grow * (1 + 0.25 * pop) * (g.kind === 'pad' && G.boing ? 1 : 1));
@@ -268,10 +269,10 @@ export class FixFX {
         G.field.scale.setScalar(r * (0.97 + 0.03 * Math.sin(this.t * 3))); this.mat.field.opacity = 0.22 + 0.1 * Math.sin(this.t * 3);
         if (Math.random() < 0.25) F.burst(g.x + (Math.random() - 0.5) * r * 1.4, g.y + 0.2, MINT, 1, 1, 0.16, 0.7, { dir: Math.PI / 2, spread: 0.2 });
       } else if (g.kind === 'sentry') {
-        const want = Math.atan2(g.aimY || 0, Math.abs(g.aim || 1) < 1e-3 ? 1e-3 : g.aim);
-        // The head turns to its target (the gadget's own frame faces +x, so aim left turns it round)
-        G.head.rotation.z += ((g.aim < 0 ? Math.PI - want : want) - G.head.rotation.z) * Math.min(1, dt * 14);
-        G.head.rotation.y = g.aim < 0 ? Math.PI : 0;
+        // The head turns to its target (the gadget's own frame faces along the path): a yaw round, then a pitch up
+        const ax = g.aim ?? 1, az = g.aimZ || 0, yaw = Math.atan2(-az, ax), pitch = Math.atan2(g.aimY || 0, Math.hypot(ax, az) || 1e-3);
+        let dy = yaw - G.head.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+        G.head.rotation.y += dy * Math.min(1, dt * 14); G.head.rotation.z += (pitch - G.head.rotation.z) * Math.min(1, dt * 14);
         G.pod.visible = g.level >= 3;
       } else if (g.kind === 'coil') {
         const r = FIX.gadget.coil.r[g.level - 1];
@@ -279,11 +280,11 @@ export class FixFX {
         G.field.scale.setScalar(r); this.mat.coilField.opacity = 0.2 + 0.1 * Math.sin(this.t * 6);
         // Arcs to the teammates in its field now and then
         if (Math.random() < 0.08) {
-          const top = { x: g.x, y: g.y + 1.42 };
+          const top = { x: g.x, y: g.y + 1.42, z: g.z || 0 };
           for (const q of world.players) {
-            if (q.state === 'dead' || Math.hypot(q.x - g.x, q.y + q.h * 0.5 - (g.y + 0.8)) > r) continue;
+            if (q.state === 'dead' || Math.hypot(q.x - g.x, q.y + q.h * 0.5 - (g.y + 0.8), q.z - top.z) > r) continue;
             const c = chest(q), pts = [];
-            for (let j = 0; j <= 7; j++) { const u = j / 7; pts.push({ x: top.x + (c.x - top.x) * u + (j && j < 7 ? (Math.random() - 0.5) * 0.4 : 0), y: top.y + (c.y - top.y) * u + (j && j < 7 ? (Math.random() - 0.5) * 0.4 : 0) }); }
+            for (let j = 0; j <= 7; j++) { const u = j / 7, jt = () => (j && j < 7 ? (Math.random() - 0.5) * 0.4 : 0); pts.push({ x: top.x + (c.x - top.x) * u + jt(), y: top.y + (c.y - top.y) * u + jt(), z: top.z + (c.z - top.z) * u + jt() }); }
             this.addArc(pts, CYAN, 0.1);
           }
         }
@@ -307,8 +308,8 @@ export class FixFX {
       seenK.add(k);
       let m = this.pickups.get(k);
       if (!m) { m = this.pickupMesh(k.kind, !!k.level); this.pickups.set(k, m); }
-      const a = view.alpha ?? 1, x = k.px + (k.x - k.px) * a, y = k.py + (k.y - k.py) * a;
-      toWorld(x, y + (k.rest ? 0.12 + Math.sin(this.t * 4 + k.id) * 0.06 : 0), 0.15, m.position);
+      const a = view.alpha ?? 1, x = k.px + (k.x - k.px) * a, y = k.py + (k.y - k.py) * a, z = (k.pz ?? k.z) + (k.z - (k.pz ?? k.z)) * a;
+      LANE.z = z; toWorldZ(x, y + (k.rest ? 0.12 + Math.sin(this.t * 4 + k.id) * 0.06 : 0), z, m.position);
       m.rotation.y += dt * 3; m.visible = k.life > 90 || Math.floor(this.t * 10) % 2 === 0;
       if (!k.rest && Math.random() < 0.7) F.burst(x, y, FIX_LOOK[k.kind].tint, 1, 0.5, 0.18, 0.25);
     }
@@ -317,6 +318,7 @@ export class FixFX {
     for (const p of world.players) {
       if (p.state === 'dead') continue;
       const rig = view.rigs.get(p); if (!rig || !rig.root.visible) continue;
+      LANE.z = p.z;
       if (p.plate > 0.5 && Math.random() < 0.18 + p.plate / 200) {
         const a = Math.random() * Math.PI * 2, c = chest(p), r = p.h * 0.5, w = toWorld(c.x + Math.cos(a) * r * 0.6, c.y + Math.sin(a) * r, 0.35, new THREE.Vector3());
         const pt = F.particle(w, PLATE, 0.2, 0.3); pt.v.set(0, 0.3, 0); pt.drag = 0.9;
@@ -337,13 +339,14 @@ export class FixFX {
       P.t += dt;
       if (P.fade > 0) { P.fade -= dt; if (P.fade <= 0) { P.alive = false; P.g.visible = false; F.burst(P.x, P.y + 1, MINT, 20, 4, 0.26, 0.5, { dir: Math.PI / 2, spread: 1.6 }); continue; } }
       const u = P.landed ? 1 : Math.min(1, P.t / Math.max(0.05, P.drop));
-      toWorld(P.x, P.y + (1 - u) * (1 - u) * 22, 0, P.g.position);
-      const f = pathFrame(P.x); P.g.rotation.y = Math.atan2(-f.tz, f.tx); P.g.visible = true;
+      LANE.z = P.z || 0; toWorldZ(P.x, P.y + (1 - u) * (1 - u) * 22, P.z || 0, P.g.position);
+      P.g.rotation.y = yawOf(P.x); P.g.visible = true;
       P.g.scale.setScalar(P.fade > 0 ? Math.max(0.01, P.fade / 0.5) : 1);
       if (!P.landed) { F.burst(P.x, P.y + (1 - u) * (1 - u) * 22 + 2.2, '#fff1c9', 2, 3, 0.4, 0.2, { dir: Math.PI / 2, spread: 0.4 }); F.smoke(P.x, P.y + (1 - u) * (1 - u) * 22 + 2.4, '#8e97a3', 1, 1, 0.5, 0.6, { op: 0.4 }); }
       else if (Math.random() < 0.3) F.burst(P.x, P.y + 1.6, MINT, 1, 2, 0.2, 0.4, { dir: Math.PI / 2, spread: 0.6 });
       if (!world.players.includes(p)) { P.alive = false; P.g.visible = false; }
     }
+    LANE.z = 0;
   }
 
   warmShow(at) {
