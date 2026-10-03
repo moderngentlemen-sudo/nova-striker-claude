@@ -1,4 +1,4 @@
-# Nova Striker: fresh-start prototype (Version 12)
+# Nova Striker: fresh-start prototype (Version 13, 3D)
 
 **Scope.** This folder is an isolated, hypothetical fresh-start track. It does not replace, cancel, reset or
 change the existing Nova Striker project or any current work, and it is not a decision to restart the
@@ -7,7 +7,8 @@ game-ready art, and all sound and music is synthesized placeholder audio.
 
 ## What it is
 
-A browser prototype of a 2.5D sci-fi action platformer for 1–4 player local co-op, with four characters.
+A browser prototype of a 3D third-person sci-fi action platformer for 1–4 player local co-op (split-screen),
+with four characters. (Up to Version 12 it was a 2.5D side-on platformer; see Version 13 below.)
 
 - **Nova** (Sentinel) starts with the Marksman kit: a bracer with four chargeable attachments (Lance,
   Volley, Arc, Prism) and a Level 4 beam, five secondary weapons (Scatter, Grenade, Chain, Disc, Gravity
@@ -37,25 +38,62 @@ browser tab for controllers and rumble, because embedded viewers may block gamep
 
 | Action | Keyboard + mouse | Gamepad |
 |---|---|---|
-| Move · crouch | A/D · S | Left stick |
-| Aim | Mouse | Right stick |
+| Move (relative to the camera) · crouch | W A S D · C | Left stick · hold L3 |
+| Camera and aim (the crosshair) | Mouse (click the game to capture it) · arrow keys | Right stick |
 | Jump · double jump · wall jump | Space | A |
-| Dash · slide · charged dash | Shift · S + Shift · hold Shift while standing still | B · down + B · hold B |
+| Dash · slide · charged dash | Shift · C + Shift · hold Shift while standing still | B · L3 + B · hold B |
 | Fire (hold to charge) | Left click or K | RT |
 | Melee | Right click or J | X |
-| Rising attack · ground pound | W + melee · S + melee in the air | Up + X · down + X in the air |
+| Rising attack · ground pound | Look up + melee (or C + melee on the ground) · C + melee in the air | Look up + X (or L3 + X) · L3 + X in the air |
 | Parry (Echo) · dodge (Nova) · guard (RAM) · Patch Beam (Fix) | Q or L | LT |
 | Suit ability (RAM: Bulwark Wall · Fix: build a gadget) | E, I or middle click | Y |
 | Switch mode (Nova's attachment, Echo's scarf) · Guardian Link (RAM) · pick a gadget (Fix) | R, U or mouse back | RB |
 | Nova's secondary weapon · Provoke (RAM) · pick a power-up (Fix) · Echo's snares (Settings: Echo's utility belt on LB) | T or Y | LB |
 | Lock-on (automatic by default: tap to switch, hold to let go) | F, O or mouse forward | R3 |
 | Ultimate (full bar) | V or N | LT + RT together |
-| Team commands to AI teammates: Attack my target · Cover me · Regroup on me · Hold here | Z · G · X · C | D-pad up tap · up hold · down tap · down hold |
+| Team commands to AI teammates: Attack my target · Cover me · Regroup on me · Hold here | Z · G · X · B | D-pad up tap · up hold · down tap · down hold |
 | Swap character · pause · help | 1–4 or Tab · Esc or P · H | D-pad left/right · Start · View |
 
 Extra gamepads join by pressing any button, up to four players; each new player gets the first character
 nobody is using. H or View shows the full controls in game; B, A, Start or View closes them, and the D-pad
 scrolls.
+
+## What changed in Version 13: full 3D, third person
+
+The game is now a 3D third-person action platformer in the manner of Ratchet & Clank. Apart from the camera,
+it plays as before: the same characters, kits, enemies, bosses, routes and tuning, with only the changes that
+playing in 3D needs.
+
+- **Moving in 3D.** Every route is a walkway you can cross as well as run along: corridors 9 m wide (13 m in
+  the arenas), with guard rails along their open edges, so a fall is a jump over the rail, not a misstep.
+  Movement, dashes, wall jumps, knockback, slides, Nova's skates and every move that steered left or right
+  now steer on the ground plane. The simulation works in path coordinates (along the path, up, across it),
+  so the curved and winding routes of Version 12 bend round with it.
+- **A camera for every player.** Each person playing gets a third-person camera over their shoulder,
+  turned with the mouse (the pointer is captured when you click the game; Esc frees it and pauses) or the
+  right stick, with Settings for sensitivity, inverting it and field of view. It pulls in rather than pass
+  through walls and floors. Two players split the screen side by side; three or four get quarters (with
+  three, the fourth quarter shows the whole team from the side, as the game used to look). AI teammates
+  need no view.
+- **Aiming with the camera.** The crosshair at the centre of your view is where your shots go: the aim runs
+  from your character's chest to whatever is under it. Aim assist pulls it onto a target close to it (more
+  on a gamepad; Settings: Aim assist). Your character faces the way they move and turns to the aim when they
+  shoot. Melee steps in on the enemy in front of you, or on your lock-on target.
+- **Up and down.** The move stick is on the ground now, so "up" is looking well up with the camera (rising
+  attacks, upward dashes) and "down" is the crouch button (C, or hold L3): crouch, slide, drop through a
+  platform, ground pound, fast fall.
+- **Lock-on** still works the same way, and picks what is in front of your camera. While you are locked on
+  your camera eases round to keep the target in view (an automatic lock only while it is already in front of
+  you), until you turn the camera yourself.
+- **Enemies and bosses in 3D.** Enemies close in, keep their range and line up their shots on the ground plane, and spread out
+  across the arenas. Ground slams (the Brute, the Lockwarden's stomp) send out a ring that spreads in every
+  direction: jump it. The Lockwarden's laser sweeps right round it. The Stormcaller's sweep is a sheet of
+  light across the whole pad: jump it or duck under it. Mortar shells, missiles, the rain of shells and every
+  shot fly in 3D.
+- **Team play in 3D.** Barriers (Nova's Bulwark, RAM's hard-light wall and tower shield) block from the way
+  they face. Healing pulses, the gravity well, shockwaves and blast radii are rings and spheres. A player who
+  wanders 45 m from everyone for three seconds is brought back to the team (no penalty).
+- **The team commands** keyboard key for Hold here is now B (C is crouch).
 
 ## What changed in Version 12
 
@@ -224,7 +262,9 @@ weapon charge, ability cooldowns and recharges, and ultimate bar build-up.
 three.js. It emits events, and these react to them. AI teammates (`bot.js`) sit on the input side: each
 one produces the same command a gamepad would, once a tick. `level.js` holds the routes: the path pieces
 (`ROUTES`, `pathFrame`), boxes (including breakables), encounters, checkpoints, power-ups and lift pads;
-`landmarks.js` builds the new routes' set pieces, atmosphere and breakable meshes.
+`landmarks.js` builds the new routes' set pieces, atmosphere and breakable meshes. `geom.js` has the small
+vector helpers the 3D simulation shares; `space.js` maps path coordinates to the world; `camera.js` holds the
+third-person cameras, the split-screen layout and the camera-relative move and crosshair aim.
 
 - rendering (`render.js`, `rigs.js`, `enemyRigs.js`, `anim.js`, `fx.js`, `chargefx.js`, `subfx.js`,
   `ultfx.js`, `beamfx.js`, `aegisfx.js`, `ramfx.js`, `fixfx.js`, `trails.js`, `ghosts.js`)
@@ -237,12 +277,16 @@ All tuning lives in `config.js`.
 ## Tests
 
 `node tests/run-all.mjs` needs Node 18 or newer and no install. It runs the headless simulation suites:
-254 checks, including two random-input soaks (the newer one runs all four characters, swapping them
+263 checks (Version 13 adds `v13-test.mjs`: moving across a walkway and the rails, shots and strikes across
+the path, ring shockwaves, the sweeping laser and camera-aware lock-on), including two random-input soaks (the newer one runs all four characters, swapping them
 mid-fight). The browser screenshot, smoke and performance runs were done separately and are not included.
 
 ## Known limits
 
 - Keyboard, mouse or gamepad only: there are no touch controls yet.
+- Version 13 (3D) was checked headlessly and in a software-rendered browser; camera feel, aim assist
+  strength and split-screen frame rate still need playtesting on real hardware. Effects that face the
+  camera (trails, streaks) face the first view's camera in split-screen.
 - iPhones do not allow vibration from a web page.
 - Rumble, phone vibration and frame rate have not been checked on real devices yet.
 - RAM's and Fix's numbers, ultimate charge rates and weapon numbers are first-pass tuning values in
