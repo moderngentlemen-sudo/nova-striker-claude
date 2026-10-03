@@ -570,8 +570,9 @@ export const DEFAULT_SETTINGS = {
   impactFrames: true,   // impact frames on the biggest moments (sci-fi look since Version 9; on by default since Version 8)
   impactStyle: 'scifi', // the look: scifi, comic (the original), eclipse, shatter, thunder, sumi, warp (fx.js ImpactShader)
   impactColor: 'style', // its key colour: the look's own ('style'), the player's colour ('player') or the character's ('character')
-  camera: 'persp',
-  fov: 34,
+  fov: 62,             // the third-person camera's vertical field of view
+  camSens: 1,           // camera turn speed (mouse and right stick)
+  invertY: false,       // camera: pushing up looks down
   aimAssist: true,
   difficulty: 'normal',
   shake: true,
@@ -580,7 +581,6 @@ export const DEFAULT_SETTINGS = {
   barks: true,
   volume: 0.6,
   music: 0.6,
-  p1Aim: 'mouse',
   lockOn: true,         // lock-on (F, R3, mouse forward)
   lockMode: 'auto',     // 'auto': the nearest enemy is locked automatically, R3 switches · 'manual': press to lock
   dashCharge: true,     // hold dash while standing still to charge it (off: dash is always instant)
@@ -589,7 +589,7 @@ export const DEFAULT_SETTINGS = {
   echoBelt: 'fire',     // Echo's utility belt (Hunter kit snares): on a tap of fire, or on LB
   aiTeammates: 0,       // computer-controlled players filling the team's empty slots (0-3; see bot.js)
   aiSkill: 'veteran',   // how sharp they are: rookie, veteran or elite (BOT.skill)
-  settingsVersion: 9,
+  settingsVersion: 10,
 };
 
 export const SETTINGS = { ...DEFAULT_SETTINGS };
@@ -615,6 +615,8 @@ export function loadSettings() {
       if (!(saved.settingsVersion >= 8)) { saved.impactFrames = true; saved.settingsVersion = 8; }
       // Version 9 introduces automatic lock-on as the default
       if (!(saved.settingsVersion >= 9)) { saved.lockMode = 'auto'; saved.settingsVersion = 9; }
+      // Version 13 is third person: the old side-on camera's field of view no longer fits it
+      if (!(saved.settingsVersion >= 10)) { saved.fov = 62; delete saved.camera; delete saved.p1Aim; saved.settingsVersion = 10; }
       Object.assign(SETTINGS, saved);
     }
   } catch (e) { /* storage unavailable: keep defaults */ }

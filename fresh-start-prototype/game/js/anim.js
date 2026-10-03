@@ -5,6 +5,8 @@
 // target at a rate set per state, independent of frame rate.
 import { MOVES, SCARF, SETTINGS, ATTACH_LOOK, DASH_CHARGE, HUNTER, MARKSMAN, DASH_SLASH, ULT, RAM, FIX, CHARS } from './config.js';
 import { chargeStage, burstStage } from './player.js';
+// How much of a horizontal vector points the way he faces (facing is a unit vector on the ground plane now)
+const fwd = (p, dx, dz) => dx * p.facing + (dz || 0) * (p.facingZ || 0);
 
 // Joints: spine pitch (+ leans forward), twist (torso turn), shoulders/elbows (near = weapon arm, far),
 // hips/knees, hip height, whole-body tilt, head pitch; and RAM's tower shield, which the poses place directly
@@ -149,9 +151,9 @@ const dashLevelOf = p => (p.state !== 'dashCharge' ? 0 : p.dashChargeT >= DASH_C
 // ---- The pose for this frame -----------------------------------------------------------------
 export function animatePlayer(rig, p, dt, t) {
   const P = { ...REST };
-  const speed = Math.abs(p.vx), st = p.state, echo = p.char === 'echo', ram = p.char === 'ram', fix = p.char === 'fix';
+  const speed = Math.hypot(p.vx, p.vz || 0), st = p.state, echo = p.char === 'echo', ram = p.char === 'ram', fix = p.char === 'fix';
   const mk = p.char === 'nova' && SETTINGS.novaKit === 'marksman';
-  const aimAng = Math.atan2(p.aimY, Math.abs(p.aimX) < 1e-3 ? 1e-3 : p.aimX * p.facing);
+  const aimAng = Math.atan2(p.aimY, Math.abs(fwd(p, p.aimX, p.aimZ)) < 1e-3 ? 1e-3 : fwd(p, p.aimX, p.aimZ));
   let rate = 18, yaw = 0, roll = 0;   // rate: how fast joints ease toward the pose (per second)
   const breathe = Math.sin(t * 2.2 + (echo ? 1 : 0));
 
@@ -161,7 +163,7 @@ export function animatePlayer(rig, p, dt, t) {
     // Braced behind the Rampart: wide, knees bent, both hands on it; it rises toward overhead with the aim.
     // The shield stands right where the sim's guard plane is (RAM.guard.reach out from his chest).
     const [nx, ny] = p.guardDir || [1, 0], a = Math.atan2(ny, Math.abs(nx)), u = Math.max(0, Math.min(1, a / (Math.PI / 2)));
-    const walk = Math.abs(p.vx) > 0.4; if (walk) rig.phase += dt * Math.abs(p.vx) * 2.2;
+    const walk = speed > 0.4; if (walk) rig.phase += dt * speed * 2.2;
     const s2 = walk ? Math.sin(rig.phase) * 0.25 : 0, sc = CHARS.ram.scale, G = RAM.guard;
     Object.assign(P, { spine: 0.22 - 0.3 * u, hipN: 0.6 + s2, knN: -0.85, hipF: -0.5 - s2, knF: -0.45, hipY: 0.84, head: -0.05 + 0.3 * u,
       shN: 1.15 + 1.3 * u, elN: 0.55 - 0.3 * u, shF: 1.0 + 1.2 * u, elF: 1.25 - 0.4 * u,
@@ -185,7 +187,7 @@ export function animatePlayer(rig, p, dt, t) {
     // she welds herself); the wrench hand hangs back
     const q = p.patch && p.patch.target, c2 = { x: p.x, y: p.y + p.h * 0.62 };
     let ang = -0.9;
-    if (q) ang = Math.atan2(q.y + q.h * 0.55 - c2.y, Math.abs(q.x - p.x) < 1e-3 ? 1e-3 : (q.x - p.x) * p.facing);
+    if (q) ang = Math.atan2(q.y + q.h * 0.55 - c2.y, Math.abs(fwd(p, q.x - p.x, q.z - p.z)) < 1e-3 ? 1e-3 : fwd(p, q.x - p.x, q.z - p.z));
     const walk = speed > 0.4; if (walk) rig.phase += dt * speed * 2.2;
     const s2 = walk ? Math.sin(rig.phase) * 0.4 : 0;
     Object.assign(P, { spine: 0.12, twist: -0.25, shF: ang + Math.PI / 2 + 0.12, elF: 0.12, shN: 0.2, elN: 0.9, hipN: 0.35 + s2, knN: -0.45, hipF: -0.3 - s2, knF: -0.35, hipY: 0.9, head: -0.1 });
@@ -260,7 +262,7 @@ export function animatePlayer(rig, p, dt, t) {
     rate = 48;
   } else if (st === 'dodge' && p.dodge) {
     // Nova's dodge: a low, light hop; backwards he leans away with the bracer up, forwards he dips his shoulder
-    const back = p.dodge.dx * p.facing < 0, u = Math.min(1, p.dodge.t / 4);
+    const back = fwd(p, p.dodge.dx, p.dodge.dz) < 0, u = Math.min(1, p.dodge.t / 4);
     if (back) Object.assign(P, { spine: -0.3 * u, hipN: 0.75, knN: -1.35, hipF: -0.35, knF: -1.0, shN: 1.25, elN: 1.7, shF: 0.35, elF: 1.3, hipY: 0.84, head: 0.2, bodyZ: 0.1 * u });
     else Object.assign(P, { spine: 0.5 * u, hipN: 1.05, knN: -1.45, hipF: -0.65, knF: -0.55, shN: -0.7, shF: -0.9, elN: 0.35, elF: 0.3, hipY: 0.78, head: -0.2, bodyZ: -0.12 * u, twist: 0.3 * u });
     rate = 34;
@@ -296,7 +298,7 @@ export function animatePlayer(rig, p, dt, t) {
       if (!R) Object.assign(P, { spine: -0.32, shN: 2.35, elN: 0.25, shF: 2.2, elF: 0.3, hipN: 0.3, knN: -0.45, hipF: -0.3, knF: -0.35, hipY: 0.92, head: 0.45 });
       else if (t2 <= N.gather) Object.assign(P, { spine: -0.22, shN: 3.0, elN: 0.25, shF: 2.9, elF: 0.3, hipN: 0.55, knN: -0.95, hipF: 0.2, knF: -0.8, hipY: 0.95, head: 0.4 });
       else if (R.segs) {
-        const j = (Math.random() - 0.5) * 0.04, a = Math.atan2(R.dy, Math.abs(R.dx) < 1e-3 ? 1e-3 : R.dx * p.facing);
+        const j = (Math.random() - 0.5) * 0.04, a = Math.atan2(R.dy, Math.abs(fwd(p, R.dx, R.dz)) < 1e-3 ? 1e-3 : fwd(p, R.dx, R.dz));
         Object.assign(P, { spine: -0.18 + j, shN: a + Math.PI / 2, elN: 0.02, shF: a + Math.PI / 2 - 0.15, elF: 0.1, hipN: 0.7, knN: -1.0, hipF: -0.5, knF: -0.6, hipY: 0.95 + j, head: -0.1 });
       } else Object.assign(P, { spine: -0.35, shN: 2.2, elN: 0.1, shF: 2.0, elF: 0.1, hipN: 0.4, knN: -0.7, hipF: -0.2, knF: -0.5, hipY: 0.95, head: 0.3 });
     }
@@ -335,15 +337,15 @@ export function animatePlayer(rig, p, dt, t) {
     if (ram) Object.assign(P, { hipY: 0.34 + breathe * 0.01, spine: 1.05, shN: 0.95, elN: 0.6, shF: 0.6, elF: 1.3, head: -0.5, sx: 0.78, sy: 0.5, sr: -0.15 });
     rate = 20;
   } else if (speed > 0.6) {
-    const back = p.vx * p.facing < 0, amp = Math.min(1, speed / 7);
+    const back = fwd(p, p.vx, p.vz) < 0, amp = Math.min(1, speed / 7);
     if (mk) {
       // Skate stride: long, low pushes with arms swinging wide; at full glide both feet come together
       rig.phase += dt * speed * 0.95 * (back ? -1 : 1);
-      const s = Math.sin(rig.phase), c = Math.cos(rig.phase), coast = Math.max(0, 1 - Math.abs(p.vx - p.prevVx || 0) * 20) * (speed > 7 ? 1 : 0);
+      const s = Math.sin(rig.phase), c = Math.cos(rig.phase), coast = Math.max(0, 1 - Math.abs(speed - p.prevVx || 0) * 20) * (speed > 7 ? 1 : 0);
       Object.assign(P, { hipN: 0.25 + s * 0.35 * amp, knN: -0.75 - Math.max(0, c) * 0.4, hipF: -0.3 - s * 0.45 * amp, knF: -0.55 - Math.max(0, -c) * 0.3,
         shN: -s * 0.9 * amp + 0.1, shF: s * 0.9 * amp - 0.1, elN: 0.5, elF: 0.5, spine: 0.36 * amp, hipY: 0.84 - Math.abs(c) * 0.03, twist: s * 0.18 * amp, head: -0.2 * amp });
       if (coast > 0.5) Object.assign(P, { hipN: 0.35, knN: -0.95, hipF: 0.1, knF: -0.9, shN: -0.6, shF: -0.8, spine: 0.42, hipY: 0.8 });
-      p.prevVx = p.vx;
+      p.prevVx = speed;
     } else {
       // Sprint: knees high, arms pumping, leaning into it, torso counter-twisting the stride
       rig.phase += dt * speed * (ram ? 1.45 : 1.8) * (back ? -1 : 1);
@@ -505,7 +507,7 @@ function newSuits(rig, p, cur, t, dt, aimAng, shooting) {
   rig.craneK = (rig.craneK || 0) + (open - (rig.craneK || 0)) * (1 - Math.exp(-dt * 16));
   ex.crane.rotation.z = 1.9 - 2.2 * rig.craneK; ex.craneFore.rotation.z = -2.6 + 1.7 * rig.craneK;
   // The ponytail swings with her motion
-  const want = 0.5 - Math.max(-0.6, Math.min(0.6, p.vx * p.facing * 0.05)) + Math.max(-0.5, Math.min(0.8, -p.vy * 0.04));
+  const want = 0.5 - Math.max(-0.6, Math.min(0.6, fwd(p, p.vx, p.vz) * 0.05)) + Math.max(-0.5, Math.min(0.8, -p.vy * 0.04));
   rig.tail = (rig.tail ?? want) + (want - (rig.tail ?? want)) * (1 - Math.exp(-dt * 9));
   ex.ponytail.rotation.z = rig.tail - 0.5 + Math.sin(t * 3) * 0.04;
   rig.mats.energy.emissiveIntensity = 2.0 + charge * 1.1 + (p.chargeT > 0 ? Math.sin(t * 30) * 0.35 : 0) + (st === 'patch' ? 1 : 0) + (st === 'ult' ? 4 + Math.sin(t * 36) * 0.8 : 0)

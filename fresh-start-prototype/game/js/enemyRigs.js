@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { HOSTILE } from './config.js';
 import { addRim } from './rigs.js';
+// How much of a horizontal vector points the way it faces
+const fwd = (e, dx, dz) => dx * e.facing + (dz || 0) * (e.facingZ || 0);
 
 const rbox = (w, h, d, r = 0.06) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3));
 const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 4, 10);
@@ -193,7 +195,7 @@ export function buildEnemyRig(e) {
 
 export function animateEnemy(R, e, dt, t) {
   const P = R.parts, M = R.mats;
-  R.flip.scale.x = e.type === 'shield' ? e.shieldDir : e.facing;
+  R.flip.scale.x = 1;   // (the root turns to face the way it faces: render.js)
   let lean = 0, glow = 2.2;
   const s = e.state;
   if (s === 'windup' || s === 'slamWindup' || s === 'aim') {
@@ -214,12 +216,12 @@ export function animateEnemy(R, e, dt, t) {
   M.plate.emissiveIntensity = e.flash > 0 ? 0.9 : 0;
 
   if (e.type === 'swarmer') {
-    const moving = Math.abs(e.vx) > 0.5 && e.onGround;
+    const moving = Math.hypot(e.vx, e.vz || 0) > 0.5 && e.onGround;
     R.bob = moving ? Math.abs(Math.sin(t * 16)) * 0.12 : R.bob * 0.8;
     P.core.position.y = 0.42 + R.bob + (s === 'windup' ? -0.1 : 0);
   } else if (e.type === 'sniper') {
     if (s === 'aim' || s === 'lock') {
-      const dx = (e.aimX - e.x) * e.facing, dy = e.aimY - (e.y + 1.35);
+      const dx = fwd(e, e.aimX - e.x, (e.aimZ ?? e.z) - e.z), dy = e.aimY - (e.y + 1.35);
       P.gun.rotation.z = Math.atan2(dy, Math.max(0.1, dx));
     } else P.gun.rotation.z *= 0.9;
   } else if (e.type === 'brute') {
@@ -233,18 +235,18 @@ export function animateEnemy(R, e, dt, t) {
     P.arm.rotation.z += (target - P.arm.rotation.z) * 0.3;
   } else if (e.type === 'drone') {
     P.rotor.rotation.y += dt * (s === 'windup' ? 40 : 22);
-    P.core.rotation.z = -Math.max(-0.4, Math.min(0.4, e.vx * 0.06 * e.facing));
+    P.core.rotation.z = -Math.max(-0.4, Math.min(0.4, fwd(e, e.vx, e.vz) * 0.06));
   } else if (e.type === 'mortar') {
     const raise = s === 'windup' ? Math.min(1, e.st / 20) : 0, kick = s === 'recover' && e.st < 10 ? 1 - e.st / 10 : 0;
     P.tube.rotation.z = -0.45 + raise * 0.25 - kick * 0.2;
     P.tube.scale.y = 1 - kick * 0.18;
   } else if (e.type === 'charger') {
     P.plates.forEach(pl => { pl.visible = e.armor > 0; });
-    const run = s === 'charge' ? 26 : Math.abs(e.vx) > 0.5 ? 12 : 0, paw = s === 'windup' ? Math.sin(t * 22) * 0.35 : 0;
+    const run = s === 'charge' ? 26 : Math.hypot(e.vx, e.vz || 0) > 0.5 ? 12 : 0, paw = s === 'windup' ? Math.sin(t * 22) * 0.35 : 0;
     P.legs.forEach((l, i) => { l.rotation.z = run ? Math.sin(t * run + i * Math.PI / 2) * 0.55 : i === 0 ? paw : 0; });
   } else if (e.type === 'turret') {
     const tg = e.target;
-    if (tg) { const a = Math.atan2(tg.y + 1 - (e.y + 0.25), (tg.x - e.x) * e.facing); P.gun.rotation.z += (a - P.gun.rotation.z) * 0.2; }
+    if (tg) { const a = Math.atan2(tg.y + 1 - (e.y + 0.25), fwd(e, tg.x - e.x, tg.z - e.z)); P.gun.rotation.z += (a - P.gun.rotation.z) * 0.2; }
   }
 
   if (e.type === 'warden') animateWarden(R, e, dt, t);
@@ -269,8 +271,8 @@ const ease = (v, target, k) => v + (target - v) * k;
 function animateWarden(R, e, dt, t) {
   const P = R.parts, M = R.mats, s = e.state, A = e.atk, k = Math.min(1, dt * 14), kind = A && A.kind;
   P.plates.forEach((pl, i) => { pl.visible = i < e.armor; });
-  const walking = (s === 'idle' || s === 'approach') && Math.abs(e.vx) > 0.4;
-  R.phase = (R.phase || 0) + (walking ? dt * Math.abs(e.vx) * 1.6 : 0);
+  const walking = (s === 'idle' || s === 'approach') && Math.hypot(e.vx, e.vz || 0) > 0.4;
+  R.phase = (R.phase || 0) + (walking ? dt * Math.hypot(e.vx, e.vz || 0) * 1.6 : 0);
   const sw = walking ? Math.sin(R.phase) : 0;
   let hipN = sw * 0.45, hipF = -sw * 0.45, knN = -Math.max(0, -Math.cos(R.phase)) * 0.6 * (walking ? 1 : 0), knF = -Math.max(0, Math.cos(R.phase)) * 0.6 * (walking ? 1 : 0);
   let armN = 0.15, armF = -0.1, twist = 0, crouch = walking ? Math.abs(Math.cos(R.phase)) * 0.08 : 0, lean = 0, head = 0, pod = 0;
@@ -308,7 +310,7 @@ function animateWarden(R, e, dt, t) {
 function animateStorm(R, e, dt, t) {
   const P = R.parts, M = R.mats, s = e.state, A = e.atk, k = Math.min(1, dt * 8);
   const down = s === 'crashed';
-  let bank = -Math.max(-0.4, Math.min(0.4, e.vx * 0.05)) * e.facing, pitch = 0;
+  let bank = -Math.max(-0.4, Math.min(0.4, fwd(e, e.vx, e.vz) * 0.05)), pitch = 0;
   if (s === 'dive') pitch = -Math.atan2(-(A && A.dy || -1), Math.abs(A && A.dx || 0.3)) * 0.6;
   if (down) { bank = 0.35; pitch = -0.2 + Math.sin(t * 5) * 0.03; }
   if (s === 'roar') bank = Math.sin(t * 24) * 0.12;
@@ -319,7 +321,7 @@ function animateStorm(R, e, dt, t) {
   // The cannon follows the target (or the laser's line)
   const tg = e.target; let aim = 0;
   if (s === 'laser' || (s === 'windup' && A && A.kind === 'sweep')) aim = -0.35;
-  else if (tg) aim = Math.max(-1.2, Math.min(0.4, Math.atan2(tg.y + 1 - (e.y + 0.4), Math.max(0.5, (tg.x - e.x) * e.facing))));
+  else if (tg) aim = Math.max(-1.2, Math.min(0.4, Math.atan2(tg.y + 1 - (e.y + 0.4), Math.max(0.5, fwd(e, tg.x - e.x, tg.z - e.z)))));
   P.cannon.rotation.z = ease(P.cannon.rotation.z, aim, k);
   P.shield.visible = e.armor > 0; if (P.shield.visible) { P.shield.rotation.y += dt * 0.6; P.shieldMat.opacity = 0.18 + 0.08 * Math.sin(t * 6) + (e.flash > 0 ? 0.25 : 0); }
   const hurt = 1 - e.hp / e.maxHp, charging = s === 'windup' || s === 'laser' || s === 'dive' || s === 'roar' || s === 'volley';

@@ -109,15 +109,15 @@ const SETTING_DEFS = [
   { key: 'impactFrames', label: 'Impact frames on big moments (Q-C test)', bool: true },
   { key: 'impactStyle', label: 'Impact frame style', opts: [['scifi', 'Sci-fi hologram'], ['comic', 'Comic ink (original)'], ['eclipse', 'Eclipse'], ['shatter', 'Shatter'], ['thunder', 'Thunderclap'], ['sumi', 'Sumi ink'], ['warp', 'Gravity well']] },
   { key: 'impactColor', label: 'Impact frame colour', opts: [['style', "The style's own"], ['player', 'Colour of the player who set it off'], ['character', "That player's character colour"]] },
-  { key: 'camera', label: 'Camera projection', opts: [['persp', 'Perspective'], ['ortho', 'Orthographic']] },
-  { key: 'fov', label: 'Camera field of view', range: [24, 50, 1] },
-  { key: 'aimAssist', label: 'Aim assist (gamepad 8-way aim)', bool: true },
+  { key: 'fov', label: 'Camera field of view', range: [50, 90, 1] },
+  { key: 'camSens', label: 'Camera sensitivity (mouse and right stick)', range: [0.3, 3, 0.1] },
+  { key: 'invertY', label: 'Invert camera up/down', bool: true },
+  { key: 'aimAssist', label: 'Aim assist (gamepad: pulls the crosshair onto targets)', bool: true },
   { key: 'lockOn', label: 'Lock-on (F / R3)', bool: true },
   { key: 'lockMode', label: 'Lock-on mode', opts: [['auto', 'Automatic: nearest enemy, R3 switches'], ['manual', 'Press R3 to lock']] },
   { key: 'dashCharge', label: 'Charged dash (hold dash while standing still)', bool: true },
   { key: 'haptics', label: 'Rumble and vibration', bool: true },
   { key: 'hapticStrength', label: 'Rumble strength', range: [0, 1, 0.05] },
-  { key: 'p1Aim', label: 'Keyboard player aims with', opts: [['mouse', 'Mouse'], ['keys', 'Movement keys (8-way)']] },
   { key: 'aiTeammates', label: 'AI teammates (fill empty slots; a player joining takes one over)', opts: [['0', 'Off'], ['1', '1'], ['2', '2'], ['3', '3']] },
   { key: 'aiSkill', label: 'AI teammate skill', opts: [['rookie', 'Rookie: slow to react, basic plays'], ['veteran', 'Veteran: reads the fight, uses the whole kit'], ['elite', 'Elite: sharp reactions, every advanced play']] },
   { key: 'difficulty', label: 'Difficulty', opts: [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']] },
@@ -158,17 +158,18 @@ export class UI {
         <div class="join"><span class="pulse"></span>Click, press any key, or press a gamepad button to join</div>
         <div class="cols">
           <div><h3>Keyboard + mouse</h3><ul>
-            <li><kbd>A</kbd><kbd>D</kbd> move · <kbd>S</kbd> crouch · <kbd>Space</kbd> jump · <kbd>Shift</kbd> dash</li>
-            <li>Left click fire (hold to charge) · Right click melee</li>
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse look and aim · <kbd>C</kbd> crouch · <kbd>Space</kbd> jump · <kbd>Shift</kbd> dash</li>
+            <li>Left click fire (hold to charge) · Right click melee · arrow keys turn the camera too</li>
             <li><kbd>Q</kbd> parry / dodge / guard / beam · <kbd>E</kbd> suit ability · <kbd>R</kbd> mode</li>
             <li><kbd>T</kbd> LB action · <kbd>F</kbd> switch target · <kbd>V</kbd> ultimate · <kbd>1</kbd>–<kbd>4</kbd> character</li></ul></div>
           <div><h3>Gamepad</h3><ul>
-            <li>Left stick move · Right stick aim · R3 switch target</li>
+            <li>Left stick move · Right stick camera and aim · L3 (hold) crouch · R3 switch target</li>
             <li>A jump · B dash · X melee · Y suit ability · RB mode</li>
             <li>RT fire · LT parry / dodge / guard / beam · LB character action</li>
             <li>LT + RT ultimate · D-pad swap character · Start pause</li></ul></div>
         </div>
-        <p class="fine">New in Version 12: team commands for AI teammates (D-pad up/down, or <kbd>Z</kbd> <kbd>G</kbd> <kbd>X</kbd> <kbd>C</kbd>), two long new levels that wind through 3D (the <b>Helix Foundry</b> and the <b>Undercity Descent</b>, in <kbd>Esc</kbd>/Start), breakable crates, barricades, glass and pillars, and power-ups along the way.</p>
+        <p class="fine"><b>New in Version 13: full 3D, third person.</b> Every route is now a walkway you can cross as well as run along, and each player has their own camera (split-screen for two to four). Aim with the camera: the crosshair is where your shots go, pulled onto a nearby target. Look up for the moves that used to need up held (rising attacks); hold crouch for the ones that need down. Click the game to capture the mouse; <kbd>Esc</kbd> frees it and pauses.</p>
+        <p class="fine">New in Version 12: team commands for AI teammates (D-pad up/down, or <kbd>Z</kbd> <kbd>G</kbd> <kbd>X</kbd> <kbd>B</kbd>), two long new levels that wind through 3D (the <b>Helix Foundry</b> and the <b>Undercity Descent</b>, in <kbd>Esc</kbd>/Start), breakable crates, barricades, glass and pillars, and power-ups along the way.</p>
         <p class="fine">New in Version 11: smarter AI teammates with a skill setting, a controller-friendly pause menu, RAM's Level 4 <b>Breach Beam</b> (keep holding fire) and a shield that cracks and shatters, seven impact frame styles that can take your player colour, and Echo's snares on LB as an option. All in <kbd>Esc</kbd>/Start.</p>
         <p class="fine">New in Version 10: two new characters. <b>RAM</b>, the tank: hold LT to raise his tower shield (it blocks, covers everyone behind him and stores Kinetic; fire while guarding releases it), a dash that plows enemies into walls, a hard-light wall, a guardian link and a war cry. <b>Fix</b>, the support: hold LT for a beam that heals, revives from range and tunes teammates up (faster charging and bars), gadgets on Y, power-ups tossed with X. Players join as Nova, Echo, RAM and Fix; swap with the D-pad or <kbd>1</kbd>–<kbd>4</kbd>.</p>
         <p class="fine">Up to four players: extra gamepads join by pressing any button. <kbd>H</kbd>/View shows every control; <kbd>Esc</kbd>/Start opens settings, zones and the boss fights.</p>
@@ -297,20 +298,21 @@ export class UI {
     x.innerHTML = `<div class="card wide"><div class="helphead"><div><p class="eyebrow">Controls</p><h2>What each button does</h2></div>
       <p class="closebadge"><b>B</b> or <b>View</b> to close <span>H or Esc on the keyboard · D-pad scrolls</span></p></div>
       <table><thead><tr><th>Action</th><th>Gamepad</th><th>Keyboard + mouse</th></tr></thead><tbody>
-      <tr><td>Move · crouch</td><td>Left stick</td><td>A/D · S</td></tr>
+      <tr><td>Move (relative to the camera) · crouch</td><td>Left stick · hold L3</td><td>W A S D · C</td></tr>
+      <tr><td>Camera and aim: the crosshair at the centre of your view is where you aim (aim assist pulls it onto a nearby enemy; Settings: Aim assist, Camera sensitivity, Invert). While locked on, the camera turns to keep your target in view. Looking well up counts as holding up</td><td>Right stick</td><td>Mouse (click the game to capture it) · arrow keys</td></tr>
       <tr><td>Jump · double jump · wall jump</td><td>A</td><td>Space</td></tr>
-      <tr><td>Dash (8-way) · slide (down + dash)</td><td>B</td><td>Shift</td></tr>
+      <tr><td>Dash (the way you move; up or down when looking up or crouching) · slide (crouch + dash)</td><td>B</td><td>Shift</td></tr>
       <tr><td>Charged dash: hold dash while standing still, aim, let go. Each level goes further; level 2 is briefly invulnerable, level 3 cuts through enemies (afterimages show the level)</td><td>Hold B</td><td>Hold Shift</td></tr>
-      <tr><td>Wall slide and wall jump: hold toward a wall to slide down it. Jump while holding toward it (or neutral) to kick up it; hold away to leap off. You can shoot and strike while sliding</td><td>Toward the wall · A</td><td>A/D toward the wall · Space</td></tr>
-      <tr><td>Lock-on (automatic by default): whenever you have no target, the nearest enemy in sight is locked. Tap to switch to the next target; hold to let go (it stays off until you tap again). Homing shots go to the target and melee steps in toward it; free aim (right stick, mouse) still aims where you point. Settings: Lock-on mode, to lock only when you press</td><td>R3 (click the right stick)</td><td>F, O, or mouse forward button</td></tr>
+      <tr><td>Wall slide and wall jump: hold toward a wall to slide down it. Jump while holding toward it (or neutral) to kick up it; hold away to leap off. You can shoot and strike while sliding</td><td>Toward the wall · A</td><td>Toward the wall · Space</td></tr>
+      <tr><td>Lock-on (automatic by default): whenever you have no target, the nearest enemy in sight is locked. Tap to switch to the next target; hold to let go (it stays off until you tap again). Homing shots go to the target and melee steps in toward it; the crosshair still aims where you point, and the camera turns to follow the target. Settings: Lock-on mode, to lock only when you press</td><td>R3 (click the right stick)</td><td>F, O, or mouse forward button</td></tr>
       <tr><td>Velocity Break (Echo's Hunter kit: the Dash Slash, a lunging cut that carries him through)</td><td colspan="2">Melee while dashing or sliding, or just after a dash</td></tr>
       <tr><td>Melee · charged melee (hold, then let go)</td><td>X · hold X</td><td>Right click or J · hold</td></tr>
-      <tr><td>Ground pound: in the air, melee with down held (or aimed straight down). Hold it to charge through three levels while you hang in the air; the landing throws enemies outward</td><td>Down + X in the air · hold</td><td>S + melee in the air · hold</td></tr>
-      <tr><td>Rising attack: every character has their own. Nova: the Solar Uppercut (his boots fire and a hard-light fist drives up, three hits, a flare at the top; once per jump in the air). Echo: the Rising Glaive (a spinning uppercut that carries him up). RAM: the Hydraulic Uplift (his shield scoops up everything in front, sweeps shots out of the air over him, and bursts at the top; it reaches drones). Fix: Jack-Up (a pneumatic jack fires her up behind a wrench uppercut and stays as a spring pad any teammate can bounce on)</td><td>Up + X</td><td>W + melee</td></tr>
-      <tr><td>Echo, Hunter kit: blade and glaive chain · Spin Slash in the air · Wall Slash on a wall · charged glaive swing that looses a crescent wave</td><td>X · up + X in the air · X on a wall · hold X</td><td>Melee · W + melee in the air · melee on a wall · hold</td></tr>
+      <tr><td>Ground pound: in the air, melee with down held (or aimed straight down). Hold it to charge through three levels while you hang in the air; the landing throws enemies outward</td><td>L3 + X in the air (or aim down) · hold</td><td>C + melee in the air (or aim down) · hold</td></tr>
+      <tr><td>Rising attack: every character has their own. Nova: the Solar Uppercut (his boots fire and a hard-light fist drives up, three hits, a flare at the top; once per jump in the air). Echo: the Rising Glaive (a spinning uppercut that carries him up). RAM: the Hydraulic Uplift (his shield scoops up everything in front, sweeps shots out of the air over him, and bursts at the top; it reaches drones). Fix: Jack-Up (a pneumatic jack fires her up behind a wrench uppercut and stays as a spring pad any teammate can bounce on)</td><td>Look up + X (or L3 + X on the ground)</td><td>Look up + melee (or C + melee on the ground)</td></tr>
+      <tr><td>Echo, Hunter kit: blade and glaive chain · Spin Slash in the air · Wall Slash on a wall · charged glaive swing that looses a crescent wave</td><td>X · look up + X in the air · X on a wall · hold X</td><td>Melee · look up + melee in the air · melee on a wall · hold</td></tr>
       <tr><td>Echo deflects: his parry and his glaive swings knock enemy shots back at whoever fired them. A perfect deflect opens a Riposte: melee straight after</td><td>LT · X</td><td>Q or L · melee</td></tr>
       <tr><td>Fire · charge</td><td>RT · hold RT</td><td>Left click or K · hold</td></tr>
-      <tr><td>Aim</td><td>Right stick (free) or left stick (8-way)</td><td>Mouse</td></tr>
+      <tr><td>Aim</td><td>Right stick (the camera)</td><td>Mouse (the camera)</td></tr>
       <tr><td>Parry, Echo and Nova's Sentinel kit (first 4 frames are perfect)</td><td>LT</td><td>Q or L</td></tr>
       <tr><td>Nova, Marksman kit: dodge. A quick hop the way you push the stick (a backstep with it centred), untouchable at the start; one in the air per jump. Dodge an attack at the last moment for a perfect dodge: enemies close by slow down, and you gain Overcharge and ultimate charge. You keep charging through it</td><td>LT</td><td>Q or L</td></tr>
       <tr><td>Suit ability: Nova (Marksman kit) raises the hard-light Aegis for 5 s: it blocks every attack, and the damage it takes Overcharges his weapons (faster charging, harder hits). Press again to detonate it. Nova (Sentinel kit): Bulwark Pulse. Echo: his scarf ability for the current mode</td><td>Y</td><td>E, I, or middle click</td></tr>
@@ -342,7 +344,7 @@ export class UI {
       <tr><td>Patch Beam: hold to beam the teammate who needs it most. It heals fast, then adds Plating, and Tunes Up whoever it holds: they charge, recharge and fill their bars 1.5 times as fast. On a downed teammate it revives them from range; with no one near she welds herself. She moves slowly while it runs</td><td>Hold LT</td><td>Hold Q or L</td></tr>
       <tr><td>Field Mechanic: beside a downed teammate she revives three times as fast as anyone else, and whoever she brings back has 60% of their health</td><td colspan="2">Stand next to them</td></tr>
       <tr><td>Gadgets (cost Scrap): build the selected one in front of her; building it again moves it. <b>Patch Pylon</b>: heals everyone in its field, and a downed teammate inside gets back up on their own. <b>Sentry</b>: shoots the nearest enemy in sight (rockets too at level 3). <b>Amp Coil</b>: teammates in its field charge and fill their bars faster. Two wrench hits raise a gadget a level (up to 3) and refresh it</td><td>Y build · RB pick</td><td>E build · R pick</td></tr>
-      <tr><td>Team commands to the AI teammates (Settings: AI teammates): <b>Attack my target</b> (all go for your lock-on target), <b>Cover me</b> (RAM shields you, Fix beams you, the others take what comes for you), <b>Regroup on me</b> (they close in for a few seconds), <b>Hold here</b> (they stand their ground where you were). The same command again cancels it</td><td>D-pad up: tap Attack · hold Cover · D-pad down: tap Regroup · hold Hold</td><td>Z Attack · G Cover · X Regroup · C Hold</td></tr>
+      <tr><td>Team commands to the AI teammates (Settings: AI teammates): <b>Attack my target</b> (all go for your lock-on target), <b>Cover me</b> (RAM shields you, Fix beams you, the others take what comes for you), <b>Regroup on me</b> (they close in for a few seconds), <b>Hold here</b> (they stand their ground where you were). The same command again cancels it</td><td>D-pad up: tap Attack · hold Cover · D-pad down: tap Regroup · hold Hold</td><td>Z Attack · G Cover · X Regroup · B Hold</td></tr>
       <tr><td>Breakable pieces and power-ups along the routes: crates, barricades, glass and pillars break under attacks (a pillar only under heavy blows; RAM's charge goes through), and some crates hold a power-up. Power-ups wait along the way under a column of light: <b>Medkit</b>, <b>Plating</b>, <b>Overclock</b>, an <b>Ult Cell</b> (40 ultimate) and <b>Fury</b> (+50% damage and knockback for 12 s)</td><td>Walk into it</td><td>Walk into it</td></tr>
       <tr><td>Power-ups (cost Scrap): melee with no enemy or gadget of hers close tosses the selected one to the nearest teammate in front (or drops it at her feet; anyone can pick it up). <b>Overclock</b>: everything charges, recharges and fills 1.6 times as fast for 10 s. <b>Plating</b>: an overshield over the health bar. <b>Medkit</b>: 40 health</td><td>X (nothing close) · LB pick</td><td>Right click or J · T pick</td></tr>
       <tr><td>Rivet Gun: tap for a burst of rivets; hold for a Hot Rivet that sticks in what it hits and bursts</td><td>RT · hold RT</td><td>Left click or K · hold</td></tr>
@@ -416,19 +418,49 @@ export class UI {
     this.updateMarkers(world, view);
     this.updateBossBar(world);
     this.updateUlt(world);
+    this.updateCrosshairs(world, view);
     for (const b of this.barks) {
       b.t -= dt;
-      const s = view.screenOf(b.p.x, b.p.y + b.p.h + 1.1);
+      // over the speaker in the first view that can see them
+      let s = null;
+      for (let i = 0; i < view.views.length && !(s && s.vis); i++) s = view.screenOf(b.p.x, b.p.y + b.p.h + 1.1, b.p.z, i);
       b.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -100%)`;
-      b.el.style.opacity = String(Math.min(1, b.t * 2));
+      b.el.style.opacity = s.vis ? String(Math.min(1, b.t * 2)) : '0';
       if (b.t <= 0) b.el.remove();
     }
     this.barks = this.barks.filter(b => b.t > 0);
     if (!this.debug.hidden) this.updateDebug(world, fps);
   }
 
+  // A crosshair at the centre of each person's view, in their colour (it widens while they charge a shot, and
+  // turns to a ring when the aim is held on a locked target)
+  updateCrosshairs(world, view) {
+    this.crosshairs = this.crosshairs || new Map();
+    const seen = new Set();
+    for (const c of view.views) {
+      const p = c.p; if (!p) continue;
+      seen.add(p.slot);
+      let el = this.crosshairs.get(p.slot);
+      if (!el) { el = h('div', 'xhair', '<i></i><i></i><i></i><i></i><b></b>'); el.style.setProperty('--pc', PLAYER_COLORS[p.slot]); this.labels.appendChild(el); this.crosshairs.set(p.slot, el); }
+      const v = c.vp; el.style.transform = `translate(${v.x + v.w / 2}px, ${v.y + v.h / 2}px)`;
+      el.hidden = p.state === 'dead' || !!world.ultCast;
+      el.classList.toggle('locked', !!p.lockT && SETTINGS.lockMode === 'manual');
+      el.classList.toggle('charging', (p.chargeT || 0) > 0 || (p.rifleT || 0) > 0);
+    }
+    for (const [slot, el] of this.crosshairs) if (!seen.has(slot)) { el.remove(); this.crosshairs.delete(slot); }
+    // the lines between the views of a split screen
+    const key = view.views.map(c => `${c.vp.x},${c.vp.y},${c.vp.w},${c.vp.h}`).join('|');
+    if (key !== this.splitKey) {
+      this.splitKey = key;
+      (this.splits || []).forEach(e => e.remove()); this.splits = [];
+      const W = view.w, H = view.h;
+      if (view.views.length > 1) { const e = h('div', 'split v'); e.style.left = `${Math.floor(W / 2) - 1}px`; this.labels.appendChild(e); this.splits.push(e); }
+      if (view.views.length > 2) { const e = h('div', 'split h'); e.style.top = `${Math.floor(H / 2) - 1}px`; this.labels.appendChild(e); this.splits.push(e); }
+    }
+  }
+
   updateBossBar(world) {
-    const e = world.enemies.find(q => q.boss && !q.dead && Math.abs(q.x - world.cam.x) < world.cam.halfW + 14);
+    const e = world.enemies.find(q => q.boss && !q.dead && world.players.some(p => p.state !== 'dead' && Math.hypot(q.x - p.x, q.z - p.z) < 40));
     if (!e) { if (!this.bossBar.hidden) this.bossBar.hidden = true; return; }
     const B = BOSS[e.type], key = `${e.type}|${e.phase}|${e.armor}|${e.armorMax}|${e.state === 'roar' || e.state === 'intro'}`;
     this.bossBar.hidden = false;
@@ -497,19 +529,23 @@ export class UI {
   }
 
   updateMarkers(world, view) {
+    // Each player's name tag, over them in every view but their own
     const seen = new Set();
     for (const p of world.players) {
-      seen.add(p.slot);
-      let m = this.markers.get(p.slot);
-      if (!m) { m = h('div', 'pmarker'); m.style.setProperty('--pc', PLAYER_COLORS[p.slot]); this.labels.appendChild(m); this.markers.set(p.slot, m); }
-      const s = view.screenOf(p.x, p.y + p.h + 0.45);
-      const r = view.canvas.getBoundingClientRect();
-      const x = Math.max(16, Math.min(r.width - 16, s.x)), y = Math.max(16, Math.min(r.height - 16, s.y));
-      m.textContent = `${PLAYER_MARKS[p.slot]} P${p.slot + 1}${isBot(p) ? ' AI' : ''}` + (p.state === 'downed' ? ' · DOWN' : p.veiled ? ' · hidden' : '');
-      m.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
-      m.hidden = p.state === 'dead';
+      for (let i = 0; i < view.views.length; i++) {
+        const c = view.views[i], key = `${p.slot}:${i}`;
+        if (c.p === p || !c.cam) continue;
+        seen.add(key);
+        let m = this.markers.get(key);
+        if (!m) { m = h('div', 'pmarker'); m.style.setProperty('--pc', PLAYER_COLORS[p.slot]); this.labels.appendChild(m); this.markers.set(key, m); }
+        const s = view.screenOf(p.x, p.y + p.h + 0.45, p.z, i), v = c.vp;
+        const x = Math.max(v.x + 16, Math.min(v.x + v.w - 16, s.x)), y = Math.max(v.y + 16, Math.min(v.y + v.h - 16, s.y));
+        m.textContent = `${PLAYER_MARKS[p.slot]} P${p.slot + 1}${isBot(p) ? ' AI' : ''}` + (p.state === 'downed' ? ' · DOWN' : p.veiled ? ' · hidden' : '');
+        m.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+        m.hidden = p.state === 'dead' || (!s.vis && p.state !== 'downed');   // out of view: shown (at the edge) only when down
+      }
     }
-    for (const [slot, m] of this.markers) if (!seen.has(slot)) { m.remove(); this.markers.delete(slot); }
+    for (const [key, m] of this.markers) if (!seen.has(key)) { m.remove(); this.markers.delete(key); }
     // Lock-on reticles, one per locking player; several on one target nest inside each other
     this.reticles = this.reticles || new Map();
     const onTarget = new Map();
@@ -524,11 +560,11 @@ export class UI {
       }
       const n = onTarget.get(t) || 0; onTarget.set(t, n + 1);
       if (r.target !== t) { r.target = t; r.el.classList.remove('pop'); void r.el.offsetWidth; r.el.classList.add('pop'); }
-      const s = view.screenOf(t.x, t.y + t.h * 0.55), size = 46 + Math.min(90, t.h * 18) + n * 14;
+      const s = view.screenOf(t.x, t.y + t.h * 0.55, t.z, p), size = 46 + Math.min(90, t.h * 18) + n * 14;
       r.el.style.setProperty('--rs', `${size}px`);
       r.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -50%)`;
       r.tag.textContent = n === 0 ? `${PLAYER_MARKS[p.slot]} P${p.slot + 1}` : '';
-      r.el.hidden = !s.vis;
+      r.el.hidden = !s.vis || isBot(p);
     }
     for (const [slot, r] of this.reticles) if (!seen.has(slot)) { r.el.remove(); this.reticles.delete(slot); }
     // Rocket jump height readout beside the apex marker while Nova lines one up
@@ -538,7 +574,7 @@ export class UI {
       const pv = p.char === 'nova' && p.chargeT > 0 ? world.rocketPreview(p) : null;
       if (!pv) { if (l) l.hidden = true; continue; }
       if (!l) { l = h('div', 'apexlabel'); this.labels.appendChild(l); this.apexLabels.set(p.slot, l); }
-      const s = view.screenOf(pv.x, pv.apex);
+      const s = view.screenOf(pv.x, pv.apex, p.z, p);
       l.textContent = `▲ ${(pv.apex - p.y).toFixed(1)} m${pv.perfect ? ' · Perfect' : ''}`;
       l.classList.toggle('perfect', pv.perfect);
       l.style.transform = `translate(${s.x + 34}px, ${s.y}px) translate(0, -50%)`;
@@ -550,8 +586,8 @@ export class UI {
       if (e.type !== 'post') continue;
       let l = this.enemyLabels.get(e);
       if (!l) { l = h('div', 'elabel'); this.labels.appendChild(l); this.enemyLabels.set(e, l); }
-      const s = view.screenOf(e.x, e.y + e.h + 0.8);
-      l.hidden = Math.abs(e.x - world.cam.x) > world.cam.halfW + 1;
+      const s = view.screenOf(e.x, e.y + e.h + 0.8, e.z);
+      l.hidden = !s.vis || Math.hypot(e.x - world.cam.x, e.z - (world.cam.z || 0)) > 22;
       l.textContent = e.label || 'Sparring post: step close';
       l.dataset.cat = e.state === 'windup' && e.atk ? e.atk.cat : '';
       l.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -100%)`;
@@ -564,7 +600,7 @@ export class UI {
       (world.ultCast ? ` · ultimate ${world.ultCast.phase} ${world.ultCast.t} ${world.ultCast.name}` : '') + (world.wells.length ? ` · wells ${world.wells.length}` : '') +
       (world.gadgets.length ? ` · gadgets ${world.gadgets.length}` : '') + (world.pickups.length ? ` · power-ups ${world.pickups.length}` : '')];
     for (const p of world.players) {
-      lines.push(`P${p.slot + 1} ${p.char} ${p.state}:${p.st} pos ${p.x.toFixed(2)},${p.y.toFixed(2)} v ${p.vx.toFixed(1)},${p.vy.toFixed(1)} ground ${p.onGround ? 1 : 0} wall ${p.wallDir}${p.wallSliding ? ' slide' : ''} vb ${vbTier(p)} air-dash ${p.airDashes} buf j${p.buf.jump} d${p.buf.dash} m${p.buf.melee} p${p.buf.parry}` +
+      lines.push(`P${p.slot + 1} ${p.char} ${p.state}:${p.st} pos ${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)} v ${p.vx.toFixed(1)},${p.vy.toFixed(1)} ground ${p.onGround ? 1 : 0} wall ${p.wallDir}${p.wallSliding ? ' slide' : ''} vb ${vbTier(p)} air-dash ${p.airDashes} buf j${p.buf.jump} d${p.buf.dash} m${p.buf.melee} p${p.buf.parry}` +
         ` · dashC ${p.dashChargeT} rifle ${p.rifleT}/${p.rifleCd} rocket ${p.rocketT} lock ${p.lockT ? p.lockT.type : '-'}` +
         ` · beam ${p.beam ? p.beam.t : '-'} aegis ${p.aegis ? p.aegis.hp.toFixed(0) : p.aegisCd} over ${p.overcharge.toFixed(0)} pound ${p.pound ? p.pound.phase + p.pound.level : '-'}` +
         ` · sub ${p.sub} ${p.burstT ? Math.round(p.burstT) : ''} dodge ${p.dodge ? p.dodge.t : p.dodgeCd} ult ${p.ult.toFixed(0)}${p.ultRun ? ' ' + p.ultRun.kind + p.ultRun.t : ''}` +

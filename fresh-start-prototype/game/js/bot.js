@@ -29,7 +29,7 @@
 // Skill (BOT.skill) sets how often and how fast a bot answers a wind-up or shot, how far it reads the fight,
 // and whether it uses the advanced plays (beams, walls, snares, kiting).
 //
-// Team commands (any person can give them; input.js: D-pad up tap/hold, down tap/hold, or Z/G/X/C):
+// Team commands (any person can give them; input.js: D-pad up tap/hold, down tap/hold, or Z/G/X/B):
 //   attack   Attack my target: every bot goes for the commander's lock-on target (or the enemy nearest them)
 //            wherever it is, until it falls
 //   cover    Cover me: the bots stay at the commander's side: RAM in front with his shield toward the enemy,

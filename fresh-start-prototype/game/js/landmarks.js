@@ -9,8 +9,8 @@
 //     darkening as they take damage, and the debris they burst into (an instanced pool that bounces and settles).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { SEGS, BOXES, DESTRUCT, LIFTS, groundBelow, pathFrame } from './level.js';
-import { toWorld, planeDir } from './space.js';
+import { SEGS, BOXES, DESTRUCT, LIFTS, HW, groundBelow, pathFrame } from './level.js';
+import { toWorldZ, planeDir } from './space.js';
 
 const yawAt = x => { const f = pathFrame(x); return Math.atan2(-f.tz, f.tx); };
 let seed = 1234; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -53,7 +53,7 @@ export function buildLandmarks(view) {
     if (o.ry) m.rotation.y = o.ry; if (o.rx) m.rotation.x = o.rx; if (o.scale) m.scale.set(...o.scale);
     view.bake(m, o.cast ?? false); return m;
   };
-  const at = (x, y, depth) => toWorld(x, y, depth, new THREE.Vector3());
+  const at = (x, y, depth) => toWorldZ(x, y, depth, new THREE.Vector3());
   const M = {
     steel: new THREE.MeshStandardMaterial({ color: 0x6b6f7a, roughness: 0.55, metalness: 0.4 }),
     rust: new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.8, metalness: 0.2 }),
@@ -72,7 +72,7 @@ export function buildLandmarks(view) {
     const foundry = g.route === 'foundry';
     if (g.kind === 'arc' && g.s > 0) {
       // Whatever the path wraps round: a structure at the arc's centre
-      const R = g.r - 4.2;
+      const R = g.r - HW - 1.4;   // clear of the corridor's inner edge
       if (foundry && g.r < 18) {
         // The reactor core inside the helix: a tall drum with glowing rings at each turn of the climb
         add(new THREE.CylinderGeometry(R, R + 0.8, 70, 48), M.core, g.C.x, 18, g.C.z);
@@ -95,7 +95,7 @@ export function buildLandmarks(view) {
     for (let x = g.x0; x < g.x1; x += foundry ? 3.2 : 5) {
       const ry = yawAt(x), back = g.kind === 'arc' && g.s < 0;
       if (foundry) {
-        if (back) { const p = at(x, 2, -7.5); add(new THREE.BoxGeometry(3.4, 22, 1.4), M.steel, p.x, p.y, p.z, { ry }); if (rnd() < 0.5) { const q = at(x, 6 + rnd() * 8, -6.6); add(new THREE.CylinderGeometry(0.35, 0.35, 3.4, 8), M.molten, q.x, q.y, q.z, { ry: ry + Math.PI / 2, rx: Math.PI / 2 }); } }
+        if (back) { const p = at(x, 2, -9); add(new THREE.BoxGeometry(3.4, 22, 1.4), M.steel, p.x, p.y, p.z, { ry }); if (rnd() < 0.5) { const q = at(x, 6 + rnd() * 8, -8.1); add(new THREE.CylinderGeometry(0.35, 0.35, 3.4, 8), M.molten, q.x, q.y, q.z, { ry: ry + Math.PI / 2, rx: Math.PI / 2 }); } }
         else if (rnd() < 0.55) {
           const d = -(10 + rnd() * 14), h = 8 + rnd() * 22, p = at(x, -10 + h / 2, d);
           add(new THREE.BoxGeometry(2.6, h, 2.6), rnd() < 0.5 ? M.steel : M.rust, p.x, p.y, p.z, { ry });
@@ -104,7 +104,7 @@ export function buildLandmarks(view) {
         // the molten channel far below the walkways
         const m = at(x, -9, -1); add(new THREE.BoxGeometry(3.4, 0.4, 5), M.molten, m.x, m.y, m.z, { ry });
       } else {
-        if (back) { const h = 26 + rnd() * 18, p = at(x, -6 + h / 2, -9); add(new THREE.BoxGeometry(4.6, h, 4), M.windows, p.x, p.y, p.z, { ry }); }
+        if (back) { const h = 26 + rnd() * 18, p = at(x, -6 + h / 2, -10.5); add(new THREE.BoxGeometry(4.6, h, 4), M.windows, p.x, p.y, p.z, { ry }); }
         else {
           for (const d of [-(12 + rnd() * 10), -(30 + rnd() * 20)]) {
             const h = 20 + rnd() * 50, w = 5 + rnd() * 5, p = at(x, -20 + h / 2, d);
@@ -128,9 +128,9 @@ export function buildLandmarks(view) {
     for (let x = g.x0; x < g.x1; x += 2.5) {
       const r = at(x, 9, -1.5); add(new THREE.BoxGeometry(2.6, 0.3, 0.5), M.concrete, r.x, r.y, r.z, { ry: yawAt(x) });
       const s = at(x, 9.2, -1.5); add(new THREE.BoxGeometry(2.6, 0.08, 0.12), M.cyan, s.x, s.y - 0.25, s.z, { ry: yawAt(x) });
-      if (Math.round(x - g.x0) % 10 === 0) { const c = at(x, 1, -6.5); add(new THREE.BoxGeometry(0.4, 14, 0.4), M.concrete, c.x, 2, c.z); }
+      if (Math.round(x - g.x0) % 10 === 0) { const c = at(x, 1, -7); add(new THREE.BoxGeometry(0.4, 14, 0.4), M.concrete, c.x, 2, c.z); }
     }
-    const t0 = g.x0 + 20; for (let i = 0; i < 3; i++) { const t = at(t0 + i * 9, 1.5, -5); add(new THREE.CapsuleGeometry(1.4, 6.4, 4, 12), M.train, t.x, 1.6, t.z, { ry: yawAt(t0 + i * 9), rx: 0 }).rotation.z = Math.PI / 2; }
+    const t0 = g.x0 + 20; for (let i = 0; i < 3; i++) { const t = at(t0 + i * 9, 1.5, -8.5); add(new THREE.CapsuleGeometry(1.4, 6.4, 4, 12), M.train, t.x, 1.6, t.z, { ry: yawAt(t0 + i * 9), rx: 0 }).rotation.z = Math.PI / 2; }
   }
 }
 
@@ -149,23 +149,23 @@ export class Breakables {
     };
     for (const b of BOXES) {
       if (b.type !== 'd') continue;
-      const w = b.x1 - b.x0, h = b.y1 - b.y0, xm = (b.x0 + b.x1) / 2, g = new THREE.Group();
-      if (b.tag === 'crate') { g.add(new THREE.Mesh(new RoundedBoxGeometry(w, h, Math.max(w, 1), 2, 0.05), this.mat.crate)); }
-      else if (b.tag === 'barricade') { g.add(new THREE.Mesh(new RoundedBoxGeometry(w, h, 2.6, 2, 0.08), this.mat.barricade)); }
+      const w = b.x1 - b.x0, h = b.y1 - b.y0, dz = b.z1 - b.z0, xm = (b.x0 + b.x1) / 2, g = new THREE.Group();
+      if (b.tag === 'crate') { g.add(new THREE.Mesh(new RoundedBoxGeometry(w, h, dz, 2, 0.05), this.mat.crate)); }
+      else if (b.tag === 'barricade') { g.add(new THREE.Mesh(new RoundedBoxGeometry(w, h, dz, 2, 0.08), this.mat.barricade)); }
       else if (b.tag === 'glass') {
-        g.add(new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, h, 3.4), this.mat.glass));
-        for (const y of [-h / 2, h / 2]) { const f = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, 3.5), this.mat.frame); f.position.y = y; g.add(f); }
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, h, dz - 0.1), this.mat.glass));
+        for (const y of [-h / 2, h / 2]) { const f = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, dz), this.mat.frame); f.position.y = y; g.add(f); }
       } else {
         g.add(new THREE.Mesh(new THREE.CylinderGeometry(w * 0.5, w * 0.58, h, 16), this.mat.pillar));
         const c = new THREE.Mesh(new THREE.BoxGeometry(w * 1.25, 0.18, w * 1.25), this.mat.cap); c.position.y = h / 2 - 0.09; g.add(c);
       }
       g.traverse(o => { if (o.isMesh) { o.castShadow = b.tag !== 'glass'; o.receiveShadow = true; } });
-      toWorld(xm, b.y0 + h / 2, 0, g.position); g.rotation.y = yawAt(xm);
+      toWorldZ(xm, b.y0 + h / 2, (b.z0 + b.z1) / 2, g.position); g.rotation.y = yawAt(xm);
       scene.add(g); this.meshes.set(b, { g, shake: 0, home: g.position.clone() });
     }
     // Debris: a pool of chunks (one instanced mesh; each chunk tinted to what it came from)
     this.N = 220; this.di = 0;
-    this.chunks = Array.from({ length: this.N }, () => ({ life: 0, max: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, s: 0.2, rx: 0, ry: 0, wx: 0, wy: 0, sx: 0 }));
+    this.chunks = Array.from({ length: this.N }, () => ({ life: 0, max: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, s: 0.2, rx: 0, ry: 0, wx: 0, wy: 0, sx: 0, sz: 0 }));
     this.debris = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.7 }), this.N);
     this.debris.castShadow = true; this.debris.frustumCulled = false;
     const z = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color();
@@ -186,8 +186,8 @@ export class Breakables {
       const D = DESTRUCT[b.tag], w = b.x1 - b.x0, h = b.y1 - b.y0;
       const n = b.tag === 'glass' ? 26 : b.tag === 'crate' ? 14 : b.tag === 'barricade' ? 18 : 22;
       for (let i = 0; i < n; i++) {
-        const x = b.x0 + rnd() * w, y = b.y0 + rnd() * h, by = ev.by, push = by ? Math.sign(x - by.x) || 1 : (rnd() < 0.5 ? -1 : 1);
-        this.chunk(x, y, (rnd() - 0.5) * (b.tag === 'glass' ? 2 : 1.2), push * (2 + rnd() * 5), 2 + rnd() * 6, (rnd() - 0.5) * 4,
+        const x = b.x0 + rnd() * w, y = b.y0 + rnd() * h, z = b.z0 + rnd() * (b.z1 - b.z0), by = ev.by, push = by ? Math.sign(x - by.x) || 1 : (rnd() < 0.5 ? -1 : 1);
+        this.chunk(x, y, z, push * (2 + rnd() * 5), 2 + rnd() * 6, (rnd() - 0.5) * 4,
           b.tag === 'glass' ? 0.06 + rnd() * 0.18 : 0.12 + rnd() * 0.22, D.color, b.tag === 'glass');
       }
       F.smoke(ev.x, ev.y, b.tag === 'crate' ? '#b59a7a' : '#9aa3ae', b.tag === 'glass' ? 2 : 8, 1.6, 0.6, 0.8, { op: 0.45, grow: 2.2 });
@@ -197,10 +197,10 @@ export class Breakables {
       if (b.loot) F.sprite(ev.x, ev.y, 'glow', '#ffe9a8', 1.6, 0.4, 1.6);
     }
   }
-  chunk(x, y, depth, vx, vy, vz, s, color, glass) {
+  chunk(x, y, z, vx, vy, vz, s, color, glass) {
     const C = this.chunks[this.di], i = this.di; this.di = (this.di + 1) % this.N;
-    const w = toWorld(x, y, depth, this.v), d = planeDir(x, vx, vy, new THREE.Vector3());
-    Object.assign(C, { life: glass ? 1.4 : 4.5, max: glass ? 1.4 : 4.5, x: w.x, y: w.y, z: w.z, vx: d.x, vy: d.y, vz: d.z + vz * 0.3, s, sx: x, rx: rnd() * 6, ry: rnd() * 6, wx: (rnd() - 0.5) * 14, wy: (rnd() - 0.5) * 14, glass });
+    const w = toWorldZ(x, y, z, this.v), d = planeDir(x, vx, vy, new THREE.Vector3(), vz);
+    Object.assign(C, { life: glass ? 1.4 : 4.5, max: glass ? 1.4 : 4.5, x: w.x, y: w.y, z: w.z, vx: d.x, vy: d.y, vz: d.z, s, sx: x, sz: z, rx: rnd() * 6, ry: rnd() * 6, wx: (rnd() - 0.5) * 14, wy: (rnd() - 0.5) * 14, glass });
     this.debris.setColorAt(i, this.col.set(color).multiplyScalar(0.75 + rnd() * 0.4));
     this.debris.instanceColor.needsUpdate = true;
   }
@@ -220,7 +220,7 @@ export class Breakables {
       if (C.life <= 0) { if (C.max) { this.debris.setMatrixAt(i, this.m4.makeScale(0, 0, 0)); C.max = 0; } continue; }
       C.life -= dt; C.vy -= 20 * dt;
       C.x += C.vx * dt; C.y += C.vy * dt; C.z += C.vz * dt; C.rx += C.wx * dt; C.ry += C.wy * dt;
-      const floor = groundBelow(C.sx + (C.vx >= 0 ? 0 : 0), C.y + 0.4);
+      const floor = groundBelow(C.sx, C.y + 0.4, C.sz);
       if (C.y - C.s / 2 < floor && C.y > floor - 1) { C.y = floor + C.s / 2; C.vy = Math.abs(C.vy) * 0.3; C.vx *= 0.6; C.vz *= 0.6; C.wx *= 0.6; C.wy *= 0.6; }
       const fade = Math.min(1, C.life / 0.6);
       this.q.setFromEuler(this.e.set(C.rx, C.ry, 0));

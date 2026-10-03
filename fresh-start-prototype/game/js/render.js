@@ -1,4 +1,5 @@
-// Three.js view: scene, level geometry on the (curving) gameplay path, camera, post-processing.
+// Three.js view: scene, level geometry on the (curving) gameplay path, cameras, post-processing.
+// Version 13: every person playing has a third-person camera of their own (camera.js), drawn split-screen.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -13,7 +14,10 @@ import { SETTINGS, PLAYER_COLORS, CHARS, IMPACT_STYLES, IMPACT_ACCENT } from './
 import { buildPlayerRig } from './rigs.js';
 import { animatePlayer } from './anim.js';
 import { buildEnemyRig, animateEnemy } from './enemyRigs.js';
-import { FX, toWorld, ImpactShader } from './fx.js';
+import { FX, ImpactShader } from './fx.js';
+import { toWorldZ, yawOf, laneOf } from './space.js';
+import { PlayerCam, TeamCam, layout } from './camera.js';
+import { isBot } from './bot.js';
 
 const yawAt = x => { const f = pathFrame(x); return Math.atan2(-f.tz, f.tx); };
 // A rig leaving the scene frees its geometry buffers. Enemy rigs free their materials too (a warmed stand-in
@@ -34,18 +38,21 @@ export class View {
     this.r.shadowMap.enabled = true; this.r.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0xc6e2f4, 70, 260);
-    this.persp = new THREE.PerspectiveCamera(SETTINGS.fov, 16 / 9, 0.5, 600);
-    this.ortho = new THREE.OrthographicCamera(-10, 10, 5, -5, 0.5, 600);
-    this.camera = this.persp;
+    // Before anyone joins (the title screen) the team camera looks on from the side
+    this.teamCam = new TeamCam();
+    this.camera = this.teamCam.cam;
+    this.cams = new Map();     // player -> PlayerCam
+    this.views = [];           // what is drawn this frame: { c: a PlayerCam or the TeamCam, vp }
     this.cam = { x: 0, y: 3, dist: 16 };
     this.trauma = 0; this.time = 0; this.bloomKick = 0; this.punch = 0; this.impact = null; this.impactCd = 0; this.hitPause = 0;
     this.rigs = new Map(); this.enemyRigs = new Map();
+    this.tmpV = new THREE.Vector3(); this.tmpP = new THREE.Vector3();
 
     const hemi = new THREE.HemisphereLight(0xd8ecff, 0x7a6f63, 0.95); this.scene.add(hemi); this.hemi = hemi;
     this.sun = new THREE.DirectionalLight(0xffeed6, 2.1);
     this.sun.position.set(-18, 30, 22); this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    const sc = this.sun.shadow.camera; sc.left = -30; sc.right = 30; sc.top = 24; sc.bottom = -24; sc.near = 1; sc.far = 120;
+    const sc = this.sun.shadow.camera; sc.left = -36; sc.right = 36; sc.top = 36; sc.bottom = -36; sc.near = 1; sc.far = 140;
     this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.03;
     this.scene.add(this.sun); this.scene.add(this.sun.target);
     const rim = new THREE.DirectionalLight(0xa9dbff, 1.4); rim.position.set(14, 12, -26); this.scene.add(rim);
@@ -62,6 +69,7 @@ export class View {
     this.ink = new ShaderPass(ImpactShader); this.ink.enabled = false; this.dim = 0;
     this.composer.addPass(this.renderPass); this.composer.addPass(this.bloom); this.composer.addPass(this.output); this.composer.addPass(this.ink);
     this.fx.warm(this.r, this.camera, this.composer.renderTarget1);
+    this.views = [this.teamCam];
     // The impact frame's pass is off until the first big moment: compile it now so that moment never stalls
     try { this.ink.enabled = true; this.ink.uniforms.amount.value = 1; this.composer.render(0); } catch (e) { /* best effort */ }
     this.ink.enabled = false; this.ink.uniforms.amount.value = 0;
@@ -69,11 +77,32 @@ export class View {
 
   resize(w, h, world) {
     this.r.setSize(w, h, false);
-    this.composer.setSize(w, h);
-    this.persp.aspect = w / h; this.persp.updateProjectionMatrix();
-    this.ink.uniforms.res.value.set(w, h);
     if (world) world.aspect = w / h;
-    this.w = w; this.h = h;
+    this.w = w; this.h = h; this.layoutKey = '';
+  }
+  // The views for this frame: one per person playing (split-screen), and with three of them the team camera in
+  // the spare quarter. The composer works at one view's size (they are all the same size).
+  layoutViews(world) {
+    const humans = world.players.filter(p => !isBot(p));
+    for (const p of humans) if (!this.cams.has(p)) this.cams.set(p, new PlayerCam(p));
+    for (const p of this.cams.keys()) if (!humans.includes(p)) this.cams.delete(p);
+    const list = humans.map(p => this.cams.get(p));
+    if (list.length === 3 || !list.length) list.push(this.teamCam);
+    const rects = layout(list.length === 1 ? 1 : Math.max(2, humans.length), this.w || 1, this.h || 1);
+    this.views = list.map((c, i) => { c.vp = rects[i] || rects[0]; return c; });
+    const vw = this.views[0].vp.w, vh = this.views[0].vp.h, key = `${vw}x${vh}`;
+    if (key !== this.layoutKey) {
+      this.layoutKey = key;
+      this.composer.setSize(vw, vh); this.ink.uniforms.res.value.set(vw, vh);
+    }
+    for (const c of this.views) if (c.cam.aspect !== c.vp.w / c.vp.h) { c.cam.aspect = c.vp.w / c.vp.h; c.cam.updateProjectionMatrix(); }
+  }
+  // A person's camera (made on first use, so a command sampled before the first frame still has one)
+  camFor(p) {
+    if (isBot(p)) return null;
+    let c = this.cams.get(p);
+    if (!c) { c = new PlayerCam(p); this.cams.set(p, c); }
+    return c;
   }
 
   // Static geometry is merged into one mesh per material to keep draw calls low.
@@ -172,9 +201,10 @@ export class View {
     this.panelTex = new THREE.CanvasTexture(pc); this.panelTex.colorSpace = THREE.SRGBColorSpace;
     this.panelTex.wrapS = this.panelTex.wrapT = THREE.RepeatWrapping; this.panelTex.anisotropy = 4;
     M.capTex = M.cap.clone(); M.capTex.map = this.panelTex;
-    const depthFor = b => (b.type === 'o' ? 2.6 : ['panel', 'column', 'pillar'].includes(b.tag) ? 1.8 : b.type === 'g' ? 3.2 : 4.4);
+    M.rail = new THREE.MeshStandardMaterial({ color: 0xa9b8c8, roughness: 0.45, metalness: 0.5 });
     for (const b of BOXES) {
-      const depth = depthFor(b), h = b.y1 - b.y0;
+      // every box has its own extent across the path now (level.js zSpan)
+      const depth = b.z1 - b.z0, zc = (b.z0 + b.z1) / 2, h = b.y1 - b.y0;
       const segs = [];
       if (b.type === 'd') continue;   // (breakable pieces have their own meshes: landmarks.js Breakables)
       const curved = curvedSpan(b.x0, b.x1);
@@ -182,10 +212,18 @@ export class View {
       else { const n = Math.ceil((b.x1 - b.x0) / 0.9); for (let i = 0; i < n; i++) segs.push([b.x0 + (b.x1 - b.x0) * i / n, b.x0 + (b.x1 - b.x0) * (i + 1) / n]); }
       for (const [x0, x1] of segs) {
         const xm = (x0 + x1) / 2, w = (x1 - x0) * (curved ? 1.04 : 1), yaw = yawAt(xm);
-        const place = (mesh, y, dz = 0, bake = true) => { toWorld(xm, y, dz, mesh.position); mesh.rotation.y = yaw; if (bake) this.bake(mesh, mesh.userData.cast !== false); else this.scene.add(mesh); return mesh; };
+        const place = (mesh, y, dz = 0, bake = true) => { toWorldZ(xm, y, zc + dz, mesh.position); mesh.rotation.y = yaw; if (bake) this.bake(mesh, mesh.userData.cast !== false); else this.scene.add(mesh); return mesh; };
         if (b.type === 'g') {
           const g = place(new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), M.gate), b.y0 + h / 2, 0, false);
           this.gateMeshes.push({ mesh: g, tag: b.tag });
+          continue;
+        }
+        if (b.tag === 'rail') {
+          // a guard rail: a top bar on posts, with a glowing strip along it
+          place(new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, 0.16), M.rail), b.y1 - 0.05);
+          place(new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, 0.05), M.trim), b.y0 + 0.5);
+          const n = Math.max(1, Math.round(w / 1.6));
+          for (let i = 0; i <= n; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.09, h, 0.09), M.rail); toWorldZ(x0 + (x1 - x0) * i / n, b.y0 + h / 2, zc, m.position); m.rotation.y = yaw; this.bake(m, false); }
           continue;
         }
         if (b.tag === 'bound') { place(new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), M.dark), b.y0 + h / 2); continue; }
@@ -198,7 +236,7 @@ export class View {
         const uv = capGeo.attributes.uv;
         for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, w / 2), uv.getY(i) * Math.max(1, (depth + 0.1) / 2));
         place(new THREE.Mesh(capGeo, M.capTex), b.y1 - capH / 2);
-        if (b.tag !== 'tunnel' && b.tag !== 'panel') place(new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, 0.06), M.trim), b.y1 - capH - 0.05, depth / 2 + 0.02);
+        if (b.tag !== 'tunnel' && b.tag !== 'panel') for (const s of [1, -1]) place(new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, 0.06), M.trim), b.y1 - capH - 0.05, s * (depth / 2 + 0.02));
         if (b.type === 'o') place(new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.05, depth * 0.8), M.trim), b.y0 - 0.01);
       }
     }
@@ -235,7 +273,7 @@ export class View {
     for (const x of [8, 48, 88]) add(archGeo, white, x, -1, -16, { cast: false });
 
     // Skyline Relay dressing: antenna masts behind the rooftops, and the relay beacon at the route's end
-    const at = (x, y, depth) => toWorld(x, y, depth, new THREE.Vector3());
+    const at = (x, y, depth) => toWorldZ(x, y, depth, new THREE.Vector3());
     for (const [x, y, h] of [[195, 15.6, 6], [212, 15.6, 8], [226, 12.6, 5], [252, 18.6, 6], [262, 18.6, 7], [294, 18.6, 7]]) {
       const b = at(x, y, -2.9);
       add(new THREE.CylinderGeometry(0.1, 0.15, h, 10), navy, b.x, y + h / 2, b.z, { cast: false });
@@ -267,10 +305,13 @@ export class View {
         rig.root.add(ring); rig.ring = ring;
         this.scene.add(rig.root); this.rigs.set(p, rig);
       }
-      const x = p.prevX + (p.x - p.prevX) * alpha, y = p.prevY + (p.y - p.prevY) * alpha;
-      toWorld(x, y, 0, rig.root.position);
-      rig.root.rotation.y = yawAt(x);
-      rig.flip.scale.x = p.facing;
+      const x = p.prevX + (p.x - p.prevX) * alpha, y = p.prevY + (p.y - p.prevY) * alpha, z = (p.prevZ ?? p.z) + (p.z - (p.prevZ ?? p.z)) * alpha;
+      toWorldZ(x, y, z, rig.root.position);
+      // turn to face the way he faces (smoothly: a 180 still reads as a quick turn)
+      const want = yawOf(x, p.facing, p.facingZ || 0), cur = rig.yaw ?? want, dy = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
+      rig.yaw = Math.abs(dy) < 0.02 ? want : cur + dy * (1 - Math.exp(-dt * 26));
+      rig.root.rotation.y = rig.yaw;
+      rig.flip.scale.x = 1;
       animatePlayer(rig, p, dt, t);
       // Echo is gone during Thousand Cuts until every cut lands at once; a dodging Nova flickers like a hologram
       const cutting = p.state === 'ult' && p.ultRun && p.ultRun.kind === 'echo' && p.ultRun.t < p.ultRun.fin;
@@ -285,9 +326,12 @@ export class View {
       seenE.add(e);
       let R = this.enemyRigs.get(e);
       if (!R) { R = buildEnemyRig(e); this.scene.add(R.root); this.enemyRigs.set(e, R); }
-      const x = e.prevX + (e.x - e.prevX) * alpha, y = e.prevY + (e.y - e.prevY) * alpha;
-      toWorld(x, y, 0, R.root.position);
-      R.root.rotation.y = yawAt(x);
+      const x = e.prevX + (e.x - e.prevX) * alpha, y = e.prevY + (e.y - e.prevY) * alpha, z = (e.prevZ ?? e.z) + (e.z - (e.prevZ ?? e.z)) * alpha;
+      toWorldZ(x, y, z, R.root.position);
+      const fx = e.type === 'shield' ? e.shieldDir : e.facing, fzz = e.type === 'shield' ? e.shieldDirZ || 0 : e.facingZ || 0;
+      const want = yawOf(x, fx, fzz), cur = R.yaw ?? want, dy = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
+      R.yaw = Math.abs(dy) < 0.02 ? want : cur + dy * (1 - Math.exp(-dt * 16));
+      R.root.rotation.y = R.yaw;
       animateEnemy(R, e, dt, t);
       if (e.tagged > 0 && !R.tag) {
         R.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.fx.tex.star, color: 0xffa53a, transparent: true, depthWrite: false }));
@@ -304,55 +348,34 @@ export class View {
     for (const pd of this.pods) { pd.pod.position.x += pd.speed * dt; if (pd.pod.position.x > 260) pd.pod.position.x = -220; if (pd.pod.position.x < -220) pd.pod.position.x = 260; }
   }
 
-  // ---- Camera ----
-  updateCamera(world, dt) {
-    let T = world.cam, rate = 5.5;
-    // An ultimate's call pushes in on whoever is calling it; while it plays out the frame eases back
-    const U = world.ultCast;
-    if (U && U.members.length) {
-      const n = U.members.length, mx = U.members.reduce((a, m) => a + m.x, 0) / n, my = U.members.reduce((a, m) => a + m.y, 0) / n + 1.1;
-      if (U.phase === 'cast') { T = { x: mx, y: my + 0.4, dist: Math.max(8.5, T.dist * 0.6) }; rate = 9; }
-      else if (U.phase === 'run') T = { x: T.x * 0.7 + mx * 0.3, y: T.y * 0.7 + my * 0.3, dist: T.dist * 1.04 };
-    }
-    const k = 1 - Math.exp(-dt * rate);
-    // Vertical follow speeds up the further behind it falls, so a big launch never leaves the frame
-    const ky = 1 - Math.exp(-dt * (rate + Math.max(0, Math.abs(T.y - this.cam.y) - 1.2) * 5));
-    this.cam.x += (T.x - this.cam.x) * k; this.cam.y += (T.y - this.cam.y) * ky; this.cam.dist += (T.dist - this.cam.dist) * k;
+  // ---- Cameras ----
+  // Every view's camera follows its player (camera.js); shake, the landing punch and the route's light are shared
+  updateCamera(world, dt, alpha) {
     this.trauma = Math.max(0, this.trauma - dt * 1.8);
     if (world.players.some(p => p.state === 'beam' && p.beam)) this.trauma = Math.max(this.trauma, 0.22);   // the beam shakes the frame the whole time
     if (world.players.some(p => p.state === 'ult' && p.ultRun && p.ultRun.segs)) this.trauma = Math.max(this.trauma, 0.4);   // and Supernova far more
     this.punch *= Math.exp(-dt * 10); this.bloomKick = Math.max(0, this.bloomKick - dt * 3.2);
-    // Each route has its own light (landmarks.js ATMOS): it blends in as the camera arrives
+    const shake = SETTINGS.shake && this.trauma > 0 ? this.trauma * this.trauma * 0.3 : 0;
+    for (const c of this.views) c.update(world, dt, alpha, shake, this.punch * 0.5);
+    // Each route has its own light (landmarks.js ATMOS): it blends in as the team arrives
+    const k = 1 - Math.exp(-dt * 4); this.cam.x += ((world.cam ? world.cam.x : 0) - this.cam.x) * k;
     const A = ATMOS[routeAt(this.cam.x).id] || ATMOS.skyport, ka = 1 - Math.exp(-dt * 2.5);
-    if (!this.atmos) this.atmos = { fog: new THREE.Color(A.fog), near: A.near, far: A.far };
     const lerpC = (c, hex) => c.lerp(this.tmpC.set(hex), ka); this.tmpC = this.tmpC || new THREE.Color();
     lerpC(this.scene.fog.color, A.fog); this.scene.fog.near += (A.near - this.scene.fog.near) * ka; this.scene.fog.far += (A.far - this.scene.fog.far) * ka;
     const SU = this.sky.material.uniforms; lerpC(SU.top.value, A.top); lerpC(SU.mid.value, A.mid); lerpC(SU.bot.value, A.bot);
     lerpC(this.sun.color, A.sun); lerpC(this.hemi.color, A.hemi);
-    const f = pathFrame(this.cam.x);
-    const look = new THREE.Vector3(f.px, this.cam.y, f.pz);
-    const ortho = SETTINGS.camera === 'ortho';
-    this.camera = ortho ? this.ortho : this.persp;
-    this.renderPass.camera = this.camera;
-    const d = this.cam.dist;
-    this.camera.position.set(f.px + f.nx * d, this.cam.y + d * 0.1 + this.punch, f.pz + f.nz * d);
-    look.y += this.punch * 0.6;   // a blast under a player thumps the whole frame down, then it settles
-    if (SETTINGS.shake && this.trauma > 0) {
-      const s = this.trauma * this.trauma * 0.35;
-      this.camera.position.x += (Math.random() - 0.5) * s; this.camera.position.y += (Math.random() - 0.5) * s;
-    }
-    this.camera.lookAt(look);
-    if (ortho) {
-      const halfH = d * Math.tan(SETTINGS.fov * Math.PI / 360), halfW = halfH * (this.w / this.h || 16 / 9);
-      Object.assign(this.ortho, { left: -halfW, right: halfW, top: halfH, bottom: -halfH });
-      this.ortho.updateProjectionMatrix();
-    } else if (this.persp.fov !== SETTINGS.fov) { this.persp.fov = SETTINGS.fov; this.persp.updateProjectionMatrix(); }
-    // Keep the shadow frustum centred on the action
-    this.sun.position.set(look.x - 18, 30 + look.y, look.z + 22); this.sun.target.position.copy(look);
+    this.camera = this.views[0].cam;   // (the effects that face a camera face the first view's)
+  }
+  // Keep the shadow frustum on the part of the world a view is looking at
+  aimSun(c) {
+    const f = c.fwd, at = this.tmpV.copy(c.pivot || c.at || c.cam.position);
+    if (f) at.addScaledVector(f, 10).setY((c.pivot || at).y);
+    this.sun.position.set(at.x - 18, 30 + at.y, at.z + 22); this.sun.target.position.copy(at);
   }
 
   onEvent(ev) {
     this.fx.onEvent(ev);
+    this.impactZ = laneOf(ev);
     if (ev.type === 'boxChip' || ev.type === 'boxBreak' || ev.type === 'liftBounce') this.breakables.onEvent(ev);
     if (ev.type === 'boxBreak') this.trauma = Math.min(1, this.trauma + (ev.b.tag === 'pillar' ? 0.4 : ev.b.tag === 'glass' ? 0.12 : 0.2));
     const shake = { armorBreak: 0.5, slam: 0.45, guardBreak: 0.3, impact: 0.5, ambush: 0.35, challenge: 0.2, playerHit: ev.heavy ? 0.35 : 0.15,
@@ -391,7 +414,7 @@ export class View {
     else if (ev.type === 'bossPhase' || ev.type === 'bossDown') this.startImpact(ev.x, ev.y, 1.2);
     else if (ev.type === 'ultNova') this.startImpact(ev.x, ev.y, 1.4, true);
     else if (ev.type === 'ultFinisher') this.startImpact(ev.x, ev.y, 1.2, true);
-    else if (ev.type === 'teamFinisher') this.pendingImpact = { t: 0.42, x: ev.x, y: ev.y, k: 1.5, by: this.impactBy };   // when the eclipse shatters
+    else if (ev.type === 'teamFinisher') this.pendingImpact = { t: 0.42, x: ev.x, y: ev.y, z: this.impactZ, k: 1.5, by: this.impactBy };   // when the eclipse shatters
     else if (ev.type === 'perfectDodge') this.startImpact(ev.x, ev.y, 0.6);
     else if (ev.type === 'ramSplat' && ev.n >= 2) this.startImpact(ev.x, ev.y, 0.9);
     else if (ev.type === 'kineticRelease' && ev.k >= 0.8) this.startImpact(ev.x, ev.y, 0.9);
@@ -410,11 +433,11 @@ export class View {
   // (main.js) while it runs. At most one every 0.9 s. The same pass dims the world while an ultimate is called.
   startImpact(x, y, strength = 1, force = false) {
     if (!SETTINGS.impactFrames || (this.impactCd > 0 && !force)) return;
-    const s = this.screenOf(x, y), r = this.canvas.getBoundingClientRect();
-    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, r.width), cy: 1 - s.y / Math.max(1, r.height), k: strength, seed: Math.random() * 100 };
+    const z = this.impactZ ?? 0;   // (onEvent sets it from the event's lane)
+    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, x, y, z, k: strength, seed: Math.random() * 100 };
     const style = IMPACT_STYLES.includes(SETTINGS.impactStyle) ? SETTINGS.impactStyle : 'scifi', U = this.ink.uniforms;
     let by = this.impactBy;
-    if (!by && this.world) { let bd = Infinity; for (const q of this.world.players) { const dd = Math.hypot(q.x - x, q.y - y); if (dd < bd) { bd = dd; by = q; } } }
+    if (!by && this.world) { let bd = Infinity; for (const q of this.world.players) { const dd = Math.hypot(q.x - x, q.y - y, q.z - z); if (dd < bd) { bd = dd; by = q; } } }
     const mode = SETTINGS.impactColor, col = by && mode === 'player' ? PLAYER_COLORS[by.slot] : by && mode === 'character' ? CHARS[by.char].energy : null;
     U.style.value = IMPACT_STYLES.indexOf(style); U.accent.value.set(col || IMPACT_ACCENT[style]); U.tinted.value = col ? 1 : 0;
     this.impactCd = 0.9; this.hitPause = 0.05 + 0.05 * strength;
@@ -431,7 +454,7 @@ export class View {
     U.dim.value = this.dim; U.time.value = this.time;
     if (!I) { U.amount.value = 0; this.ink.enabled = this.dim > 0; return this.ink.enabled; }
     I.t += dt; const k = Math.min(1, I.t / I.dur);
-    U.center.value.set(I.cx, I.cy); U.seed.value = I.seed;
+    U.seed.value = I.seed;   // (its centre is set for each view as it draws: render)
     U.invert.value = k < 0.1 ? 1 : Math.max(0, 1 - (k - 0.1) / 0.06);
     U.amount.value = k < 0.78 ? 1 : Math.max(0, 1 - (k - 0.78) / 0.22);
     U.zoom.value = 0.07 * I.k * (1 - k) * (1 - k); U.split.value = 0.008 * I.k * (1 - k);
@@ -445,33 +468,44 @@ export class View {
     this.time += dt;
     const PI = this.pendingImpact;
     this.world = world;
-    if (PI && (PI.t -= dt) <= 0) { this.pendingImpact = null; this.impactBy = PI.by; this.startImpact(PI.x, PI.y, PI.k, true); this.punch = Math.min(this.punch, -0.6); this.trauma = 1; }
+    if (PI && (PI.t -= dt) <= 0) { this.pendingImpact = null; this.impactBy = PI.by; this.impactZ = PI.z; this.startImpact(PI.x, PI.y, PI.k, true); this.punch = Math.min(this.punch, -0.6); this.trauma = 1; }
+    this.layoutViews(world);
     this.syncEntities(world, alpha, dt);
-    this.updateCamera(world, dt);
+    this.updateCamera(world, dt, alpha);
     this.fx.update(dt, world, { alpha, rigs: this.rigs, camera: this.camera });
     this.breakables.update(dt, world);
-    const inking = this.updateImpact(dt, world);
-    if (SETTINGS.quality === 'low' && !inking) {
-      this.r.shadowMap.enabled = false;
-      this.r.render(this.scene, this.camera);
-      return;
-    }
-    this.r.shadowMap.enabled = SETTINGS.quality !== 'low';
+    const inking = this.updateImpact(dt, world), low = SETTINGS.quality === 'low' && !inking, r = this.r;
+    r.shadowMap.enabled = SETTINGS.quality !== 'low';
     this.bloom.enabled = SETTINGS.quality !== 'low';
     this.bloom.strength = 0.65 + this.bloomKick * 0.9;
-    this.composer.render(dt);
+    const H = this.h || 1, split = this.views.length > 1;
+    r.setScissorTest(split);
+    for (const c of this.views) {
+      const v = c.vp, own = c.p ? this.rigs.get(c.p) : null, shown = own ? own.root.visible : false;
+      if (own && c.close) own.root.visible = false;   // a camera pressed up against him looks through him
+      r.setViewport(v.x, H - v.y - v.h, v.w, v.h); r.setScissor(v.x, H - v.y - v.h, v.w, v.h);
+      this.aimSun(c);
+      if (this.impact) { const s = this.project(c, this.impact.x, this.impact.y, this.impact.z); this.ink.uniforms.center.value.set(s.nx, s.ny); }
+      if (low) r.render(this.scene, c.cam);
+      else { this.renderPass.camera = c.cam; this.composer.render(dt); }
+      if (own) own.root.visible = shown;
+    }
+    r.setScissorTest(false); r.setViewport(0, 0, this.w || 1, H);
   }
 
-  // Sim point -> CSS pixel position on the canvas
-  screenOf(x, y, out = { x: 0, y: 0, vis: true }) {
-    const v = toWorld(x, y, 0, new THREE.Vector3()).project(this.camera);
-    const r = this.canvas.getBoundingClientRect();
-    out.x = (v.x * 0.5 + 0.5) * r.width; out.y = (-v.y * 0.5 + 0.5) * r.height; out.vis = v.z < 1;
+  // A sim point in a view: CSS px on the canvas (x, y), normalised in the view (nx, ny: 0..1 from bottom left),
+  // and whether it is in front of the camera and inside the view (vis)
+  project(c, x, y, z = 0, out = { x: 0, y: 0, nx: 0, ny: 0, vis: true }) {
+    const v = toWorldZ(x, y, z, this.tmpP).project(c.cam), vp = c.vp;
+    out.nx = v.x * 0.5 + 0.5; out.ny = v.y * 0.5 + 0.5;
+    out.x = vp.x + out.nx * vp.w; out.y = vp.y + (1 - out.ny) * vp.h;
+    out.vis = v.z < 1 && v.z > -1 && out.nx > -0.02 && out.nx < 1.02 && out.ny > -0.02 && out.ny < 1.02;
     return out;
   }
-  aimFromMouse(mx, my, p) {
-    const c = this.screenOf(p.x, p.y + p.h * 0.62);
-    const dx = mx - c.x, dy = -(my - c.y), m = Math.hypot(dx, dy);
-    return m < 6 ? null : [dx / m, dy / m];
+  // The same in view i (the first by default), or in the view of the person playing p (screenOf(x, y, z, p))
+  screenOf(x, y, z = 0, which = 0, out) {
+    const c = typeof which === 'number' ? this.views[which] || this.views[0] : this.cams.get(which) || this.views[0];
+    if (!c) return { x: 0, y: 0, nx: 0, ny: 0, vis: false };
+    return this.project(c, x, y, z, out);
   }
 }

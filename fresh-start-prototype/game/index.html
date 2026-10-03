@@ -166,6 +166,20 @@ th { font-family: var(--font-display); text-transform: uppercase; letter-spacing
 @media (prefers-reduced-motion: reduce) { .chip.over { animation: none; } }
 
 .labels > div { position: absolute; left: 0; top: 0; will-change: transform; }
+/* Third-person crosshair (one per view, at its centre) and the lines between split-screen views */
+.xhair { width: 0; height: 0; pointer-events: none; }
+.xhair i { position: absolute; background: var(--pc); box-shadow: 0 0 0 1px rgba(0,0,0,0.55); border-radius: 1px; transition: transform 0.12s; }
+.xhair i:nth-child(1) { width: 2px; height: 8px; left: -1px; top: -14px; }
+.xhair i:nth-child(2) { width: 2px; height: 8px; left: -1px; top: 6px; }
+.xhair i:nth-child(3) { width: 8px; height: 2px; left: -14px; top: -1px; }
+.xhair i:nth-child(4) { width: 8px; height: 2px; left: 6px; top: -1px; }
+.xhair b { position: absolute; width: 4px; height: 4px; left: -2px; top: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.6); }
+.xhair.charging i:nth-child(1) { transform: translateY(-4px); } .xhair.charging i:nth-child(2) { transform: translateY(4px); }
+.xhair.charging i:nth-child(3) { transform: translateX(-4px); } .xhair.charging i:nth-child(4) { transform: translateX(4px); }
+.xhair.locked b { width: 12px; height: 12px; left: -6px; top: -6px; background: none; border: 2px solid var(--pc); }
+.labels > .split { background: rgba(8, 12, 22, 0.85); will-change: auto; }
+.labels > .split.v { width: 3px; height: 100%; }
+.labels > .split.h { height: 3px; width: 100%; }
 .pmarker { font-family: var(--font-display); font-weight: 800; font-size: 14px; letter-spacing: 0.04em; color: var(--pc);
   text-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 0 6px rgba(0,0,0,0.45); white-space: nowrap; }
 .bark { max-width: 240px; padding: 6px 10px; border-radius: 8px; background: rgba(250, 252, 255, 0.95); color: #101826; border-left: 4px solid var(--pc); font-size: 14px; line-height: 1.3; }

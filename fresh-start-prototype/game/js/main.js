@@ -8,6 +8,7 @@ import { Sound } from './audio.js';
 import { Music } from './music.js';
 import { Haptics } from './haptics.js';
 import { Bots, isBot, ORDERS } from './bot.js';
+import { LANE } from './space.js';
 
 loadSettings();
 const app = document.getElementById('app');
@@ -40,7 +41,21 @@ function resize() {
 new ResizeObserver(resize).observe(app);
 resize();
 
-function setPaused(on) { paused = on; ui.setPaused(on, world); if (!on) { canvas.focus(); input.swallowAll(); } }
+function setPaused(on) {
+  paused = on; ui.setPaused(on, world);
+  if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); }
+  else { canvas.focus(); input.swallowAll(); lockPointer(); }
+}
+// The mouse turns the camera while the pointer is locked to the game: a click on the game locks it, and the
+// browser's own way out (Esc) pauses
+function lockPointer() {
+  if (!started || paused || ui.helpOpen || !world.players.some(p => p.device === 'kbm')) return;
+  if (document.pointerLockElement !== canvas && canvas.requestPointerLock) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* not allowed here */ } }
+}
+canvas.addEventListener('click', lockPointer);
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && started && !paused && !ui.helpOpen) setPaused(true);
+});
 
 function tryJoin() {
   const devices = input.pollJoins(new Set(world.players.map(p => p.device)));
@@ -62,7 +77,7 @@ function giveOrder(p, type) {
   if (!answers.length) { ui.toast('No AI teammates to command (Settings: AI teammates)'); return; }
   ui.toast(bots.order ? `P${p.slot + 1}: ${ORDERS.names[type]}` : `P${p.slot + 1}: back to following`);
   answers.forEach(([b, line], i) => setTimeout(() => { if (world.players.includes(b)) ui.bark(b, line); }, 150 + i * 350));
-  if (bots.order) view.fx.groundRing(p.x, p.y, PLAYER_COLORS[p.slot], 0.4, 2.4, 0.5, 0.85);
+  if (bots.order) { LANE.z = p.z; view.fx.groundRing(p.x, p.y, PLAYER_COLORS[p.slot], 0.4, 2.4, 0.5, 0.85); }
 }
 
 function handleMenuEvents() {
@@ -77,7 +92,7 @@ function handleMenuEvents() {
     const p = world.players.find(q => q.device === ev.dev);
     if (!started || (!p && ev.type !== 'help')) continue;
     if (ev.type === 'pause') setPaused(!paused);
-    else if (ev.type === 'help') ui.toggleHelp();
+    else if (ev.type === 'help') { ui.toggleHelp(); if (ui.helpOpen && document.pointerLockElement === canvas) document.exitPointerLock(); }
     else if (ev.type === 'debug') ui.toggleDebug();
     else if (paused) ui.menuNav(ev);
     else if (ev.type === 'swap') world.swapCharacter(p, nextChar(p.char, ev.dir || 1));
@@ -91,13 +106,15 @@ function stepSim() {
   let cmds = {};
   for (const p of world.players) {
     if (isBot(p)) continue;
-    cmds[p.slot] = input.sample(p.device, (mx, my) => view.aimFromMouse(mx, my, p), SETTINGS.p1Aim);
+    // the camera turns the stick into a move along the ground and aims at what is under the crosshair
+    const cmd = input.sample(p.device), cam = view.camFor(p);
+    cmds[p.slot] = cam ? cam.command(cmd, world) : cmd;
   }
   bots.commands(world, cmds);
   // The command in force: on the HUD, a marker where they hold, and a word when an attack order's target falls
   const O = bots.order;
   ui.setOrder(O && world.players.includes(O.by) ? { name: ORDERS.names[O.type], slot: O.by.slot } : null);
-  if (O && O.type === 'hold' && world.tick % 50 === 0) view.fx.groundRing(O.x, O.y, PLAYER_COLORS[O.by.slot], 0.5, 1.8, 0.45, 0.6);
+  if (O && O.type === 'hold' && world.tick % 50 === 0) { LANE.z = O.z || 0; view.fx.groundRing(O.x, O.y, PLAYER_COLORS[O.by.slot], 0.5, 1.8, 0.45, 0.6); }
   if (bots.done === world.tick) { const b = world.players.find(isBot); if (b) ui.bark(b, ORDERS.lines[b.char].done); }
   if (window.__NS.inject) cmds = window.__NS.inject(world.tick, cmds) || cmds;
   world.step(cmds);
@@ -120,6 +137,8 @@ function frame(now) {
   handleMenuEvents();
   tryJoin();
   const halted = paused || ui.helpOpen;   // the game waits while a menu or the controls screen is open
+  // Each person turns their own camera
+  if (started && !halted) for (const p of world.players) { const c = view.camFor(p); if (c) { const [yaw, pitch] = input.look(p.device, dt); c.turn(yaw, pitch); } }
   if (started && !halted && !window.__NS.manual) {
     if (view.hitPause > 0) { view.hitPause -= dt; acc = 0; }   // an impact frame's hit-pause holds the world still
     else {

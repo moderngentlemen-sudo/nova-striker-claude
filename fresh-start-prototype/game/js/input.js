@@ -1,5 +1,9 @@
 // Input: keyboard + mouse (one device) and up to four gamepads.
-// Each simulation tick, a device produces one command frame with held/pressed/released edges.
+// Each simulation tick, a device produces one command frame with held/pressed/released edges: the move stick as
+// (sx right, sy forward), crouch, and the buttons. Its player's camera (camera.js) turns that into a move along
+// the ground and an aim. Every frame, look(dev, dt) says how far a device turned its camera: the mouse (with the
+// pointer locked to the game), the arrow keys, or the right stick.
+import { SETTINGS } from './config.js';
 
 const BTNS = ['jump', 'dash', 'melee', 'fire', 'parry', 'sig', 'mode', 'lock', 'sub', 'ult'];
 
@@ -8,7 +12,7 @@ const KEYMAP = {
   Space: 'jump', ShiftLeft: 'dash', ShiftRight: 'dash',
   KeyJ: 'melee', KeyK: 'fire', KeyL: 'parry', KeyQ: 'parry', KeyE: 'sig', KeyI: 'sig',
   KeyR: 'mode', KeyU: 'mode',   // Echo: cycle scarf mode; Nova: cycle bracer attachment
-  KeyF: 'lock', KeyO: 'lock',   // lock-on
+  KeyF: 'lock', KeyO: 'lock',   // lock-on (the mouse's forward button too)
   KeyT: 'sub', KeyY: 'sub',     // Nova: switch secondary weapon · RAM: Provoke · Fix: switch power-up
   KeyV: 'ult', KeyN: 'ult',     // ultimate (a gamepad pulls both triggers)
 };
@@ -51,8 +55,8 @@ export class Input {
       if (e.code === 'Digit2') this.menuEvents.push({ dev: 'kbm', type: 'pick', char: 'echo' });
       if (e.code === 'Digit3') this.menuEvents.push({ dev: 'kbm', type: 'pick', char: 'ram' });
       if (e.code === 'Digit4') this.menuEvents.push({ dev: 'kbm', type: 'pick', char: 'fix' });
-      // Team commands to the AI teammates (bot.js): Z attack my target · G cover me · X regroup on me · C hold here
-      const order = { KeyZ: 'attack', KeyG: 'cover', KeyX: 'regroup', KeyC: 'hold' }[e.code];
+      // Team commands to the AI teammates (bot.js): Z attack my target · G cover me · X regroup on me · B hold here
+      const order = { KeyZ: 'attack', KeyG: 'cover', KeyX: 'regroup', KeyB: 'hold' }[e.code];
       if (order) this.menuEvents.push({ dev: 'kbm', type: 'order', order });
     });
     window.addEventListener('keyup', e => {
@@ -60,7 +64,9 @@ export class Input {
       this.kbReleased.add(e.code);
     });
     window.addEventListener('blur', () => { this.keys.clear(); this.mouse.buttons = 0; });
-    canvas.addEventListener('mousemove', e => {
+    this.lookDX = 0; this.lookDY = 0;   // mouse movement while the pointer is locked to the game
+    document.addEventListener('mousemove', e => {
+      if (document.pointerLockElement === canvas) { this.lookDX += e.movementX || 0; this.lookDY += e.movementY || 0; }
       const r = canvas.getBoundingClientRect();
       this.mouse.x = e.clientX - r.left; this.mouse.y = e.clientY - r.top; this.mouse.moved = true;
     });
@@ -145,16 +151,36 @@ export class Input {
     }
   }
 
-  // aimFromMouse(screenX, screenY) is supplied by the caller: returns a unit sim-space vector.
-  sample(dev, aimFromMouse, p1AimMode) {
-    const st = this.devices[dev] || (this.devices[dev] = { prevHeld: {}, grace: 0, lastFree: [1, 0] });
+  // How far a device turns its camera this frame, as [yaw right, pitch up] in radians
+  look(dev, dt) {
+    const k = Number(SETTINGS.camSens) || 1, inv = SETTINGS.invertY ? -1 : 1;
+    if (dev === 'kbm') {
+      const key = c => (this.keys.has(c) ? 1 : 0);
+      let yaw = this.lookDX * 0.0024 * k, pitch = -this.lookDY * 0.0024 * k * inv;
+      this.lookDX = 0; this.lookDY = 0;
+      yaw += (key('ArrowRight') - key('ArrowLeft')) * 2.4 * k * dt;
+      pitch += (key('ArrowUp') - key('ArrowDown')) * 1.6 * k * dt * inv;
+      return [yaw, pitch];
+    }
+    const pad = this.pads().find(p => 'pad' + p.index === dev);
+    if (!pad || this.menuOpen) return [0, 0];
+    const [rx, ry] = deadzone(pad.axes[2] || 0, -(pad.axes[3] || 0), 0.16), m = Math.hypot(rx, ry);
+    if (!m) return [0, 0];
+    const curve = Math.pow(m, 1.7) / m;   // fine control near the centre, a fast turn at the edge
+    return [rx * curve * 3.4 * k * dt, ry * curve * 2.2 * k * dt * inv];
+  }
+
+  sample(dev) {
+    const st = this.devices[dev] || (this.devices[dev] = { prevHeld: {} });
     const held = {};
-    let mx = 0, my = 0, aimFree = false, ax = 0, ay = 0;
+    let sx = 0, sy = 0, crouch = false;
 
     if (dev === 'kbm') {
       const k = c => this.keys.has(c);
-      mx = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0);
-      my = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0);
+      sx = (k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0);
+      sy = (k('KeyW') ? 1 : 0) - (k('KeyS') ? 1 : 0);
+      if (sx && sy) { sx *= Math.SQRT1_2; sy *= Math.SQRT1_2; }
+      crouch = k('KeyC');
       for (const b of BTNS) held[b] = false;
       for (const [code, b] of Object.entries(KEYMAP)) if (k(code)) held[b] = true;
       // Bits: 1 = left (fire), 2 = middle (signature), 4 = right (melee), 8 = back (mode), 16 = forward (lock-on)
@@ -163,10 +189,6 @@ export class Input {
       if (this.mouse.buttons & 4) held.melee = true;
       if (this.mouse.buttons & 8) held.mode = true;
       if (this.mouse.buttons & 16) held.lock = true;
-      if (p1AimMode === 'mouse' && aimFromMouse) {
-        const v = aimFromMouse(this.mouse.x, this.mouse.y);
-        if (v) { aimFree = true; ax = v[0]; ay = v[1]; }
-      }
       // Keyboard presses that happened and released between samples still count as presses
       const pressedExtra = {};
       for (const code of this.kbPressed) { const b = KEYMAP[code]; if (b) pressedExtra[b] = true; }
@@ -176,16 +198,15 @@ export class Input {
       if (this.mousePressed.has(3)) pressedExtra.mode = true;
       if (this.mousePressed.has(4)) pressedExtra.lock = true;
       this.kbPressed.clear(); this.mousePressed.clear(); this.kbReleased.clear(); this.mouseReleased.clear();
-      return this.finish(st, held, pressedExtra, mx, my, aimFree, ax, ay);
+      return this.finish(st, held, pressedExtra, sx, sy, crouch);
     }
 
     const pad = this.pads().find(p => 'pad' + p.index === dev);
     for (const b of BTNS) held[b] = false;
     if (pad) {
       const bt = i => (pad.buttons[i] ? pad.buttons[i].pressed || pad.buttons[i].value > 0.5 : false);
-      [mx, my] = deadzone(pad.axes[0] || 0, -(pad.axes[1] || 0), 0.22);
-      const [rx, ry] = deadzone(pad.axes[2] || 0, -(pad.axes[3] || 0), 0.3);
-      if (bt(12)) my = 1; if (bt(13)) my = -1;
+      [sx, sy] = deadzone(pad.axes[0] || 0, -(pad.axes[1] || 0), 0.22);
+      crouch = bt(10);      // hold the left stick in to crouch
       held.jump = bt(0);
       held.sub = bt(4);     // LB: switch secondary weapon
       held.dash = bt(1);
@@ -195,20 +216,14 @@ export class Input {
       held.parry = pad.buttons[6] ? pad.buttons[6].value > 0.5 || pad.buttons[6].pressed : false;
       held.fire = pad.buttons[7] ? pad.buttons[7].value > 0.35 || pad.buttons[7].pressed : false;
       held.lock = bt(11);   // right stick click
-      const rm = Math.hypot(rx, ry);
-      if (rm > 0.35) {
-        aimFree = true; ax = rx / rm; ay = ry / rm; st.grace = 18; st.lastFree = [ax, ay];
-      } else if (st.grace > 0) {
-        st.grace--; aimFree = true; [ax, ay] = st.lastFree;
-      }
     }
-    return this.finish(st, held, {}, mx, my, aimFree, ax, ay);
+    return this.finish(st, held, {}, sx, sy, crouch);
   }
 
   // After a menu closes, buttons still held from closing it count as already held (no stray jump or dash)
   swallowAll() { for (const st of Object.values(this.devices)) st.swallow = true; this.kbPressed.clear(); this.mousePressed.clear(); }
 
-  finish(st, held, pressedExtra, mx, my, aimFree, ax, ay) {
+  finish(st, held, pressedExtra, sx, sy, crouch) {
     if (st.swallow) { st.swallow = false; st.prevHeld = { ...held }; pressedExtra = {}; }
     const pressed = {}, released = {};
     for (const b of BTNS) {
@@ -216,7 +231,7 @@ export class Input {
       released[b] = !held[b] && !!st.prevHeld[b];
     }
     st.prevHeld = { ...held };
-    return { mx, my, aimFree, ax, ay, held, pressed, released };
+    return { sx, sy, crouch, mx: 0, mz: 0, my: crouch ? -1 : 0, aimFree: false, ax: 0, ay: 0, az: 0, held, pressed, released };
   }
 
   takeMenuEvents() {
@@ -227,4 +242,4 @@ export class Input {
 }
 
 const none = () => Object.fromEntries(BTNS.map(b => [b, false]));
-export const EMPTY_CMD = { mx: 0, my: 0, aimFree: false, ax: 0, ay: 0, held: none(), pressed: none(), released: none() };
+export const EMPTY_CMD = { mx: 0, my: 0, mz: 0, aimFree: false, ax: 0, ay: 0, az: 0, held: none(), pressed: none(), released: none() };
