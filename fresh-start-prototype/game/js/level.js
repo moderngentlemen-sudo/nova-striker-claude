@@ -186,8 +186,45 @@ export const DESTRUCT = {
   pillar:    { hp: 70, min: 3, color: '#b9c2cc', debris: 'stone' },
 };
 
-export const BOXES = RAW.map(([x0, x1, y0, y1, type, tag, loot], id) => ({ id, x0, x1, y0, y1, type, tag, loot: loot || null,
-  hp: type === 'd' ? DESTRUCT[tag].hp : 0, broken: false }));
+// ---- The third dimension ----
+// The simulation's x runs along the path and y up; z is the lateral offset across the path (positive toward the
+// side the old side-on camera sat on). Every box has a z extent: walkways are corridors HW m either side of the
+// path line (wider in the arenas) with low rails along their edges; platforms, cover and set pieces are narrower,
+// so they can be walked round; the walls at the ends of a route and the energy gates span all of it.
+export const HW = 4.5, ARENA_HW = 6.5;
+const WALKWAY = new Set(['ground', 'floor', 'roof', 'yard', 'relay', 'pad', 'crucible', 'plaza', 'top', 'ledge', 'step', 'landing', 'stair', 'bridge']);
+const ARENAS = [[60, 97], [258, 318], [702, 762], [1119, 1179]];
+export const laneHW = (x0, x1 = x0) => (ARENAS.some(([a, b]) => x0 >= a - 0.01 && x1 <= b + 0.01) ? ARENA_HW : HW);
+// Breakable pieces stand at different places across the walkway (stacked crates share a spot)
+const SPOTS = [-2.4, 1.6, -0.6, 2.4, 0.4, -1.6];
+function zSpan(x0, x1, type, tag) {
+  if (tag === 'bound') return [-16, 16];
+  if (type === 'g') return [-ARENA_HW - 1.5, ARENA_HW + 1.5];
+  if (tag === 'bridge') return [-2.2, 2.2];
+  if (WALKWAY.has(tag) || tag === 'tunnel') { const h = laneHW(x0, x1); return [-h, h]; }
+  if (type === 'd') {
+    const o = SPOTS[Math.floor(x0 / 6) % SPOTS.length];
+    if (tag === 'crate') return [o - 0.5, o + 0.5];
+    if (tag === 'pillar') return [o - 0.6, o + 0.6];
+    if (tag === 'glass') return [-2.5, 2.5];
+    return o < 0 ? [o - 1, o + 3] : [o - 3, o + 1];   // a barricade, leaving a way round on one side
+  }
+  if (tag === 'ring') return [-2.6, 2.6];
+  if (type === 'o') return tag === 'dais' ? [-2.6, 2.6] : [-1.8, 1.8];
+  if (tag === 'column') return [-0.4, 0.4];
+  if (tag === 'pillar') return [-0.5, 0.5];
+  if (tag === 'panel') return [-1.6, 1.6];
+  return [-2, 2];   // cover, walls, blocks
+}
+export const BOXES = RAW.map(([x0, x1, y0, y1, type, tag, loot], id) => {
+  const [z0, z1] = zSpan(x0, x1, type, tag);
+  return { id, x0, x1, y0, y1, z0, z1, type, tag, loot: loot || null, hp: type === 'd' ? DESTRUCT[tag].hp : 0, broken: false };
+});
+// Low rails along both edges of every walkway: they stop a knockback carrying anyone off the side (a jump clears them)
+for (const b of BOXES.filter(q => WALKWAY.has(q.tag))) {
+  BOXES.push({ id: BOXES.length, x0: b.x0, x1: b.x1, y0: b.y1, y1: b.y1 + 1.0, z0: b.z0, z1: b.z0 + 0.25, type: 's', tag: 'rail', loot: null, hp: 0, broken: false });
+  BOXES.push({ id: BOXES.length, x0: b.x0, x1: b.x1, y0: b.y1, y1: b.y1 + 1.0, z0: b.z1 - 0.25, z1: b.z1, type: 's', tag: 'rail', loot: null, hp: 0, broken: false });
+}
 // Put every breakable piece back (a reset to a checkpoint, a zone load)
 export function restoreBoxes() { for (const b of BOXES) if (b.type === 'd') { b.broken = false; b.hp = DESTRUCT[b.tag].hp; } }
 // Left and right ends of the level: projectiles that leave this span are gone
@@ -286,6 +323,7 @@ export const LEVEL_PICKUPS = [
 // Lift pads on the floor (Helix Foundry): anyone who comes down on one is thrown straight up to `top` (the
 // platform overhead), so a missed jump on the helix is a bounce back up, not a long walk back: [x, y, top]
 export const LIFTS = [[593, 0, 8.8], [607, 0, 13.2], [621, 0, 17.6], [635, 0, 22], [649, 0, 24.2]];
+export const LIFT_HW = 2.6;   // how far across the floor each lift pad reaches (the helix platforms over them are as deep)
 
 // How low counts as falling out (a fall below this brings you back): per stretch of the routes
 const KILL = [[662, 764, 14], [800, 924, 6]];
@@ -300,27 +338,41 @@ function isSolid(b) {
   return b.type === 's' || (b.type === 'g' && GATES[b.tag]) || (b.type === 'd' && !b.broken);
 }
 // The breakable piece at a point, if any
-export function breakableAt(x, y, pad = 0) {
-  for (const b of BOXES) if (b.type === 'd' && !b.broken && x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad) return b;
+export function breakableAt(x, y, z = 0, pad = 0) {
+  for (const b of BOXES) if (b.type === 'd' && !b.broken && x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad && z > b.z0 - pad && z < b.z1 + pad) return b;
   return null;
 }
 
-function overlaps(x0, x1, y0, y1, b) {
-  return x0 < b.x1 && x1 > b.x0 && y0 < b.y1 && y1 > b.y0;
+function overlaps(x0, x1, y0, y1, z0, z1, b) {
+  return x0 < b.x1 && x1 > b.x0 && y0 < b.y1 && y1 > b.y0 && z0 < b.z1 && z1 > b.z0;
 }
 
-// Body: { x (centre), y (feet), w, h, vx, vy }. Sets onGround, wallDir, hitWall, hitCeil.
+// Body: { x (centre), y (feet), z (centre), w (footprint: w by w), h, vx, vy, vz }. Sets onGround, wallDir (with
+// wallX, wallZ: the way into the wall touched), hitWall (non-zero when a wall stopped it: ±1 along x, ±2 along z)
+// and hitCeil.
 export function moveBody(body, dt) {
   const hw = body.w / 2;
+  if (body.z === undefined) body.z = 0;
+  if (body.vz === undefined) body.vz = 0;
   body.hitWall = 0; body.hitCeil = false;
-  // Horizontal
+  // Along the path
   body.x += body.vx * dt;
   for (const b of BOXES) {
     if (!isSolid(b)) continue;
-    if (overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, b)) {
+    if (overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, body.z - hw, body.z + hw, b)) {
       if (body.x < (b.x0 + b.x1) / 2) { body.x = b.x0 - hw - 1e-4; body.hitWall = 1; }
       else { body.x = b.x1 + hw + 1e-4; body.hitWall = -1; }
       body.vx = 0;
+    }
+  }
+  // Across it
+  body.z += body.vz * dt;
+  for (const b of BOXES) {
+    if (!isSolid(b)) continue;
+    if (overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, body.z - hw, body.z + hw, b)) {
+      if (body.z < (b.z0 + b.z1) / 2) { body.z = b.z0 - hw - 1e-4; body.hitWall = body.hitWall || 2; }
+      else { body.z = b.z1 + hw + 1e-4; body.hitWall = body.hitWall || -2; }
+      body.vz = 0;
     }
   }
   // Vertical
@@ -330,9 +382,7 @@ export function moveBody(body, dt) {
   for (const b of BOXES) {
     const solid = isSolid(b);
     if (!solid && b.type !== 'o') continue;
-    if (!overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, b)) {
-      continue;
-    }
+    if (!overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, body.z - hw, body.z + hw, b)) continue;
     if (b.type === 'o') {
       if (body.vy <= 0 && prevY >= b.y1 - 0.02 && !(body.dropT > 0)) {
         body.y = b.y1; body.vy = 0; body.onGround = true;
@@ -350,94 +400,88 @@ export function moveBody(body, dt) {
       body.vy = 0;
     }
   }
-  // Wall contact probe (for wall cling while airborne). Gates are energy barriers: nothing to cling to.
-  body.wallDir = 0;
+  // Wall contact probe (for wall cling while airborne). Gates are energy barriers and rails are too low: nothing
+  // to cling to.
+  body.wallDir = 0; body.wallX = 0; body.wallZ = 0;
   if (!body.onGround) {
     for (const b of BOXES) {
-      if (!isSolid(b) || b.type === 'g') continue;
+      if (!isSolid(b) || b.type === 'g' || b.tag === 'rail') continue;
       const ya = body.y + 0.3, yb = body.y + body.h - 0.2;
-      if (ya < b.y1 && yb > b.y0) {
-        if (Math.abs(body.x + hw - b.x0) < 0.06) body.wallDir = 1;
-        else if (Math.abs(body.x - hw - b.x1) < 0.06) body.wallDir = -1;
-      }
+      if (!(ya < b.y1 && yb > b.y0)) continue;
+      const inZ = body.z + hw > b.z0 + 0.05 && body.z - hw < b.z1 - 0.05, inX = body.x + hw > b.x0 + 0.05 && body.x - hw < b.x1 - 0.05;
+      if (inZ && Math.abs(body.x + hw - b.x0) < 0.06) { body.wallDir = 1; body.wallX = 1; body.wallZ = 0; }
+      else if (inZ && Math.abs(body.x - hw - b.x1) < 0.06) { body.wallDir = -1; body.wallX = -1; body.wallZ = 0; }
+      else if (inX && Math.abs(body.z + hw - b.z0) < 0.06) { body.wallDir = 2; body.wallX = 0; body.wallZ = 1; }
+      else if (inX && Math.abs(body.z - hw - b.z1) < 0.06) { body.wallDir = -2; body.wallX = 0; body.wallZ = -1; }
     }
   }
 }
 
-// Can a body of height h stand at (x, y)?
-export function hasHeadroom(x, y, w, h) {
+// Can a body of height h (and footprint w) stand at (x, y, z)?
+export function hasHeadroom(x, y, z, w, h) {
   const hw = w / 2;
   for (const b of BOXES) {
     if (!isSolid(b)) continue;
-    if (overlaps(x - hw, x + hw, y + 0.05, y + h, b)) return false;
+    if (overlaps(x - hw, x + hw, y + 0.05, y + h, z - hw, z + hw, b)) return false;
   }
   return true;
 }
 
-export function groundBelow(x, y) {
+// The highest floor (solid or one-way top) under a point, at or below y
+export function groundBelow(x, y, z = 0) {
   let best = -Infinity;
   for (const b of BOXES) {
     if (!(isSolid(b) || b.type === 'o')) continue;
-    if (x > b.x0 && x < b.x1 && b.y1 <= y + 0.01 && b.y1 > best) best = b.y1;
+    if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && b.y1 <= y + 0.01 && b.y1 > best) best = b.y1;
   }
   return best;
 }
 
-// Segment-vs-solid test for line of sight (slab method).
-export function segmentBlocked(ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
+// Slab test of a ray from (x, y, z) along (dx, dy, dz) against a box (x0..x1, y0..y1, z0..z1): the entry distance
+// and the face normal hit, or null. A ray that starts inside the box enters at 0.
+export function rayBoxT(x, y, z, dx, dy, dz, b) {
+  let tin = -Infinity, tout = Infinity, nx = 0, ny = 0, nz = 0;
+  const axis = (o, d, lo, hi, set) => {
+    if (Math.abs(d) < 1e-9) return o > lo && o < hi;
+    const ta = (lo - o) / d, tb = (hi - o) / d, tn = Math.min(ta, tb);
+    if (tn > tin) { tin = tn; set(d > 0 ? -1 : 1); }
+    tout = Math.min(tout, Math.max(ta, tb));
+    return true;
+  };
+  if (!axis(x, dx, b.x0, b.x1, s => { nx = s; ny = 0; nz = 0; })) return null;
+  if (!axis(y, dy, b.y0, b.y1, s => { nx = 0; ny = s; nz = 0; })) return null;
+  if (!axis(z, dz, b.z0 ?? -Infinity, b.z1 ?? Infinity, s => { nx = 0; ny = 0; nz = s; })) return null;
+  if (tin > tout || tout < 0) return null;
+  return { t: Math.max(0, tin), nx, ny, nz };
+}
+
+// Segment-vs-solid test for line of sight
+export function segmentBlocked(ax, ay, az, bx, by, bz) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy, dz);
+  if (L < 1e-9) return pointInSolid(ax, ay, az);
   for (const b of BOXES) {
-    if (!isSolid(b)) continue;
-    let t0 = 0, t1 = 1;
-    const check = (p, q) => {
-      if (Math.abs(p) < 1e-9) return q >= 0;
-      const r = q / p;
-      if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
-      else { if (r < t0) return false; if (r < t1) t1 = r; }
-      return true;
-    };
-    if (check(-dx, ax - b.x0) && check(dx, b.x1 - ax) && check(-dy, ay - b.y0) && check(dy, b.y1 - ay)) {
-      if (t0 <= t1) return true;
-    }
+    if (!isSolid(b) || b.tag === 'rail') continue;   // (a rail is too low to hide behind)
+    const h = rayBoxT(ax, ay, az, dx / L, dy / L, dz / L, b);
+    if (h && h.t <= L) return true;
   }
   return false;
 }
 
-// Slab test of a ray from (x, y) along (dx, dy) against a box: the entry distance and the face normal hit,
-// or null. A ray that starts inside the box enters at 0.
-export function rayBoxT(x, y, dx, dy, x0, y0, x1, y1) {
-  let tin = -Infinity, tout = Infinity, nx = 0, ny = 0;
-  if (Math.abs(dx) < 1e-9) { if (x <= x0 || x >= x1) return null; }
-  else {
-    const ta = (x0 - x) / dx, tb = (x1 - x) / dx, tn = Math.min(ta, tb);
-    if (tn > tin) { tin = tn; nx = dx > 0 ? -1 : 1; ny = 0; }
-    tout = Math.min(tout, Math.max(ta, tb));
-  }
-  if (Math.abs(dy) < 1e-9) { if (y <= y0 || y >= y1) return null; }
-  else {
-    const ta = (y0 - y) / dy, tb = (y1 - y) / dy, tn = Math.min(ta, tb);
-    if (tn > tin) { tin = tn; nx = 0; ny = dy > 0 ? -1 : 1; }
-    tout = Math.min(tout, Math.max(ta, tb));
-  }
-  if (tin > tout || tout < 0) return null;
-  return { t: Math.max(0, tin), nx, ny };
-}
-
-// The first solid surface along a ray (unit direction), up to `range` m: where it is, how far, and the
-// surface normal there (wall: false when nothing is hit within range)
-export function rayCast(x, y, dx, dy, range) {
-  let best = range, nx = 0, ny = 0, box = null;
+// The first solid surface along a ray (unit direction), up to `range` m: where it is, how far, and the surface
+// normal there (wall: false when nothing is hit within range)
+export function rayCast(x, y, z, dx, dy, dz, range) {
+  let best = range, nx = 0, ny = 0, nz = 0, box = null;
   for (const b of BOXES) {
     if (!isSolid(b)) continue;
-    const h = rayBoxT(x, y, dx, dy, b.x0, b.y0, b.x1, b.y1);
-    if (h && h.t < best) { best = h.t; nx = h.nx; ny = h.ny; box = b; }
+    const h = rayBoxT(x, y, z, dx, dy, dz, b);
+    if (h && h.t < best) { best = h.t; nx = h.nx; ny = h.ny; nz = h.nz; box = b; }
   }
-  return { t: best, x: x + dx * best, y: y + dy * best, nx, ny, wall: best < range, box };
+  return { t: best, x: x + dx * best, y: y + dy * best, z: z + dz * best, nx, ny, nz, wall: best < range, box };
 }
 
-export function pointInSolid(x, y) {
+export function pointInSolid(x, y, z = 0) {
   for (const b of BOXES) {
-    if (isSolid(b) && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
+    if (isSolid(b) && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1 && z > b.z0 && z < b.z1) return true;
   }
   return false;
 }

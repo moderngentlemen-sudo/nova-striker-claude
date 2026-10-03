@@ -256,8 +256,8 @@ const M = MARKSMAN, C = M.charge, W = M.perfectWindow, BC = M.burst.charge;
   const { w, p, run, log } = setup(99);
   p.y = 6; p.onGround = false; p.vy = 0;
   const spec = { r: 1.9, rocket: 21 };
-  w.rocketPush(p, p.x, p.y - 0.2, spec, null, false); p.vy = 0;
-  w.rocketPush(p, p.x, p.y - 0.2, spec, null, false);
+  w.rocketPush(p, p.x, p.y - 0.2, p.z, spec, null, false); p.vy = 0;
+  w.rocketPush(p, p.x, p.y - 0.2, p.z, spec, null, false);
   const ks = w.events.filter(e => e.type === 'rocketJump').map(e => e.k);
   assert(ks.length === 2 && Math.abs(ks[1] / ks[0] - M.rocket.air[1]) < 1e-9, `Second air rocket jump strength x${(ks[1] / ks[0]).toFixed(2)}`);
 }

@@ -450,7 +450,7 @@ export const RAM = {
   pound: 1.3,
   // Bulwark Wall (suit ability): a hard-light wall planted `dist` m in front of him. It stops enemy shots and
   // enemies (they have to break it: `hp`), and the team's shots pass through it boosted.
-  wall: { cd: 720, ticks: 480, hp: 160, dist: 1.8, half: 1.75 },
+  wall: { cd: 720, ticks: 480, hp: 160, dist: 1.8, half: 1.75, wide: 2.2 },   // (wide: half its width across)
   // Guardian Link (mode button): links him to the teammate who needs it most within `range` m, leaping to their
   // side first when they are over `leapAt` m away (the landing shoves enemies). For `ticks`, `share` of the
   // damage they take comes to him instead, and they get `plate` Plating. It breaks beyond `breakAt` m.

@@ -33,11 +33,12 @@ function runRoute(char) {
   for (const S of w.encounters) S.state = 'cleared';   // traversal only: no fights
   let jumpHold = 0, doubled = false, falls = 0, t = 0;
   for (; t < 60 * 60 && p.x < ROUTE_END_X + 6; t++) {
-    const wall = pointInSolid(p.x + 0.9, p.y + 0.4) || pointInSolid(p.x + 0.9, p.y + 1.4);
-    const gap = p.onGround && groundBelow(p.x + 1.1, p.y + 0.2) < p.y - 0.5;
+    // (probed across the width of the body: in 3D a crate can stand to one side of the path line)
+    const wall = [-0.35, 0, 0.35].some(dz => pointInSolid(p.x + 0.9, p.y + 0.4, p.z + dz) || pointInSolid(p.x + 0.9, p.y + 1.4, p.z + dz));
+    const gap = p.onGround && groundBelow(p.x + 1.1, p.y + 0.2, p.z) < p.y - 0.5;
     const o = { mx: 1, held: {} };
     if (p.onGround) { doubled = false; if ((wall || gap) && jumpHold === 0) jumpHold = 14; }
-    else if (!doubled && jumpHold === 0 && p.vy < 2 && (wall || groundBelow(p.x + 1.5, p.y) < p.y - 3)) { doubled = true; jumpHold = 12; }
+    else if (!doubled && jumpHold === 0 && p.vy < 2 && (wall || groundBelow(p.x + 1.5, p.y, p.z) < p.y - 3)) { doubled = true; jumpHold = 12; }
     if (jumpHold > 0) { o.held.jump = jumpHold > 1; jumpHold--; }
     const before = count(log, 'recall');
     run(o, 1);

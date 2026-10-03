@@ -55,7 +55,7 @@ const GUARD = { held: { parry: true }, aim: [1, 0] };
   run({ mx: 1 }, 120);
   const underColumns = p.x > 69.5 && Math.abs(p.y) < 0.01;
   const t = setup(41, ['ram']); t.run({ mx: 1, my: -1 }, 360);
-  assert(c.height / CHARS.nova.height > 1.3 && c.width > 1 && c.hp > 150 && underColumns && t.p.x > 50.6 && hasHeadroom(65, 0, c.width, c.height),
+  assert(c.height / CHARS.nova.height > 1.3 && c.width > 1 && c.hp > 150 && underColumns && t.p.x > 50.6 && hasHeadroom(65, 0, 0, c.width, c.height),
     `RAM: ${c.height} m tall (Nova ${CHARS.nova.height}), ${c.hp} health; walks under the columns (x ${p.x.toFixed(1)}) and crawls through the tunnel (x ${t.p.x.toFixed(1)})`);
 }
 { // The Rampart blocks a shot from in front: no health lost, Integrity spent, Kinetic stored

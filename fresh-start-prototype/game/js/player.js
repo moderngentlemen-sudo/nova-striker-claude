@@ -6,9 +6,7 @@ import {
   WALL, DASH_CHARGE, LOCK, AEGIS, DASH_SLASH, POUND, SUBS, SUB, DODGE, ULT, RAM, FIX, PLATE_MAX,
 } from './config.js';
 import { moveBody, hasHeadroom } from './level.js';
-
-const sign = v => (v > 0 ? 1 : v < 0 ? -1 : 0);
-const approach = (v, t, d) => (v < t ? Math.min(v + d, t) : Math.max(v - d, t));
+import { sign, approach, approach2, setFacing, fz, away, hdist, turnToward, fwdBox, boxAt } from './geom.js';
 
 // Nova with the Marksman kit (bracer attachments, secondary weapons, dodge, skate glide)
 export const marksman = p => p.char === 'nova' && SETTINGS.novaKit === 'marksman';
@@ -19,12 +17,12 @@ export function snap8(x, y) {
   return [Math.cos(a), Math.sin(a)];
 }
 
-export function createPlayer(slot, device, charId, x, y) {
+export function createPlayer(slot, device, charId, x, y, z = 0) {
   const c = CHARS[charId];
   return {
     kind: 'player', slot, device, char: charId,
-    x, y, vx: 0, vy: 0, w: c.width, h: c.height, prevX: x, prevY: y,
-    facing: 1, onGround: false, wallDir: 0, coyote: 0, jumpsUsed: 0, airDashes: 1,
+    x, y, z, vx: 0, vy: 0, vz: 0, w: c.width, h: c.height, prevX: x, prevY: y, prevZ: z,
+    facing: 1, facingZ: 0, onGround: false, wallDir: 0, coyote: 0, jumpsUsed: 0, airDashes: 1,
     state: 'normal', st: 0, crouch: false, dropT: 0, controlLock: 0, wallSliding: false,
     dash: null, dashCd: 0, postDash: 99, dashCarry: false, fastFall: false,
     launchedT: 0, zipArriveT: 0, boostT: 0, iframe: false,
@@ -40,21 +38,21 @@ export function createPlayer(slot, device, charId, x, y) {
     attachment: 'lance', focus: 0, focusT: 0, burstCd: 0, burstT: 0, shootT: 0, carveT: 0,
     fuel: MARKSMAN.boost.fuel, thrusting: false, rockets: 0, rocketT: 0, rocketPow: 0,
     aegis: null, aegisCd: 0, overcharge: 0, overT: 0, beam: null, slash: null, pound: null,
-    sub: 'scatter', subSwCd: 0, subArmed: false, dodge: null, dodgeCd: 0, airDodge: true, airRise: true, stick: [0, 0],
+    sub: 'scatter', subSwCd: 0, subArmed: false, dodge: null, dodgeCd: 0, airDodge: true, airRise: true, stick: [0, 0, 0],
     ult: 0, ultRun: null, chordP: 99, chordF: 99,
     // RAM: the Rampart's Integrity and stored Kinetic, the guard, the Ram Charge, and his three abilities
-    integrity: RAM.guard.integrity, kinetic: 0, guardT: 99, guardOffT: 99, guardDir: [1, 0], blockT: 99, guardBroken: false,
+    integrity: RAM.guard.integrity, kinetic: 0, guardT: 99, guardOffT: 99, guardDir: [1, 0, 0], blockT: 99, guardBroken: false,
     rush: null, wallCd: 0, linkCd: 0, provokeCd: 0, link: null, leap: null, braceT: 0,
     // Fix: Scrap, the selected gadget and power-up, the Patch Beam, and a tossed power-up waiting for the button
     scrap: FIX.scrap.start, gadgetSel: 'pylon', powerSel: 'overclock', patch: null, tossArmed: false, rivetQ: 0, rivetT: 0,
     // Support anyone can carry: Plating (an overshield), Overclock, the Patch Beam's Tune-Up, an Amp Coil's field
     plate: 0, overclockT: 0, tuneT: 0, ampK: 1, fixRevive: false, padCd: 0, furyT: 0,
-    aimX: 1, aimY: 0, aimFree: false,
+    aimX: 1, aimY: 0, aimZ: 0, aimFree: false, camAim: false, lastWallX: 0, lastWallZ: 0,
     wallT: 0, wallStick: 0, wallCoyote: 0, lastWallDir: 0, dashChargeT: 0, rifleT: 0, rifleCd: 0,
     lockT: null, lockHeld: 0, lockHoldDone: false, lockLost: 0, lockSuspend: false,
     buf: { jump: 99, dash: 99, melee: 99, fire: 99, parry: 99, sig: 99, mode: 99, sub: 99 },
     downedT: 0, revive: 0, respawnT: 0, secondWind: true,
-    lastSafeX: x, lastSafeY: y, offscreenT: 0, vbTierShown: 0,
+    lastSafeX: x, lastSafeY: y, lastSafeZ: z, offscreenT: 0, vbTierShown: 0,
   };
 }
 
@@ -72,7 +70,7 @@ export function setCharacter(p, charId) {
   p.patch = null; p.tossArmed = false; p.rivetQ = 0; p.scrap = Math.max(p.scrap, FIX.scrap.start);
 }
 
-export function chest(p) { return { x: p.x, y: p.y + p.h * 0.62 }; }
+export function chest(p) { return { x: p.x, y: p.y + p.h * 0.62, z: p.z || 0 }; }
 
 // Which Velocity Break tier is available right now (0 = none)?
 export function vbTier(p) {
@@ -82,39 +80,66 @@ export function vbTier(p) {
   if (p.zipArriveT > 0) return 2;
   if (p.state === 'dash' || p.state === 'slide' || p.postDash <= 6) return 1;
   if (p.fastFall && p.vy < -18) return 2;
-  if (p.dashCarry && !p.onGround && Math.hypot(p.vx, p.vy) > HIGH_VEL) return 2;
+  if (p.dashCarry && !p.onGround && Math.hypot(p.vx, p.vy, p.vz) > HIGH_VEL) return 2;
   return 0;
 }
 
 function setState(p, s) { p.state = s; p.st = 0; }
 
+// The way the move stick points on the ground plane, as a unit vector (null when it is centred)
+export function moveDir(cmd, min = 0.3) {
+  const mx = cmd.mx || 0, mz = cmd.mz || 0, m = Math.hypot(mx, mz);
+  return m > min ? [mx / m, mz / m] : null;
+}
+const stickMag = cmd => Math.hypot(cmd.mx || 0, cmd.mz || 0);
+
+// Aim, a 3D unit vector. The third-person camera supplies it (cmd.aimFree with cmd.camAim: the crosshair's line,
+// pulled onto an enemy close to it by cmd.assist radians of aim assist); a gamepad with no free aim (and the
+// headless tests) aims the way he faces, up or down with the stick as in eight directions.
 function updateAim(p, cmd, world) {
   let d;
-  if (cmd.aimFree) { d = [cmd.ax, cmd.ay]; p.aimFree = true; }
-  else {
+  const c = chest(p);
+  p.camAim = !!cmd.camAim;
+  if (cmd.aimFree) {
+    d = [cmd.ax, cmd.ay, cmd.az || 0]; p.aimFree = true;
+    if (cmd.assist > 0) {
+      const e = world.nearestEnemyInCone(c.x, c.y, c.z, d[0], d[1], d[2], 40, cmd.assist, true);
+      if (e) { const dx = e.x - c.x, dy = e.y + e.h * 0.55 - c.y, dz = e.z - c.z, m = Math.hypot(dx, dy, dz) || 1; d = [dx / m, dy / m, dz / m]; }
+    }
+  } else {
     p.aimFree = false;
-    d = snap8(cmd.mx, cmd.my);
-    if (d && p.onGround && d[1] < 0) d = [p.facing, 0];      // down on the ground means crouch
-    if (!d) d = [p.facing, 0];
+    const hm = stickMag(cmd), s = snap8(hm, cmd.my);
+    const h = hm > 0.35 ? [cmd.mx / hm, (cmd.mz || 0) / hm] : [p.facing, fz(p)];
+    d = s ? [s[0] * h[0], s[1], s[0] * h[1]] : null;
+    if (d && p.onGround && d[1] < 0) d = [p.facing, 0, fz(p)];      // down on the ground means crouch
+    if (!d) d = [p.facing, 0, fz(p)];
     if (SETTINGS.aimAssist && p.device !== 'kbm') {
-      const c = chest(p);
-      const e = world.nearestEnemyInCone(c.x, c.y, d[0], d[1], 14, Math.PI / 8);
-      if (e) { const dx = e.x - c.x, dy = e.y + e.h / 2 - c.y, m = Math.hypot(dx, dy); d = [dx / m, dy / m]; }
+      const e = world.nearestEnemyInCone(c.x, c.y, c.z, d[0], d[1], d[2], 14, Math.PI / 8);
+      if (e) { const dx = e.x - c.x, dy = e.y + e.h / 2 - c.y, dz = e.z - c.z, m = Math.hypot(dx, dy, dz); d = [dx / m, dy / m, dz / m]; }
     }
   }
-  // Locked on: aim straight at the target. With automatic lock-on, free aim (right stick, mouse) still
+  // Locked on: aim straight at the target. With automatic lock-on, free aim (the camera, the right stick) still
   // aims where it points, and holding the stick up or down aims that way.
   if (p.lockT && (SETTINGS.lockMode === 'manual' || (!cmd.aimFree && Math.abs(cmd.my) < 0.55))) {
-    const c = chest(p), t = p.lockT, dx = t.x - c.x, dy = t.y + t.h * 0.55 - c.y, m = Math.hypot(dx, dy) || 1;
-    d = [dx / m, dy / m];
-  } else if (p.wallSliding && p.wallDir && d[0] * p.wallDir > 0) d = [-d[0], d[1]];   // on a wall: shoot out from it
-  p.aimX = d[0]; p.aimY = d[1];
+    const t = p.lockT, dx = t.x - c.x, dy = t.y + t.h * 0.55 - c.y, dz = t.z - c.z, m = Math.hypot(dx, dy, dz) || 1;
+    d = [dx / m, dy / m, dz / m];
+  } else if (p.wallSliding && p.wallDir) {
+    // on a wall: shoot out from it
+    const k = d[0] * p.wallX + d[2] * p.wallZ;
+    if (k > 0) d = [d[0] - 2 * k * p.wallX, d[1], d[2] - 2 * k * p.wallZ];
+  }
+  p.aimX = d[0]; p.aimY = d[1]; p.aimZ = d[2];
 }
+// The horizontal part of his aim, normalised (null when he aims nearly straight up or down)
+export function aimH(p) { const m = Math.hypot(p.aimX, p.aimZ || 0); return m > 0.2 ? [p.aimX / m, (p.aimZ || 0) / m] : null; }
+// Free aim he means to face (the stick or mouse of the old side view; never the third-person camera, which looks
+// wherever the player looks, so his attacks follow the way he moves instead)
+const faceAim = p => (p.aimFree && !p.camAim ? aimH(p) : null);
 
 export function updatePlayer(p, cmd, world) {
-  p.prevX = p.x; p.prevY = p.y;
+  p.prevX = p.x; p.prevY = p.y; p.prevZ = p.z;
   for (const b in p.buf) p.buf[b] = cmd.pressed[b] ? 0 : Math.min(99, p.buf[b] + 1);
-  trackChord(p, cmd); p.stick = [cmd.mx, cmd.my];
+  trackChord(p, cmd); p.stick = [cmd.mx, cmd.my, cmd.mz || 0];
   if (p.state === 'dead') return;
   // Mode switches (Echo's scarf, Nova's bracer attachment and secondary weapon) are instant, so a press
   // during hitstop is never lost
@@ -184,7 +209,7 @@ export function updatePlayer(p, cmd, world) {
   if (p.tossArmed) fixToss(p, cmd, world);
   // Boosters only run in the normal state; anything else (dash, hitstun, a burst...) cuts them
   if (p.thrusting && (p.state !== 'normal' || p.onGround)) { p.thrusting = false; world.emit('thrustOff', { p }); }
-  if (p.wallSliding !== wasSliding) world.emit('wallSlide', { p, on: p.wallSliding, dir: p.wallSliding ? p.wallDir : p.lastWallDir });
+  if (p.wallSliding !== wasSliding) world.emit('wallSlide', { p, on: p.wallSliding, dir: p.wallSliding ? p.wallDir : p.lastWallDir, wx: p.wallSliding ? p.wallX : p.lastWallX, wz: p.wallSliding ? p.wallZ : p.lastWallZ });
 
   const wasGround = p.onGround, fallV = p.vy;
   // (RAM stays standing, braced, while he charges a Battering Ram)
@@ -195,11 +220,11 @@ export function updatePlayer(p, cmd, world) {
     p.coyote = COYOTE; p.jumpsUsed = 0; p.airDashes = 1; p.fastFall = false; p.dashCarry = false; p.airDodge = true; p.airRise = true;
     p.rockets = 0; p.rocketT = 0; p.wallCoyote = 0; if (p.fuel < MARKSMAN.boost.fuel) p.fuel = Math.min(MARKSMAN.boost.fuel, p.fuel + MARKSMAN.boost.refill);
     if (!wasGround && p.st > 1) world.emit('land', { p, vy: fallV });
-    p.lastSafeX = p.x; p.lastSafeY = p.y;
+    p.lastSafeX = p.x; p.lastSafeY = p.y; p.lastSafeZ = p.z;
   }
   if (p.wallDir && !p.onGround) {
     // Touching a wall gives back the air dash and the double jump, and remembers the wall for a late wall jump
-    p.airDashes = 1; p.jumpsUsed = 0; p.airDodge = true; p.airRise = true; p.lastWallDir = p.wallDir; p.wallCoyote = WALL.coyote;
+    p.airDashes = 1; p.jumpsUsed = 0; p.airDodge = true; p.airRise = true; p.lastWallDir = p.wallDir; p.lastWallX = p.wallX; p.lastWallZ = p.wallZ; p.wallCoyote = WALL.coyote;
   }
   p.iframe = (SETTINGS.dashIframes && p.state === 'dash' && p.st <= 8) || (p.state === 'dash' && !!p.dash && p.st <= p.dash.iframes) ||
     (p.state === 'dodge' && !!p.dodge && p.dodge.t <= DODGE.iframes) || p.state === 'ult';
@@ -222,12 +247,13 @@ function tryJump(p, cmd, world) {
   const wd = p.wallDir !== 0 ? p.wallDir : p.wallCoyote > 0 ? p.lastWallDir : 0;
   if (wd !== 0) {
     // Holding away from the wall leaps off it; toward it or neutral is a climb kick that rises high and
-    // lets you come straight back to the same wall
-    const w = CHARS[p.char].wall, away = cmd.mx * wd < -0.3;
-    p.vx = -wd * (away ? w.jumpVx : WALL.climb.vx); p.vy = w.jumpVy * (away ? WALL.leapVy : 1);
-    p.controlLock = away ? w.lock : WALL.climb.lock; p.facing = -wd;
+    // lets you come straight back to the same wall. (wx, wz: the way into the wall)
+    const wx = p.wallDir !== 0 ? p.wallX : p.lastWallX, wz = p.wallDir !== 0 ? p.wallZ : p.lastWallZ;
+    const w = CHARS[p.char].wall, away = (cmd.mx || 0) * wx + (cmd.mz || 0) * wz < -0.3, k = away ? w.jumpVx : WALL.climb.vx;
+    p.vx = -wx * k; p.vz = -wz * k; p.vy = w.jumpVy * (away ? WALL.leapVy : 1);
+    p.controlLock = away ? w.lock : WALL.climb.lock; setFacing(p, -wx, -wz);
     p.wallCoyote = 0; p.wallStick = 0; p.wallSliding = false;
-    p.buf.jump = 99; p.fastFall = false; setState(p, 'normal'); world.emit('walljump', { p, climb: !away, dir: -wd });
+    p.buf.jump = 99; p.fastFall = false; setState(p, 'normal'); world.emit('walljump', { p, climb: !away, dir: -wd, wx: -wx, wz: -wz });
     return true;
   }
   if (p.jumpsUsed < 1) {
@@ -245,24 +271,38 @@ function tryDash(p, cmd, world) {
   const c = CHARS[p.char];
   if (p.onGround && cmd.my < -0.5) {
     p.buf.dash = 99; p.dashCd = c.dash.cooldown;
-    const dir = Math.abs(cmd.mx) > 0.3 ? sign(cmd.mx) : p.facing;
-    p.facing = dir; p.vx = dir * c.slide.speed; p.crouch = true;
+    const m = moveDir(cmd);
+    if (m) setFacing(p, m[0], m[1]);
+    p.vx = p.facing * c.slide.speed; p.vz = fz(p) * c.slide.speed; p.crouch = true;
     setState(p, 'slide'); world.emit('slide', { p });
     return true;
   }
   // Charged dash: on the ground with no direction held, holding dash plants the feet and charges
-  if (SETTINGS.dashCharge && p.onGround && p.state === 'normal' && cmd.held.dash && Math.abs(cmd.mx) < 0.3 && Math.abs(cmd.my) < 0.5) {
+  if (SETTINGS.dashCharge && p.onGround && p.state === 'normal' && cmd.held.dash && stickMag(cmd) < 0.3 && Math.abs(cmd.my) < 0.5) {
     p.buf.dash = 99; p.dashChargeT = 0; p.crouch = false;
     setState(p, 'dashCharge'); world.emit('dashChargeStart', { p });
     return true;
   }
   if (!p.onGround && p.airDashes <= 0) return false;
-  let d = snap8(cmd.mx, cmd.my) || [p.wallSliding ? -p.wallDir : p.facing, 0];
-  if (p.onGround && d[1] < 0) d = [sign(d[0]) || p.facing, 0];
-  if (p.wallDir && d[0] * p.wallDir > 0) d = [-d[0], d[1]];   // from a wall, a dash goes out from it
+  let d = dashDir(p, cmd);
+  if (p.onGround && d[1] < 0) { const h = Math.hypot(d[0], d[2]); d = h > 1e-3 ? [d[0] / h, 0, d[2] / h] : [p.facing, 0, fz(p)]; }
+  if (p.wallDir) {   // from a wall, a dash goes out from it
+    const k = d[0] * p.wallX + d[2] * p.wallZ;
+    if (k > 0) d = [d[0] - 2 * k * p.wallX, d[1], d[2] - 2 * k * p.wallZ];
+  }
   if (!p.onGround) p.airDashes--;
   startDash(p, d, world, 0);
   return true;
+}
+
+// Which way a dash goes: the move stick on the ground plane (or the way he faces, out from a wall he slides on),
+// tilted up or down 45 degrees by the vertical intent (cmd.my: up, or crouch); straight up or down with no direction
+function dashDir(p, cmd) {
+  const m = moveDir(cmd), v = cmd.my > 0.55 ? 1 : cmd.my < -0.55 ? -1 : 0;
+  const h = m || (p.wallSliding ? [-p.wallX, -p.wallZ] : null);
+  if (!h) return v ? [0, v, 0] : [p.facing, 0, fz(p)];
+  const k = v ? Math.SQRT1_2 : 1;
+  return [h[0] * k, v * Math.SQRT1_2, h[1] * k];
 }
 
 // Level 0 is an ordinary dash; 1-3 come from a charged release (DASH_CHARGE). RAM's dash is the Ram Charge.
@@ -270,12 +310,12 @@ function startDash(p, d, world, level) {
   if (p.char === 'ram') { startRush(p, world, level, d); return; }
   const c = CHARS[p.char], D = DASH_CHARGE, L = level - 1;
   p.buf.dash = 99; p.dashCd = c.dash.cooldown;
-  if (d[0] !== 0) p.facing = sign(d[0]);
-  p.dash = { dx: d[0], dy: d[1], t: Math.round(c.dash.ticks * (level ? D.ticks[L] : 1)), grounded: p.onGround, level,
+  setFacing(p, d[0], d[2]);
+  p.dash = { dx: d[0], dy: d[1], dz: d[2], t: Math.round(c.dash.ticks * (level ? D.ticks[L] : 1)), grounded: p.onGround, level,
     speed: c.dash.speed * (level ? D.speed[L] : 1), keep: level ? D.exitKeep[L] : c.dash.exitKeep,
     iframes: level ? D.iframes[L] : 0, instance: level === 3 ? world.newInstance() : 0 };
   p.fastFall = false; p.crouch = false; p.dashChargeT = 0;
-  setState(p, 'dash'); world.emit('dash', { p, level, dx: d[0], dy: d[1] });
+  setState(p, 'dash'); world.emit('dash', { p, level, dx: d[0], dy: d[1], dz: d[2] });
 }
 
 // Planted and charging: skid to a stop, aim with the stick, let go to launch. Jump or parry cancel it;
@@ -285,10 +325,10 @@ function stateDashCharge(p, cmd, world) {
   // The tap window counts in real ticks; the charge itself grows faster under Fix's boosts
   const t0 = p.dashChargeT; p.dashChargeT += p.dashChargeT < D.tap ? 1 : boostRate(p);
   // For the first few ticks nothing changes, so a quick tap reads as an ordinary dash; then he plants
-  if (p.dashChargeT >= D.tap) p.vx = approach(p.vx, 0, 70 * DT);
+  if (p.dashChargeT >= D.tap) approach2(p, 0, 0, 70 * DT);
   applyGravity(p, cmd);
   crossed(t0, p.dashChargeT, C, level => world.emit('dashLevel', { p, level }));
-  if (Math.abs(cmd.mx) > 0.3) p.facing = sign(cmd.mx);
+  const m = moveDir(cmd); if (m) setFacing(p, m[0], m[1]);
   if (tryParry(p, world)) { p.dashChargeT = 0; return; }
   if (p.buf.jump <= JUMP_BUFFER || !p.onGround) {
     p.dashChargeT = 0; setState(p, 'normal'); world.emit('dashChargeEnd', { p });
@@ -297,8 +337,8 @@ function stateDashCharge(p, cmd, world) {
   }
   if (cmd.held.dash) return;
   const t = p.dashChargeT, level = t >= C[2] ? 3 : t >= C[1] ? 2 : t >= C[0] ? 1 : 0;
-  let d = snap8(cmd.mx, cmd.my) || [p.facing, 0];
-  if (d[1] < 0) d = [sign(d[0]) || p.facing, 0];   // no digging into the floor
+  let d = dashDir(p, cmd);
+  if (d[1] < 0) { const h = Math.hypot(d[0], d[2]); d = h > 1e-3 ? [d[0] / h, 0, d[2] / h] : [p.facing, 0, fz(p)]; }   // no digging into the floor
   startDash(p, d, world, level);
 }
 
@@ -341,10 +381,10 @@ function trySignature(p, cmd, world) {
   }
   if (p.scarfMode === 'flare') { world.challenge(p); return false; }
   const c = chest(p);
-  const target = world.findLashTarget(p, c.x, c.y, p.aimX, p.aimY, ECHO.lashRange);
-  p.lash = { tx: c.x + p.aimX * ECHO.lashRange, ty: c.y + p.aimY * ECHO.lashRange, target, len: 0, hit: false };
-  if (target) { p.lash.tx = target.x; p.lash.ty = target.y + target.h * 0.55; }
-  if (Math.abs(p.aimX) > 0.1) p.facing = sign(p.aimX);
+  const target = world.findLashTarget(p, c.x, c.y, c.z, p.aimX, p.aimY, p.aimZ, ECHO.lashRange);
+  p.lash = { tx: c.x + p.aimX * ECHO.lashRange, ty: c.y + p.aimY * ECHO.lashRange, tz: c.z + p.aimZ * ECHO.lashRange, target, len: 0, hit: false };
+  if (target) { p.lash.tx = target.x; p.lash.ty = target.y + target.h * 0.55; p.lash.tz = target.z; }
+  const ah = aimH(p); if (ah) setFacing(p, ah[0], ah[1]);
   setState(p, 'lash'); world.emit('lash', { p });
   return true;
 }
@@ -361,9 +401,10 @@ function tryMelee(p, cmd, world) {
   if (!p.onGround && down && !moving && (p.char !== 'echo' || hunter)) { p.buf.melee = 99; startPound(p, world); return true; }
   const tier = vbTier(p);
   if (tier > 0) { velocityBreak(p, tier, world); return true; }
-  // Rising attacks (up + melee; once per airtime in the air): Nova's Solar Uppercut, RAM's Hydraulic Uplift,
-  // Fix's Jack-Up (Echo's Rising Glaive is below)
-  if (p.char !== 'echo' && cmd.my > 0.55 && (p.onGround || p.airRise)) {
+  // Rising attacks (up + melee, or crouch + melee on the ground; once per airtime in the air): Nova's Solar
+  // Uppercut, RAM's Hydraulic Uplift, Fix's Jack-Up (Echo's Rising Glaive is below)
+  const rise = cmd.my > 0.55 || (p.onGround && cmd.my < -0.55);
+  if (p.char !== 'echo' && rise && (p.onGround || p.airRise)) {
     p.buf.melee = 99; if (!p.onGround) p.airRise = false;
     startMove(p, p.char + '_rise', world); return true;
   }
@@ -379,7 +420,7 @@ function tryMelee(p, cmd, world) {
   if (p.char === 'echo' && !p.onGround && cmd.my < -0.55) {
     // Pursuit kit: the dive (fast fall into a Velocity Break on landing)
     breakVeil(p, world, 'attack');
-    p.vy = -FAST_FALL; p.vx = p.facing * 5;
+    p.vy = -FAST_FALL; p.vx = p.facing * 5; p.vz = fz(p) * 5;
     p.hitConfirm = false; p.instance = world.newInstance();
     setState(p, 'dive'); world.emit('dive', { p });
     return true;
@@ -388,7 +429,7 @@ function tryMelee(p, cmd, world) {
   if (p.char === 'ram') id = p.onGround ? 'ram_b1' : 'ram_air';
   else if (p.char === 'nova') id = p.onGround ? 'nova_jab1' : 'nova_air';
   else if (!p.onGround) id = hunter ? (cmd.my > 0.55 ? 'echo_spin' : 'echo_ab1') : 'echo_air1';
-  else if (cmd.my > 0.55) id = 'echo_rise';   // Echo's rising attack in either kit
+  else if (rise) id = 'echo_rise';   // Echo's rising attack in either kit
   else id = hunter ? 'echo_b1' : 'echo_g1';
   startMove(p, id, world);
   return true;
@@ -396,42 +437,52 @@ function tryMelee(p, cmd, world) {
 
 // Marksman kit: an enemy close enough in front for the bracer combo (or the lock-on target in reach)
 function meleeTarget(p, world) {
-  const R = MARKSMAN.melee, face = p.aimFree && Math.abs(p.aimX) > 0.2 ? sign(p.aimX) : p.facing;
+  const R = MARKSMAN.melee, fa = faceAim(p), fx = fa ? fa[0] : p.facing, fzz = fa ? fa[1] : fz(p);
   for (const e of world.enemies) {
     if (e.dead) continue;
-    const ahead = (e.x - p.x) * face, gap = ahead - e.w / 2 - p.w / 2;
+    const rx = e.x - p.x, rz = e.z - p.z, ahead = rx * fx + rz * fzz, side = Math.abs(rx * -fzz + rz * fx), gap = ahead - e.w / 2 - p.w / 2;
     const dy = Math.abs(e.y + e.h / 2 - (p.y + p.h * 0.5));
-    if (ahead > -0.2 && gap < R.reach - 0.8 && dy < R.up) return e;
-    if (e === p.lockT && lockChosen(p) && Math.abs(e.x - p.x) < LOCK.magnet && dy < R.up) return e;
+    if (ahead > -0.2 && gap < R.reach - 0.8 && side < e.w / 2 + 1.0 && dy < R.up) return e;
+    if (e === p.lockT && lockChosen(p) && Math.hypot(rx, rz) < LOCK.magnet && dy < R.up) return e;
   }
   return null;
+}
+
+// A movement direction for a lunge or a break: his velocity if he is moving, else the way he faces; flattened
+// to the ground when it barely climbs or dips
+function strikeDir(p, flatten) {
+  const sp = Math.hypot(p.vx, p.vy, p.vz);
+  let dx = sp > 0.5 ? p.vx / sp : p.facing, dy = sp > 0.5 ? p.vy / sp : 0, dz = sp > 0.5 ? p.vz / sp : fz(p);
+  if (p.state === 'dash' && p.dash) { dx = p.dash.dx; dy = p.dash.dy; dz = p.dash.dz || 0; }
+  if (flatten && Math.abs(dy) < 0.45) {
+    dy = 0; const h = Math.hypot(dx, dz);
+    if (h > 1e-3) { dx /= h; dz /= h; } else { dx = p.facing; dz = fz(p); }
+  }
+  const m = Math.hypot(dx, dy, dz) || 1;
+  return [dx / m, dy / m, dz / m];
 }
 
 // Echo's Dash Slash (Hunter kit's Velocity Break): a lunging cut along the dash that carries him through
 function startDashSlash(p, tier, world) {
   breakVeil(p, world, 'attack');
   p.buf.melee = 99;
-  const sp = Math.hypot(p.vx, p.vy);
-  let dx = sp > 0.5 ? p.vx / sp : p.facing, dy = sp > 0.5 ? p.vy / sp : 0;
-  if (p.state === 'dash' && p.dash) { dx = p.dash.dx; dy = p.dash.dy; }
-  if (Math.abs(dy) < 0.45) { dy = 0; dx = sign(dx) || p.facing; }
-  const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
-  if (Math.abs(dx) > 0.2) p.facing = sign(dx);
-  p.slash = { tier, dx, dy };
+  const [dx, dy, dz] = strikeDir(p, true);
+  setFacing(p, dx, dz);
+  p.slash = { tier, dx, dy, dz };
   p.hitConfirm = false; p.instance = world.newInstance();
   p.boostT = 0; p.launchedT = 0; p.zipArriveT = 0; p.postDash = 99;
-  setState(p, 'dashslash'); world.emit('dashSlash', { p, tier, dx, dy });
+  setState(p, 'dashslash'); world.emit('dashSlash', { p, tier, dx, dy, dz });
 }
 
 function stateDashSlash(p, cmd, world) {
   const D = DASH_SLASH, s = p.slash, t = p.st, T = s.tier - 1;
-  if (t <= D.ticks) { const v = D.speed[T] * Math.pow(D.keep, t); p.vx = s.dx * v; p.vy = s.dy * v; }
-  else if (!p.onGround) { p.vx = approach(p.vx, cmd.mx * CHARS[p.char].run * 0.5, 30 * DT); applyGravity(p, cmd); }
-  else { p.vx *= 0.8; p.vy = -0.5; }
+  if (t <= D.ticks) { const v = D.speed[T] * Math.pow(D.keep, t); p.vx = s.dx * v; p.vy = s.dy * v; p.vz = s.dz * v; }
+  else if (!p.onGround) { const r = CHARS[p.char].run * 0.5; approach2(p, (cmd.mx || 0) * r, (cmd.mz || 0) * r, 30 * DT); applyGravity(p, cmd); }
+  else { p.vx *= 0.8; p.vz *= 0.8; p.vy = -0.5; }
   if (t >= 2 && t <= D.ticks - 3) {
-    const cx = p.x + p.facing * D.box.fx, cy = p.y + 0.95 + s.dy * 0.5;
-    world.spawnHitbox({ owner: p, team: 'p', x0: cx - D.box.w / 2, x1: cx + D.box.w / 2, y0: cy - D.box.h / 2, y1: cy + D.box.h / 2,
-      dmg: D.dmg[T], poise: D.poise[T], kb: [p.facing * 7, 3], armorBreak: D.armorBreak[T], instance: p.instance, vbTier: s.tier, dashSlash: true });
+    const cy = 0.95 + s.dy * 0.5, b = fwdBoxP(p, D.box.fx, D.box.w, cy - D.box.h / 2, cy + D.box.h / 2);
+    world.spawnHitbox({ owner: p, team: 'p', ...b,
+      dmg: D.dmg[T], poise: D.poise[T], kb: [p.facing * 7, 3, fz(p) * 7], armorBreak: D.armorBreak[T], instance: p.instance, vbTier: s.tier, dashSlash: true });
   }
   if (p.hitConfirm && t >= 4) {
     if (SETTINGS.vbRefund && !p.onGround) p.airDashes = 1;
@@ -439,18 +490,20 @@ function stateDashSlash(p, cmd, world) {
   }
   if (t >= D.ticks + (p.hitConfirm ? D.hitRecover : D.recover)) setState(p, 'normal');
 }
+// A player's strike box: `off` m ahead of him, `len` m long, at least 1.3 m wide across the way he faces
+const fwdBoxP = (p, off, len, y0, y1) => fwdBox(p, off, len, y0, y1, Math.max(len, 1.3));
 
 function startMove(p, id, world) {
   breakVeil(p, world, 'attack');
   p.moveId = id; p.move = MOVES[id]; p.queued = null; p.hitConfirm = false; p.instance = world.newInstance();
   p.crouch = false; p.riseAir = !p.onGround;
-  if (Math.abs(p.aimX) > 0.2 && p.aimFree) p.facing = sign(p.aimX);
+  const fa = faceAim(p); if (fa) setFacing(p, fa[0], fa[1]);
   // Lock-on: turn to a target that is close, and step in toward it during the swing (lungeTo)
   p.lungeTo = null;
   const t = p.lockT;
-  if (t && !t.dead && Math.abs(t.x - p.x) < LOCK.magnet && Math.abs(t.y - p.y) < 2.5) {
-    p.facing = sign(t.x - p.x) || p.facing; p.lungeTo = t;
-    if (p.onGround && Math.abs(t.x - p.x) - t.w / 2 - p.w / 2 > 0.3) p.vx = p.facing * LOCK.lunge;   // the step starts at once
+  if (t && !t.dead && hdist(p, t) < LOCK.magnet && Math.abs(t.y - p.y) < 2.5) {
+    const u = away(p, t, p); setFacing(p, u.x, u.z); p.lungeTo = t;
+    if (p.onGround && hdist(p, t) - t.w / 2 - p.w / 2 > 0.3) { p.vx = p.facing * LOCK.lunge; p.vz = fz(p) * LOCK.lunge; }   // the step starts at once
   }
   setState(p, 'attack'); world.emit('swing', { p, id });
 }
@@ -463,11 +516,9 @@ function velocityBreak(p, tier, world) {
 function startVB(p, tier, world) {
   breakVeil(p, world, 'attack');
   p.buf.melee = 99;
-  const sp = Math.hypot(p.vx, p.vy);
-  let dx = sp > 0.5 ? p.vx / sp : p.facing, dy = sp > 0.5 ? p.vy / sp : 0;
-  if (p.state === 'dash' && p.dash) { dx = p.dash.dx; dy = p.dash.dy; }
-  if (Math.abs(dx) > 0.2) p.facing = sign(dx);
-  p.vbInfo = { tier, dx, dy, keep: SETTINGS.vbStop === 'keep30' ? 0.3 : 0, v0x: p.vx, v0y: p.vy };
+  const [dx, dy, dz] = strikeDir(p, false);
+  if (Math.hypot(dx, dz) > 0.2) setFacing(p, dx, dz);
+  p.vbInfo = { tier, dx, dy, dz, keep: SETTINGS.vbStop === 'keep30' ? 0.3 : 0, v0x: p.vx, v0y: p.vy, v0z: p.vz };
   p.hitConfirm = false; p.instance = world.newInstance();
   p.boostT = 0; p.launchedT = 0; p.zipArriveT = 0; p.postDash = 99;
   setState(p, 'vb'); world.emit('vbStart', { p, tier });
@@ -487,43 +538,50 @@ function cancelInto(p, cmd, world, { jump = true, dash = true, parry = true, sig
 
 function horizontalControl(p, cmd, world, scale = 1) {
   const c = CHARS[p.char], skates = marksman(p);
-  let tgt = cmd.mx * (skates ? MARKSMAN.skate.top : c.run) * (p.crouch ? c.crouchSpeed : 1) * (p.thrusting ? MARKSMAN.boost.air : 1) * scale;
+  let k = (skates ? MARKSMAN.skate.top : c.run) * (p.crouch ? c.crouchSpeed : 1) * (p.thrusting ? MARKSMAN.boost.air : 1) * scale;
   const rifle = p.rifleT >= HUNTER.rifle.raise;   // Echo's staff-rifle up: slower on foot
-  if (rifle && p.onGround) tgt *= HUNTER.rifle.slow;
+  if (rifle && p.onGround) k *= HUNTER.rifle.slow;
+  const mx = cmd.mx || 0, mz = cmd.mz || 0, moving = Math.hypot(mx, mz) > 0.1;
   const firing = p.chargeT > 0 || p.fireCd > 0 || p.shootT > 0 || rifle;
-  const facingAim = (p.aimFree || firing) && Math.abs(p.aimX) > 0.2;
+  const ah = aimH(p), facingAim = ((p.aimFree && !p.camAim) || firing) && ah;
+  const t = p.lockT && !p.lockT.dead ? p.lockT : null;
   if (facingAim) {
-    if (cmd.mx !== 0 && sign(cmd.mx) !== sign(p.aimX)) tgt *= skates ? MARKSMAN.skate.backpedal : c.backpedal;
-    p.facing = sign(p.aimX);
-  } else if (p.lockT && Math.abs(cmd.mx) <= 0.1 && Math.abs(p.aimX) > 0.05) {
-    p.facing = sign(p.aimX);   // standing still while locked on: face the target
-  } else if (Math.abs(cmd.mx) > 0.1 && p.controlLock === 0) {
-    p.facing = sign(cmd.mx);
+    // Facing where he shoots, he strafes; moving away from the aim is a slower backpedal
+    if (moving && mx * ah[0] + mz * ah[1] < -0.3 * Math.hypot(mx, mz)) k *= skates ? MARKSMAN.skate.backpedal : c.backpedal;
+    setFacing(p, ah[0], ah[1]);
+  } else if (t && (!moving || (p.camAim && lockChosen(p)))) {
+    // Locked on: standing still he faces the target; a target he picked himself, he circles facing it
+    if (p.camAim) { const u = away(p, t, p); setFacing(p, u.x, u.z); }
+    else if (Math.hypot(p.aimX, p.aimZ || 0) > 0.05) setFacing(p, p.aimX, p.aimZ || 0);
+  } else if (moving && p.controlLock === 0) {
+    setFacing(p, mx, mz);
   }
   if (p.controlLock > 0) return;
-  if (p.onGround && skates) { skateGround(p, tgt, world); return; }
+  const tx = mx * k, tz = mz * k;
+  if (p.onGround && skates) { skateGround(p, tx, tz, world); return; }
   if (p.onGround) {
-    const accel = (tgt !== 0 && sign(tgt) === sign(p.vx)) || Math.abs(p.vx) < 0.1 ? c.accelG : c.decelG;
-    p.vx = approach(p.vx, tgt, accel * DT);
+    const same = (tx !== 0 || tz !== 0) && tx * p.vx + tz * p.vz > 0;
+    approach2(p, tx, tz, (same || Math.hypot(p.vx, p.vz) < 0.1 ? c.accelG : c.decelG) * DT);
   } else {
     // Keep dash-carried momentum in the air unless the player steers against it
-    if (p.dashCarry && Math.abs(p.vx) > Math.abs(tgt) && sign(tgt) !== -sign(p.vx)) return;
-    p.vx = approach(p.vx, tgt, c.accelA * DT);
+    const sp = Math.hypot(p.vx, p.vz);
+    if (p.dashCarry && sp > Math.hypot(tx, tz) && tx * p.vx + tz * p.vz >= 0) return;
+    approach2(p, tx, tz, c.accelA * DT);
   }
 }
 
 // Skate-blade glide: a little slower to reach top speed, keeps momentum when the stick is let go,
 // and carves to a stop when reversed. Crouching at speed tucks into a low glide.
-function skateGround(p, tgt, world) {
-  const S = MARKSMAN.skate, speed = Math.abs(p.vx);
+function skateGround(p, tx, tz, world) {
+  const S = MARKSMAN.skate, speed = Math.hypot(p.vx, p.vz), want = Math.hypot(tx, tz);
   let a;
-  if (p.crouch && speed > S.tuckMin) { tgt = 0; a = S.tuck; }
-  else if (tgt === 0) a = S.coast;
-  else if (sign(tgt) !== sign(p.vx) && speed > 0.5) {
+  if (p.crouch && speed > S.tuckMin) { tx = 0; tz = 0; a = S.tuck; }
+  else if (want === 0) a = S.coast;
+  else if (tx * p.vx + tz * p.vz < 0 && speed > 0.5) {
     a = S.carve;
     if (speed > 5 && p.carveT === 0) { p.carveT = 10; world.emit('carve', { p }); }
-  } else a = speed < Math.abs(tgt) ? S.accel : S.coast;
-  p.vx = approach(p.vx, tgt, a * DT);
+  } else a = speed < want ? S.accel : S.coast;
+  approach2(p, tx, tz, a * DT);
 }
 
 function applyGravity(p, cmd, mult = 1) {
@@ -543,7 +601,7 @@ function stateNormal(p, cmd, world) {
   if (cmd.held.parry && p.char === 'ram' && !p.guardBroken) { startGuard(p, world); stateGuard(p, cmd, world); return; }
   if (cmd.held.parry && p.char === 'fix') { startPatch(p, world); statePatch(p, cmd, world); return; }
   if (p.onGround && cmd.my < -0.55) p.crouch = true;
-  else if (p.crouch && hasHeadroom(p.x, p.y, p.w, c.height)) p.crouch = false;
+  else if (p.crouch && hasHeadroom(p.x, p.y, p.z, p.w, c.height)) p.crouch = false;
 
   horizontalControl(p, cmd, world);
   if (!p.onGround && cmd.my < -0.7 && p.vy < 3 && p.wallDir === 0) p.fastFall = true;
@@ -570,7 +628,7 @@ function wallCling(p, cmd, turn) {
   const c = CHARS[p.char], W = WALL, was = !!p.wallPrev;
   let on = false;
   if (!p.onGround && p.wallDir !== 0 && p.vy <= 0.5) {
-    const toward = cmd.mx * p.wallDir > 0.3;
+    const toward = (cmd.mx || 0) * p.wallX + (cmd.mz || 0) * p.wallZ > 0.3;
     if (toward) p.wallStick = W.stick;
     else if (was && p.wallStick > 0) p.wallStick--;
     on = toward || (was && p.wallStick > 0);
@@ -581,9 +639,9 @@ function wallCling(p, cmd, turn) {
   const target = cmd.my < -0.6 ? c.wall.slide * W.fast : W.gripSpeed + (c.wall.slide - W.gripSpeed) * ramp;
   if (p.vy < -target) p.vy = Math.min(-target, p.vy + (W.brake + GRAVITY * FALL_MULT) * DT);   // brake a fall into the slide
   else p.vy = Math.max(p.vy, -target);
-  if (cmd.mx * p.wallDir <= 0.3) p.vx = p.wallDir * 0.5;              // grip: stay against the wall
+  if ((cmd.mx || 0) * p.wallX + (cmd.mz || 0) * p.wallZ <= 0.3) { p.vx = p.wallX * 0.5; p.vz = p.wallZ * 0.5; }   // grip: stay against the wall
   p.wallSliding = true; p.fastFall = false;
-  if (turn) p.facing = -p.wallDir;
+  if (turn) setFacing(p, -p.wallX, -p.wallZ);
   return true;
 }
 
@@ -609,42 +667,45 @@ function stateDash(p, cmd, world) {
     const t = d.pursuit;
     if (t.dead) d.pursuit = null;
     else {
-      const tx = t.x - sign(t.x - p.x) * (t.w / 2 + p.w / 2 + 0.2), ty = t.y + t.h * 0.3;
-      const dx = tx - p.x, dy = ty - p.y, m = Math.hypot(dx, dy);
-      if (m < 0.9) { p.zipArriveT = 12; d.t = 0; } else { d.dx = dx / m; d.dy = dy / m; if (Math.abs(d.dx) > 0.2) p.facing = sign(d.dx); }
+      const u = away(p, t, p), gap = t.w / 2 + p.w / 2 + 0.2, tx = t.x - u.x * gap, tz = t.z - u.z * gap, ty = t.y + t.h * 0.3;
+      const dx = tx - p.x, dy = ty - p.y, dz = tz - p.z, m = Math.hypot(dx, dy, dz);
+      if (m < 0.9) { p.zipArriveT = 12; d.t = 0; } else { d.dx = dx / m; d.dy = dy / m; d.dz = dz / m; if (Math.hypot(d.dx, d.dz) > 0.2) setFacing(p, d.dx, d.dz); }
     }
   }
   const boost = p.boostT > 0 ? 1.35 : 1, speed = d.speed || c.dash.speed;
-  p.vx = d.dx * speed * boost; p.vy = d.dy * speed * boost;
+  p.vx = d.dx * speed * boost; p.vy = d.dy * speed * boost; p.vz = (d.dz || 0) * speed * boost;
   d.t--;
   if (d.level === 3) {
     // A full charge turns the dash into a strike through everything in its path (each enemy once)
     const S = DASH_CHARGE.strike;
-    world.spawnHitbox({ owner: p, team: 'p', x0: p.x - 0.8, x1: p.x + 0.8, y0: p.y, y1: p.y + p.h + 0.2, dmg: S.dmg, poise: S.poise,
-      kb: [(sign(d.dx) || p.facing) * S.kb, 3], armorBreak: true, instance: d.instance, dashStrike: true });
+    const h = Math.hypot(d.dx, d.dz || 0), kx = h > 0.1 ? d.dx / h : p.facing, kz = h > 0.1 ? (d.dz || 0) / h : fz(p);
+    world.spawnHitbox({ owner: p, team: 'p', ...boxAt(p.x, p.z, 0.8, p.y, p.y + p.h + 0.2), dmg: S.dmg, poise: S.poise,
+      kb: [kx * S.kb, 3, kz * S.kb], armorBreak: true, instance: d.instance, dashStrike: true });
   }
   if (p.buf.jump <= JUMP_BUFFER && (d.grounded || p.coyote > 0) && d.dy <= 0) {
     // Dash-jump: a charged dash carries more speed into the jump, up to DASH_CHARGE.jumpCarry
-    p.vy = c.jumpV; p.vx = d.dx * Math.min(speed, DASH_CHARGE.jumpCarry) * 0.85; p.dashCarry = true; p.onGround = false;
+    const j = Math.min(speed, DASH_CHARGE.jumpCarry) * 0.85;
+    p.vy = c.jumpV; p.vx = d.dx * j; p.vz = (d.dz || 0) * j; p.dashCarry = true; p.onGround = false;
     p.buf.jump = 99; setState(p, 'normal'); world.emit('jump', { p, dashJump: true });
     return;
   }
   if (p.buf.melee <= ACTION_BUFFER) { velocityBreak(p, vbTier(p), world); return; }
   if (tryParry(p, world)) return;
   if (d.t <= 0 || p.hitWall) {
-    p.vx = d.dx * speed * (d.keep ?? c.dash.exitKeep); p.vy = d.dy > 0 ? d.dy * speed * 0.4 : 0;
+    const keep = speed * (d.keep ?? c.dash.exitKeep);
+    p.vx = d.dx * keep; p.vz = (d.dz || 0) * keep; p.vy = d.dy > 0 ? d.dy * speed * 0.4 : 0;
     p.postDash = 0; setState(p, 'normal');
   }
 }
 
 function stateSlide(p, cmd, world) {
   const c = CHARS[p.char];
-  p.vx *= c.slide.decay; applyGravity(p, cmd);
+  p.vx *= c.slide.decay; p.vz *= c.slide.decay; applyGravity(p, cmd);
   if (tryJump(p, cmd, world)) { p.dashCarry = true; return; }
   if (p.buf.melee <= ACTION_BUFFER) { velocityBreak(p, 1, world); return; }
   if (tryParry(p, world)) return;
-  if (p.st >= c.slide.ticks || Math.abs(p.vx) < 2 || !p.onGround) {
-    p.crouch = !hasHeadroom(p.x, p.y, p.w, c.height);
+  if (p.st >= c.slide.ticks || Math.hypot(p.vx, p.vz) < 2 || !p.onGround) {
+    p.crouch = !hasHeadroom(p.x, p.y, p.z, p.w, c.height);
     setState(p, 'normal');
   }
 }
@@ -653,17 +714,16 @@ function stateVB(p, cmd, world) {
   const v = p.vbInfo, t = p.st;
   if (t <= VB.stopTicks) {
     const k = t >= VB.stopTicks ? v.keep : 1 - (1 - v.keep) * (t / VB.stopTicks);
-    p.vx = v.v0x * k; p.vy = v.v0y * k;
+    p.vx = v.v0x * k; p.vy = v.v0y * k; p.vz = (v.v0z || 0) * k;
   } else if (!p.onGround) {
     if (t < VB.activeTo) p.vy = Math.max(p.vy, 0);         // brief hang for precision stops
     else applyGravity(p, cmd);
-  } else { p.vx *= 0.8; p.vy = -0.5; }
+  } else { p.vx *= 0.8; p.vz *= 0.8; p.vy = -0.5; }
   if (t >= VB.activeFrom && t < VB.activeTo) {
     const down = v.dy < -0.6;
-    const box = down ? { x0: p.x - 1.0, x1: p.x + 1.0, y0: p.y - 0.4, y1: p.y + 1.0 }
-      : { x0: p.x + (p.facing > 0 ? 0 : -1.7), x1: p.x + (p.facing > 0 ? 1.7 : 0), y0: p.y + 0.2, y1: p.y + 1.6 };
+    const box = down ? boxAt(p.x, p.z, 1.0, p.y - 0.4, p.y + 1.0) : fwdBoxP(p, 0.85, 1.7, 0.2, 1.6);
     const tier = VB.tiers[v.tier];
-    world.spawnHitbox({ owner: p, team: 'p', ...box, dmg: tier.dmg, poise: tier.poise, kb: [p.facing * tier.kb, down ? 4 : 3],
+    world.spawnHitbox({ owner: p, team: 'p', ...box, dmg: tier.dmg, poise: tier.poise, kb: [p.facing * tier.kb, down ? 4 : 3, fz(p) * tier.kb],
       armorBreak: tier.armorBreak, instance: p.instance, vbTier: v.tier });
   }
   if (p.hitConfirm && t >= VB.activeFrom) {
@@ -671,7 +731,7 @@ function stateVB(p, cmd, world) {
     if (cancelInto(p, cmd, world)) return;
   }
   const end = VB.activeTo + (p.hitConfirm ? 4 : VB.whiffRecovery);
-  if (t >= VB.activeTo + VB.driftAfter && !p.onGround) p.vx = approach(p.vx, cmd.mx * CHARS[p.char].run * 0.5, 30 * DT);
+  if (t >= VB.activeTo + VB.driftAfter && !p.onGround) { const r = CHARS[p.char].run * 0.5; approach2(p, (cmd.mx || 0) * r, (cmd.mz || 0) * r, 30 * DT); }
   if (t >= end) setState(p, 'normal');
 }
 
@@ -679,7 +739,7 @@ function stateDive(p, cmd, world) {
   p.vy = -FAST_FALL; p.fastFall = true;
   const hitBelow = world.enemyBelow(p, 1.2);
   if (p.onGround || hitBelow || p.st > 90) {
-    p.vbInfo = { tier: 2, dx: 0, dy: -1, keep: 0, v0x: p.vx, v0y: p.vy };
+    p.vbInfo = { tier: 2, dx: 0, dy: -1, dz: 0, keep: 0, v0x: p.vx, v0y: p.vy, v0z: p.vz };
     p.hitConfirm = false; p.instance = world.newInstance();
     setState(p, 'vb'); world.emit('vbStart', { p, tier: 2 });
   }
@@ -693,7 +753,7 @@ function startPound(p, world) {
   p.pound = { phase: 'hold', t: 0, level: 0, held: true, y0: p.y };
   p.hitConfirm = false; p.instance = world.newInstance();
   p.dashCarry = false; p.fastFall = false; p.lungeTo = null;
-  if (Math.abs(p.aimX) > 0.2 && p.aimFree) p.facing = sign(p.aimX);
+  const fa = faceAim(p); if (fa) setFacing(p, fa[0], fa[1]);
   setState(p, 'pound'); world.emit('poundStart', { p });
 }
 
@@ -703,7 +763,7 @@ function statePound(p, cmd, world) {
   S.t++;
   if (S.phase === 'hold') {
     // The mid-air slowdown: his rise and drift die away fast and he sinks slowly while it charges
-    p.vx = approach(p.vx, 0, 50 * DT); p.vy = approach(p.vy, -P.hang, 80 * DT); p.fastFall = false;
+    approach2(p, 0, 0, 50 * DT); p.vy = approach(p.vy, -P.hang, 80 * DT); p.fastFall = false;
     if (!cmd.held.melee) S.held = false;
     if (S.held) {
       S.c = (S.c || 0) + boostRate(p);
@@ -718,20 +778,20 @@ function statePound(p, cmd, world) {
   if (S.phase === 'drop') {
     // Echo's quick pound bounces off what it hits
     if (p.char === 'echo' && S.level === 0 && p.hitConfirm) {
-      p.vy = P.bounce; p.vx *= 0.5; p.airDashes = 1; p.jumpsUsed = 0; p.fastFall = false; p.dashCarry = false;
+      p.vy = P.bounce; p.vx *= 0.5; p.vz *= 0.5; p.airDashes = 1; p.jumpsUsed = 0; p.fastFall = false; p.dashCarry = false;
       p.pound = null; setState(p, 'normal'); world.emit('pogo', { p });
       return;
     }
-    p.vy = -P.speed; p.fastFall = true; p.vx *= 0.9;
+    p.vy = -P.speed; p.fastFall = true; p.vx *= 0.9; p.vz *= 0.9;
     const k = 1 + 0.25 * S.level;
-    world.spawnHitbox({ owner: p, team: 'p', x0: p.x - P.box.w / 2, x1: p.x + P.box.w / 2, y0: p.y - 0.7, y1: p.y + P.box.h - 0.7,
-      dmg: P.drop.dmg * k, poise: P.drop.poise * k, kb: [0, -4], instance: p.instance, pound: true });
+    world.spawnHitbox({ owner: p, team: 'p', ...boxAt(p.x, p.z, P.box.w / 2, p.y - 0.7, p.y + P.box.h - 0.7),
+      dmg: P.drop.dmg * k, poise: P.drop.poise * k, kb: [0, -4, 0], instance: p.instance, pound: true });
     if (p.onGround) { landPound(p, world); return; }
     if (S.t > P.maxDrop) { p.pound = null; setState(p, 'normal'); }   // fell a long way (a pit)
     return;
   }
   // 'land': the blast has gone off; a short recovery, cancellable once it has hit something
-  p.vx *= 0.7; p.vy = -0.5;
+  p.vx *= 0.7; p.vz *= 0.7; p.vy = -0.5;
   if (p.hitConfirm) S.hit = true;
   if (S.hit && S.t >= P.hitRecover && cancelInto(p, cmd, world, { melee: false })) { p.pound = null; return; }
   if (S.t >= P.recover) { p.pound = null; setState(p, 'normal'); }
@@ -744,56 +804,61 @@ function landPound(p, world) {
   const K = p.char === 'ram' ? RAM.pound : 1;
   const r = (L.r + P.fallBonus * Math.min(1, fall / 12)) * K;
   const inst = world.newInstance();
-  world.spawnHitbox({ owner: p, team: 'p', x0: p.x - r, x1: p.x + r, y0: p.y - 0.3, y1: p.y + 1.6 + 0.3 * S.level, dmg: L.dmg * K, poise: L.poise * K,
-    kb: [L.kb, L.up], radial: true, cx: p.x, armorBreak: !!L.armorBreak || K > 1, instance: inst, scatter: true, ramKnock: p.char === 'ram' });
-  if (p.char === 'fix') world.repairPulse(p, p.x, p.y, r + 1, FIX.poundHeal[S.level]);
+  world.spawnHitbox({ owner: p, team: 'p', ...boxAt(p.x, p.z, r, p.y - 0.3, p.y + 1.6 + 0.3 * S.level), dmg: L.dmg * K, poise: L.poise * K,
+    kb: [L.kb, L.up, 0], radial: true, cx: p.x, cz: p.z, armorBreak: !!L.armorBreak || K > 1, instance: inst, scatter: true, ramKnock: p.char === 'ram' });
+  if (p.char === 'fix') world.repairPulse(p, p.x, p.y, p.z, r + 1, FIX.poundHeal[S.level]);
   S.phase = 'land'; S.t = 0; S.inst = inst; S.hit = false;
-  p.vx = 0; p.hitConfirm = false; p.hitstop = 2 + S.level;   // a beat of impact freeze, longer the bigger the pound
-  world.emit('poundLand', { p, x: p.x, y: p.y, level: S.level, r, fall });
+  p.vx = 0; p.vz = 0; p.hitConfirm = false; p.hitstop = 2 + S.level;   // a beat of impact freeze, longer the bigger the pound
+  world.emit('poundLand', { p, x: p.x, y: p.y, z: p.z, level: S.level, r, fall });
 }
 
 function stateAttack(p, cmd, world) {
-  const m = p.move, t = p.st;
+  const m = p.move, t = p.st, f = fz(p);
   const activeStart = m.su, activeEnd = m.su + m.ac, end = m.su + m.ac + m.rc;
   // A rising attack takes off (no rise cut); from the air it climbs a little less
-  if (m.rise && t === activeStart) { p.vy = m.rise * (p.riseAir ? m.airRise || 1 : 1); p.onGround = false; p.vx = p.facing * (m.fist ? 1.5 : 2.5); p.dashCarry = true; p.fastFall = false; }
+  if (m.rise && t === activeStart) {
+    const k = m.fist ? 1.5 : 2.5;
+    p.vy = m.rise * (p.riseAir ? m.airRise || 1 : 1); p.onGround = false; p.vx = p.facing * k; p.vz = f * k; p.dashCarry = true; p.fastFall = false;
+  }
   if (m.riseBlast && t === activeEnd) {
     // The Solar Uppercut's flare: a burst of light off the fist at the top of the climb
-    world.explode({ owner: p, x: p.x + p.facing * 0.35, y: p.y + p.h + 0.55, spec: { ...m.riseBlast, armorBreak: false }, kind: m.blastKind || 'riseBlast', level: 1 });
+    world.explode({ owner: p, x: p.x + p.facing * 0.35, y: p.y + p.h + 0.55, z: p.z + f * 0.35, spec: { ...m.riseBlast, armorBreak: false }, kind: m.blastKind || 'riseBlast', level: 1 });
   }
   if (t === activeStart) {
     if (m.jack && !p.riseAir) world.placePad(p);           // Jack-Up: the jack stays behind as a spring pad
-    if (m.quake) world.spawnQuake(p, m.quake);              // Seismic Slam: shockwaves both ways along the floor
+    if (m.quake) world.spawnQuake(p, m.quake);              // Seismic Slam: a shockwave ring along the floor
     if (m.spark) world.sparkRing(p, m.spark);               // Torque Slam: a ring of sparks
   }
   if (m.sweep && t >= activeStart && t < activeEnd) world.sweepShots(p);   // Hydraulic Uplift: shots over him are swept away
   // On the ground an attack keeps pressing into the floor, so it never reads as airborne mid-swing
-  if (p.onGround) { p.vx *= 0.82; p.vy = -0.5; }
+  if (p.onGround) { p.vx *= 0.82; p.vz *= 0.82; p.vy = -0.5; }
   else { applyGravity(p, cmd, m.hoverAll ?? (m.hover && p.hitConfirm ? 0.25 : 1)); wallCling(p, cmd, false); }
   if (m.hover && p.hitConfirm && p.vy < 1.5) p.vy = 1.5;
   if (m.hoverAll && p.vy < -3) p.vy = -3;
-  if (t === activeStart && p.onGround && !m.launcher) p.vx += p.facing * 2.2;
+  if (t === activeStart && p.onGround && !m.launcher) { p.vx += p.facing * 2.2; p.vz += f * 2.2; }
   if (m.multi && t > activeStart && t < activeEnd && (t - activeStart) % m.multi === 0) p.instance = world.newInstance();
   if (t === activeStart && m.blastFist) {
-    world.explode({ owner: p, x: p.x + p.facing * 1.2, y: p.y + 1.1, spec: { ...m.blastFist, armorBreak: false }, kind: 'blast', level: 1 });
+    world.explode({ owner: p, x: p.x + p.facing * 1.2, y: p.y + 1.1, z: p.z + f * 1.2, spec: { ...m.blastFist, armorBreak: false }, kind: 'blast', level: 1 });
   }
   if (t === activeStart && m.wave && SETTINGS.echoKit === 'hunter') {
     // Crescent wave: the charged swing looses an energy crescent that flies on and cuts through shots
-    const W = m.wave;
-    world.spawnProjectile({ team: 'p', owner: p, x: p.x + p.facing * 1.0, y: p.y + 1.0, vx: p.facing * W.speed, vy: 0, ttl: W.ttl, r: W.r,
+    const W = m.wave, x = p.x + p.facing * 1.0, y = p.y + 1.0, z = p.z + f * 1.0;
+    world.spawnProjectile({ team: 'p', owner: p, x, y, z, vx: p.facing * W.speed, vy: 0, vz: f * W.speed, ttl: W.ttl, r: W.r,
       dmg: W.dmg, poise: W.poise, kb: 6, pierce: true, intercept: true, interceptHeavy: true, kind: 'wave' });
-    world.emit('crescent', { p, x: p.x + p.facing * 1.0, y: p.y + 1.0 });
+    world.emit('crescent', { p, x, y, z });
   }
   if (p.lungeTo && t < activeEnd && p.onGround) {
     // Locked on: close the gap to the target until the swing lands
-    const e = p.lungeTo, gap = Math.abs(e.x - p.x) - e.w / 2 - p.w / 2;
-    if (!e.dead && gap > 0.3) p.vx = p.facing * Math.min(LOCK.lunge, gap * 30); else p.lungeTo = null;
+    const e = p.lungeTo, gap = hdist(p, e) - e.w / 2 - p.w / 2;
+    if (!e.dead && gap > 0.3) { const u = away(p, e, p), v = Math.min(LOCK.lunge, gap * 30); setFacing(p, u.x, u.z); p.vx = u.x * v; p.vz = u.z * v; }
+    else p.lungeTo = null;
   }
   if (t >= activeStart && t < activeEnd) {
-    const b = m.box, cx = m.spin ? p.x : p.x + p.facing * b.fx;
-    world.spawnHitbox({ owner: p, team: 'p', x0: cx - b.w / 2, x1: cx + b.w / 2, y0: p.y + b.y - b.h / 2, y1: p.y + b.y + b.h / 2,
-      dmg: m.dmg, poise: m.poise, kb: [p.facing * m.kb[0], m.kb[1]], armorBreak: !!m.armorBreak, heavy: !!m.heavy,
-      launcher: !!m.launcher, shove: !!m.shove, instance: p.instance, moveId: p.moveId, spin: !!m.spin, cx: p.x,
+    const b = m.box, f2 = fz(p);
+    const box = m.spin ? boxAt(p.x, p.z, b.w / 2, p.y + b.y - b.h / 2, p.y + b.y + b.h / 2) : fwdBoxP(p, b.fx, b.w, b.y - b.h / 2, b.y + b.h / 2);
+    world.spawnHitbox({ owner: p, team: 'p', ...box,
+      dmg: m.dmg, poise: m.poise, kb: [p.facing * m.kb[0], m.kb[1], f2 * m.kb[0]], armorBreak: !!m.armorBreak, heavy: !!m.heavy,
+      launcher: !!m.launcher, shove: !!m.shove, instance: p.instance, moveId: p.moveId, spin: !!m.spin, cx: p.x, cz: p.z,
       wrench: !!m.wrench, ram: p.char === 'ram' && !!m.shield, ramKnock: p.char === 'ram' });
   }
   if (m.launcher && t === activeEnd && p.hitConfirm) p.vy = 9;   // Echo hops after a launched enemy
@@ -812,7 +877,7 @@ function stateAttack(p, cmd, world) {
 
 function stateParry(p, cmd, world) {
   p.parryT++;
-  if (p.onGround) p.vx *= 0.7; else { applyGravity(p, cmd); p.vx = approach(p.vx, cmd.mx * 2, 20 * DT); wallCling(p, cmd, true); }
+  if (p.onGround) { p.vx *= 0.7; p.vz *= 0.7; } else { applyGravity(p, cmd); approach2(p, (cmd.mx || 0) * 2, (cmd.mz || 0) * 2, 20 * DT); wallCling(p, cmd, true); }
   if (p.parryResult) {
     // Successful parry: short, cancellable recovery
     if (p.st > 3 && cancelInto(p, cmd, world)) return;
@@ -823,13 +888,13 @@ function stateParry(p, cmd, world) {
 }
 
 function stateHitstun(p, cmd, world) {
-  if (p.onGround) p.vx *= 0.85;
+  if (p.onGround) { p.vx *= 0.85; p.vz *= 0.85; }
   applyGravity(p, cmd);
   if (p.st >= p.stun) setState(p, 'normal');
 }
 
 function stateBulwark(p, cmd, world) {
-  if (p.onGround) p.vx *= 0.7; else { p.vy = Math.max(p.vy - 10 * DT, -2); }
+  if (p.onGround) { p.vx *= 0.7; p.vz *= 0.7; } else { p.vy = Math.max(p.vy - 10 * DT, -2); }
   if (p.st === 3) world.bulwarkPulse(p);
   if (p.st >= 8 && cancelInto(p, cmd, world, { sig: false })) return;
   if (p.st >= 14) setState(p, 'normal');
@@ -837,7 +902,7 @@ function stateBulwark(p, cmd, world) {
 
 function stateLash(p, cmd, world) {
   const L = p.lash;
-  if (p.onGround) p.vx *= 0.75; else { p.vy = Math.max(p.vy - 20 * DT, -3); }
+  if (p.onGround) { p.vx *= 0.75; p.vz *= 0.75; } else { p.vy = Math.max(p.vy - 20 * DT, -3); }
   L.len = Math.min(1, p.st / 8);
   const hunter = SETTINGS.echoKit === 'hunter';
   if (p.st === 8 && L.target) {
@@ -858,20 +923,20 @@ function stateLash(p, cmd, world) {
 
 function stateZip(p, cmd, world) {
   const z = p.zip, tgt = z.target;
-  const tx = tgt.x - sign(tgt.x - p.x) * (tgt.w / 2 + p.w / 2 + 0.1), ty = tgt.y + 0.2;
-  const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+  const u = away(p, tgt, p), gap = tgt.w / 2 + p.w / 2 + 0.1, tx = tgt.x - u.x * gap, tz = tgt.z - u.z * gap, ty = tgt.y + 0.2;
+  const dx = tx - p.x, dy = ty - p.y, dz = tz - p.z, d = Math.hypot(dx, dy, dz);
   if (d < 0.6 || p.st > 30 || tgt.dead || p.hitWall) {
-    p.vx *= 0.6; p.vy *= 0.6; p.zipArriveT = 12; p.lash = null;
+    p.vx *= 0.6; p.vy *= 0.6; p.vz *= 0.6; p.zipArriveT = 12; p.lash = null;
     setState(p, 'normal');
     return;
   }
-  p.vx = dx / d * ECHO.zipSpeed; p.vy = dy / d * ECHO.zipSpeed;
-  p.facing = sign(dx) || p.facing;
+  p.vx = dx / d * ECHO.zipSpeed; p.vy = dy / d * ECHO.zipSpeed; p.vz = dz / d * ECHO.zipSpeed;
+  setFacing(p, dx, dz);
   if (p.buf.melee <= ACTION_BUFFER && d < 3) { p.zipArriveT = 12; velocityBreak(p, 2, world); }
 }
 
 function updateDowned(p, cmd, world) {
-  p.vx = cmd.mx * 1.2; p.crouch = false;
+  p.vx = (cmd.mx || 0) * 1.2; p.vz = (cmd.mz || 0) * 1.2; p.crouch = false;
   applyGravity(p, cmd);
   p.h = 0.6;
   moveBody(p, DT);
@@ -1041,22 +1106,22 @@ function cycleSub(p, world) {
 // ---- Nova: the dodge (Marksman kit, on the parry button) --------------------------------------
 function tryDodge(p, world) {
   if (p.dodgeCd > 0 || (!p.onGround && !p.airDodge && !p.wallSliding)) return false;
-  const D = DODGE, [mx] = p.stick;
+  const D = DODGE, m = moveDir({ mx: p.stick[0], mz: p.stick[2] });
   // The way the stick points; with it centred, a backstep. Off a wall it always goes out from the wall.
-  const dx = p.wallSliding ? -p.wallDir : Math.abs(mx) > 0.3 ? sign(mx) : -p.facing;
+  const [dx, dz] = p.wallSliding ? [-p.wallX, -p.wallZ] : m || [-p.facing, -fz(p)];
   p.buf.parry = 99; p.dodgeCd = D.cd;
   if (!p.onGround) p.airDodge = false;
-  p.dodge = { dx, t: 0, air: !p.onGround, speed: p.onGround ? D.speed : D.airSpeed, perfect: false };
+  p.dodge = { dx, dz, t: 0, air: !p.onGround, speed: p.onGround ? D.speed : D.airSpeed, perfect: false };
   p.crouch = false; p.fastFall = false; p.dashCarry = false; p.wallSliding = false;
-  setState(p, 'dodge'); world.emit('dodge', { p, dx, air: p.dodge.air });
+  setState(p, 'dodge'); world.emit('dodge', { p, dx, dz, air: p.dodge.air });
   return true;
 }
 function stateDodge(p, cmd, world) {
   const D = DODGE, d = p.dodge;
   if (!d) { setState(p, 'normal'); return; }
   d.t++;
-  if (d.t <= D.ticks - 4) p.vx = d.dx * d.speed * Math.pow(D.keep, Math.max(0, d.t - 3));
-  else p.vx = approach(p.vx, cmd.mx * CHARS[p.char].run * 0.6, 60 * DT);
+  if (d.t <= D.ticks - 4) { const v = d.speed * Math.pow(D.keep, Math.max(0, d.t - 3)); p.vx = d.dx * v; p.vz = (d.dz || 0) * v; }
+  else { const r = CHARS[p.char].run * 0.6; approach2(p, (cmd.mx || 0) * r, (cmd.mz || 0) * r, 60 * DT); }
   if (d.air && d.t <= 8) p.vy = 0; else applyGravity(p, cmd);
   // It can be cut short: a jump from the fourth tick, anything else once he is hittable again
   if (d.t >= 4 && tryJump(p, cmd, world)) { p.dodge = null; return; }
@@ -1085,7 +1150,7 @@ export function gainUlt(p, amount, world) {
 export const beamSpec = p => (p.char === 'ram' ? RAM.beam : MARKSMAN.beam);
 function startBeam(p, world) {
   const B = beamSpec(p), ram = p.char === 'ram';
-  p.beam = { t: B.ticks, dx: p.aimX, dy: p.aimY, mult: ram ? 1 : focusMult(p) * spendOvercharge(p), attach: ram ? 'breach' : p.attachment, pulse: 0,
+  p.beam = { t: B.ticks, dx: p.aimX, dy: p.aimY, dz: p.aimZ || 0, mult: ram ? 1 : focusMult(p) * spendOvercharge(p), attach: ram ? 'breach' : p.attachment, pulse: 0,
     armor: new Map(), family: { focused: false, rocketed: true, perfect: false }, segs: [] };
   p.chargeT = 0;
   setState(p, 'beam'); world.emit('beamStart', { p, attach: p.beam.attach, over: !ram && p.beam.mult > focusMult(p) });
@@ -1093,15 +1158,12 @@ function startBeam(p, world) {
 function stateBeam(p, cmd, world) {
   const B = beamSpec(p), b = p.beam;
   if (!b) { setState(p, 'normal'); return; }
-  const a0 = Math.atan2(b.dy, b.dx);
-  let da = Math.atan2(p.aimY, p.aimX) - a0;
-  while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-  const a = a0 + Math.max(-B.turn, Math.min(B.turn, da));
-  b.dx = Math.cos(a); b.dy = Math.sin(a);
-  if (Math.abs(b.dx) > 0.2) p.facing = sign(b.dx);
+  // The beam follows the aim at a limited turn rate
+  [b.dx, b.dy, b.dz] = turnToward(b.dx, b.dy, b.dz || 0, p.aimX, p.aimY, p.aimZ || 0, B.turn);
+  if (Math.hypot(b.dx, b.dz) > 0.2) setFacing(p, b.dx, b.dz);
   // No push-back: on the ground he can creep along; in the air he hangs, sinking slowly, while it fires
-  if (p.onGround) { p.vx = approach(p.vx, cmd.mx * CHARS[p.char].run * B.slow, 40 * DT); p.vy = -0.5; }
-  else { p.vx = approach(p.vx, 0, 20 * DT); p.vy = approach(p.vy, -B.hover, 40 * DT); p.fastFall = false; }
+  if (p.onGround) { const r = CHARS[p.char].run * B.slow; approach2(p, (cmd.mx || 0) * r, (cmd.mz || 0) * r, 40 * DT); p.vy = -0.5; }
+  else { approach2(p, 0, 0, 20 * DT); p.vy = approach(p.vy, -B.hover, 40 * DT); p.fastFall = false; }
   if (tryParry(p, world) || tryDash(p, cmd, world)) { world.endBeam(p, 'cancel'); return; }
   world.beamTick(p);
   if (--b.t <= 0) { world.endBeam(p, 'done'); setState(p, 'normal'); }
@@ -1295,10 +1357,10 @@ function startGuard(p, world) {
 }
 // The Rampart faces where he aims: from straight ahead up to overhead, never lower than RAM.guard.minNy
 function guardAim(p) {
-  let ax = p.aimX; const ay = Math.max(RAM.guard.minNy, p.aimY);
-  if (Math.abs(ax) < 0.15) ax = (sign(ax) || p.facing) * 0.15;   // overhead still leans the way he faces
-  const m = Math.hypot(ax, ay) || 1;
-  p.guardDir = [ax / m, ay / m]; p.facing = sign(ax);
+  const ay = Math.max(RAM.guard.minNy, p.aimY), h = aimH(p) || [p.facing, fz(p)];
+  const hm = Math.max(0.15, Math.hypot(p.aimX, p.aimZ || 0));   // overhead still leans the way he faces
+  const m = Math.hypot(hm, ay) || 1;
+  p.guardDir = [h[0] * hm / m, ay / m, h[1] * hm / m]; setFacing(p, h[0], h[1]);
 }
 function stateGuard(p, cmd, world) {
   const G = RAM.guard, c = CHARS.ram;
@@ -1306,8 +1368,8 @@ function stateGuard(p, cmd, world) {
   if (!cmd.held.parry || p.guardBroken) { p.guardOffT = 0; setState(p, 'normal'); world.emit('guardOff', { p }); return; }
   guardAim(p);
   // Behind the shield he walks slowly either way, still facing out
-  if (p.onGround) p.vx = approach(p.vx, cmd.mx * c.run * G.walk, c.accelG * DT);
-  else p.vx = approach(p.vx, cmd.mx * c.run * 0.6, c.accelA * DT);
+  const k = c.run * (p.onGround ? G.walk : 0.6);
+  approach2(p, (cmd.mx || 0) * k, (cmd.mz || 0) * k, (p.onGround ? c.accelG : c.accelA) * DT);
   applyGravity(p, cmd);
   // Out of the guard: a shield shove (melee) or the Ram Charge (dash). A jump keeps the shield up.
   if (p.buf.melee <= ACTION_BUFFER) { p.buf.melee = 99; p.guardOffT = 0; world.emit('guardOff', { p }); startMove(p, 'ram_bash', world); return; }
@@ -1327,26 +1389,28 @@ function ramAbilities(p, world) {
 // along the floor (or level through the air), the way he points; the world scoops up what is in front
 // (world.ramPlow) and ends it at a wall or on something it can't move
 function startRush(p, world, level, d) {
-  const R = RAM.rush, dir = d && Math.abs(d[0]) > 0.2 ? sign(d[0]) : p.facing;
-  p.buf.dash = 99; p.dashCd = CHARS.ram.dash.cooldown; p.facing = dir;
+  const R = RAM.rush;
+  if (d && Math.hypot(d[0], d[2] || 0) > 0.2) setFacing(p, d[0], d[2] || 0);
+  p.buf.dash = 99; p.dashCd = CHARS.ram.dash.cooldown;
   p.dashChargeT = 0; p.crouch = false; p.fastFall = false; p.dash = null;
-  p.rush = { dx: dir, t: 0, level, air: !p.onGround, ticks: R.ticks[level], speed: R.speed[level], carried: [], hit: new Set() };
-  setState(p, 'rush'); world.emit('rush', { p, level, dx: dir });
+  p.rush = { dx: p.facing, dz: fz(p), t: 0, level, air: !p.onGround, ticks: R.ticks[level], speed: R.speed[level], carried: [], hit: new Set() };
+  setState(p, 'rush'); world.emit('rush', { p, level, dx: p.facing, dz: fz(p) });
 }
 function stateRush(p, cmd, world) {
   const R = RAM.rush, r = p.rush;
   if (!r) { setState(p, 'normal'); return; }
   r.t++;
-  p.vx = r.dx * r.speed * (r.t > r.ticks - 3 ? 0.8 : 1);
+  const v = r.speed * (r.t > r.ticks - 3 ? 0.8 : 1); p.vx = r.dx * v; p.vz = r.dz * v;
   if (r.air) p.vy = 0; else applyGravity(p, cmd);   // run off a ledge and he falls, still charging
   // A jump out of a grounded charge carries its speed
   if (!r.air && p.buf.jump <= JUMP_BUFFER && (p.onGround || p.coyote > 0)) {
     world.endRush(p, 'jump');
-    p.vy = CHARS.ram.jumpV; p.vx = r.dx * Math.min(r.speed, 16) * 0.85; p.dashCarry = true; p.onGround = false; p.coyote = 0; p.buf.jump = 99;
+    const j = Math.min(r.speed, 16) * 0.85;
+    p.vy = CHARS.ram.jumpV; p.vx = r.dx * j; p.vz = r.dz * j; p.dashCarry = true; p.onGround = false; p.coyote = 0; p.buf.jump = 99;
     setState(p, 'normal'); world.emit('jump', { p, dashJump: true });
     return;
   }
-  if (r.t >= r.ticks) { world.endRush(p, 'done'); p.vx = r.dx * r.speed * R.keep; p.postDash = 0; setState(p, 'normal'); }
+  if (r.t >= r.ticks) { world.endRush(p, 'done'); p.vx = r.dx * r.speed * R.keep; p.vz = r.dz * r.speed * R.keep; p.postDash = 0; setState(p, 'normal'); }
 }
 
 // Guardian Link's leap to a teammate's side: a single bound, steered all the way to where they are now
@@ -1355,11 +1419,13 @@ function stateLeap(p, cmd, world) {
   if (!L) { setState(p, 'normal'); return; }
   L.t++;
   const q = L.q, ok = q && world.players.includes(q) && q.state !== 'dead';
-  if (ok) { L.tx = q.x - L.side * (q.w / 2 + p.w / 2 + 0.25); L.ty = q.y; }
+  if (ok) { const g = q.w / 2 + p.w / 2 + 0.25; L.tx = q.x - L.side.x * g; L.tz = q.z - L.side.z * g; L.ty = q.y; }
   const left = Math.max(1, RAM.link.leapTicks - L.t) * DT;
-  p.vx = Math.max(-26, Math.min(26, (L.tx - p.x) / left));
+  let vx = (L.tx - p.x) / left, vz = (L.tz - p.z) / left; const vm = Math.hypot(vx, vz);
+  if (vm > 26) { vx *= 26 / vm; vz *= 26 / vm; }
+  p.vx = vx; p.vz = vz;
   p.vy -= GRAVITY * DT; if (p.vy < -MAX_FALL * 1.4) p.vy = -MAX_FALL * 1.4;
-  p.facing = sign(L.tx - p.x) || p.facing; p.fastFall = false;
+  setFacing(p, L.tx - p.x, L.tz - p.z); p.fastFall = false;
   if ((p.onGround && L.t > 4) || L.t > RAM.link.leapTicks + 30) world.landLeap(p);
 }
 
@@ -1429,7 +1495,7 @@ function statePatch(p, cmd, world) {
   if (!cmd.held.parry || !p.patch) { p.patchOffT = world.tick; setState(p, 'normal'); world.emit('patchOff', { p }); return; }
   const q = p.patch.target;
   horizontalControl(p, cmd, world, FIX.beam.slow);
-  if (q && Math.abs(cmd.mx) < 0.1) p.facing = sign(q.x - p.x) || p.facing;   // standing still she turns to whoever she patches
+  if (q && stickMag(cmd) < 0.1) { const u = away(p, q, p); setFacing(p, u.x, u.z); }   // standing still she turns to whoever she patches
   applyGravity(p, cmd);
   if (tryDash(p, cmd, world)) { p.patchOffT = world.tick; world.emit('patchOff', { p }); return; }
   if (tryJump(p, cmd, world)) p.state = 'patch';   // she keeps the beam on through a jump

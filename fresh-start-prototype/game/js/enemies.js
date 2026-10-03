@@ -2,6 +2,7 @@
 // telegraph events: 'standard' (parryable), 'heavy' (perfect parry to fully negate), 'unblockable'.
 import { DT, GRAVITY, MAX_FALL, HUNTER, SCARF } from './config.js';
 import { moveBody, segmentBlocked, groundBelow, KILL_Y, killYAt } from './level.js';
+import { away, hdist, setFacing, fz, fwdBox } from './geom.js';
 
 export const ENEMY_TYPES = {
   swarmer: { w: 0.7, h: 0.8, hp: 3, poise: 18, speed: 5.2, flinch: true, light: true },
@@ -20,14 +21,14 @@ export const CHARGER = { wind: 34, speed: 15, maxTicks: 48, dmg: 16, daze: 80, c
 
 let nextId = 1;
 export function createEnemy(type, x, y, extra = {}) {
-  const T = ENEMY_TYPES[type];
+  const T = ENEMY_TYPES[type], z = extra.z || 0;
   return {
-    kind: 'enemy', id: nextId++, type, x, y, vx: 0, vy: 0, w: T.w, h: T.h, prevX: x, prevY: y,
-    facing: -1, shieldDir: -1, onGround: false, hp: T.hp, maxHp: T.hp, poise: 0, poiseMax: T.poise,
+    kind: 'enemy', id: nextId++, type, x, y, z, vx: 0, vy: 0, vz: 0, w: T.w, h: T.h, prevX: x, prevY: y, prevZ: z,
+    facing: -1, facingZ: 0, shieldDir: -1, shieldDirZ: 0, onGround: false, hp: T.hp, maxHp: T.hp, poise: 0, poiseMax: T.poise,
     armor: T.armor || 0, armorMax: T.armor || 0,
     state: 'idle', st: 0, atk: null, token: null, target: null, cd: 30 + Math.floor(Math.random() * 40),
     hitstop: 0, flash: 0, dead: false, deathT: 0, tagged: 0, stun: 0, slamCd: 120, cycle: 0,
-    aimX: 0, aimY: 0, label: '', light: T.light, flier: !!T.flier, boss: !!T.boss, homeX: x, homeY: y, ...extra,
+    aimX: 0, aimY: 0, aimZ: 0, label: '', light: T.light, flier: !!T.flier, boss: !!T.boss, homeX: x, homeY: y, homeZ: z, ...extra,
   };
 }
 
@@ -40,7 +41,7 @@ export function nearestPlayer(e, world, maxD = 40) {
   let best = null, bd = maxD, flare = null, fd = Math.min(maxD, SCARF.flareRange);
   for (const p of world.players) {
     if (!canTarget(p)) continue;
-    const d = Math.hypot(p.x - e.x, (p.y + 0.9) - (e.y + e.h / 2));
+    const d = Math.hypot(p.x - e.x, (p.y + 0.9) - (e.y + e.h / 2), p.z - e.z);
     if (d < bd) { bd = d; best = p; }
     if (p.char === 'echo' && p.scarfMode === 'flare' && d < fd) { fd = d; flare = p; }
   }
@@ -54,27 +55,28 @@ function releaseToken(e, world) { if (e.token) { world.director.release(e); } }
 export function enemyPhysics(e) { physics(e); }
 function physics(e) {
   const T = ENEMY_TYPES[e.type];
-  if (T.flier) { e.vx *= 0.93; e.vy *= 0.93; moveBody(e, DT); return; }   // drones drift to a stop
+  if (T.flier) { e.vx *= 0.93; e.vy *= 0.93; e.vz *= 0.93; moveBody(e, DT); return; }   // drones drift to a stop
   if (T.noGravity) return;
   e.vy -= GRAVITY * DT;
   if (e.vy < -MAX_FALL) e.vy = -MAX_FALL;
   moveBody(e, DT);
 }
+const damp = (e, k) => { e.vx *= k; e.vz *= k; };
 
 export function updateEnemy(e, world) {
-  e.prevX = e.x; e.prevY = e.y;
+  e.prevX = e.x; e.prevY = e.y; e.prevZ = e.z;
   if (e.flash > 0) e.flash--;
   if (e.dropT > 0) e.dropT--;   // lets grappled enemies fall through one-way platforms
   if (e.tagged > 0) e.tagged--;
   if (e.tauntT > 0) e.tauntT--;
   if (e.dead) {
     e.deathT++;
-    if (e.boss && !e.onGround) { e.vy = Math.max(e.vy - GRAVITY * DT, -14); e.vx *= 0.95; moveBody(e, DT); }   // a downed gunship falls onto the pad
+    if (e.boss && !e.onGround) { e.vy = Math.max(e.vy - GRAVITY * DT, -14); damp(e, 0.95); moveBody(e, DT); }   // a downed gunship falls onto the pad
     return;
   }
   if (e.y < killYAt(e.x)) {   // fell out of the level (a charge off a ledge, a knockback over the edge)
     e.dead = true; e.deathT = 0; e.hp = 0; world.director.release(e);
-    world.emit('kill', { x: e.x, y: e.y, e, owner: null });
+    world.emit('kill', { x: e.x, y: e.y, z: e.z, e, owner: null });
     return;
   }
   if (e.shockT > 0) e.shockT--;
@@ -88,7 +90,7 @@ export function updateEnemy(e, world) {
 
   // Shared interrupt states
   if (e.state === 'stagger' || e.state === 'hitstun') {
-    if (e.onGround) e.vx *= 0.85;
+    if (e.onGround) damp(e, 0.85);
     physics(e);
     if (e.st >= e.stun) setState(e, 'idle');
     return;
@@ -102,21 +104,22 @@ export function updateEnemy(e, world) {
     const p = e.catcher;
     const leashed = p && p.leash && p.leash.e === e;
     if (e.st <= 8 && p) {
-      const tx = p.x + (e.catchSide || p.facing) * (p.w / 2 + e.w / 2 + 0.3), ty = p.y;
-      e.vx = (tx - e.x) * 14; e.vy = (ty - e.y) * 14;
+      const side = e.catchSide || { x: p.facing, z: fz(p) }, d = p.w / 2 + e.w / 2 + 0.3;
+      const tx = p.x + side.x * d, tz = p.z + side.z * d, ty = p.y;
+      e.vx = (tx - e.x) * 14; e.vy = (ty - e.y) * 14; e.vz = (tz - e.z) * 14;
       moveBody(e, DT);
     } else if (leashed) {
       // Reeled in on the tether: dragged along, never more than the leash length away
-      const dx = e.x - p.x, d = Math.abs(dx), L = HUNTER.leashLen;
-      if (d > L) e.vx = p.vx + (p.x + Math.sign(dx) * L - e.x) * 20; else e.vx *= 0.8;
+      const d = hdist(p, e), L = HUNTER.leashLen;
+      if (d > L) { const u = away(p, e); e.vx = p.vx + (p.x + u.x * L - e.x) * 20; e.vz = (p.vz || 0) + (p.z + u.z * L - e.z) * 20; } else damp(e, 0.8);
       physics(e);
       e.st = Math.min(e.st, 12);
-    } else { e.vx *= 0.8; physics(e); }
+    } else { damp(e, 0.8); physics(e); }
     if (e.st >= 28) setState(e, 'idle');
     return;
   }
   if (e.state === 'snared') {
-    e.vx = 0; physics(e);
+    e.vx = 0; e.vz = 0; physics(e);
     if (e.st >= e.stun) setState(e, 'idle');
     return;
   }
@@ -135,38 +138,42 @@ export function updateEnemy(e, world) {
 
 // ---- Behaviours ------------------------------------------------------------------------
 
+// Turn to face a target (on the ground plane)
+export function faceTo(e, t) { const u = away(e, t, e); setFacing(e, u.x, u.z); return u; }
+
 function walkToward(e, target, speed, stopDist) {
-  const dx = target.x - e.x;
-  e.facing = dx >= 0 ? 1 : -1;
-  if (Math.abs(dx) > stopDist) e.vx = e.facing * speed;
-  else e.vx *= 0.7;
+  const u = faceTo(e, target);
+  if (hdist(e, target) > stopDist) { e.vx = u.x * speed; e.vz = u.z * speed; }
+  else damp(e, 0.7);
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const approach = (v, t, d) => (v < t ? Math.min(v + d, t) : Math.max(v - d, t));
+// An enemy strike box: `off` m in front of it, `len` m along the way it faces (and as wide), y0..y1 above its feet
+const strike = (e, off, len, y0, y1) => fwdBox(e, off, len, y0, y1);
+const kbF = (e, k, up) => [e.facing * k, up, fz(e) * k];
 
 export const BEHAVIOUR = {
   swarmer(e, world) {
     const p = nearestPlayer(e, world, 18);
     e.target = p;
     if (e.state === 'idle' || e.state === 'approach') {
-      if (!p) { e.vx *= 0.8; physics(e); return; }
+      if (!p) { damp(e, 0.8); physics(e); return; }
       walkToward(e, p, ENEMY_TYPES.swarmer.speed, 1.7);
-      const close = Math.abs(p.x - e.x) < 2.1 && Math.abs(p.y - e.y) < 1.4;
+      const close = hdist(e, p) < 2.1 && Math.abs(p.y - e.y) < 1.4;
       if (close && e.cd === 0 && world.director.request(e, 'melee')) {
-        setState(e, 'windup'); e.vx = 0; world.telegraph(e, 'standard', 20);
+        setState(e, 'windup'); e.vx = 0; e.vz = 0; world.telegraph(e, 'standard', 20);
       } else e.state = 'approach';
     } else if (e.state === 'windup') {
-      e.vx *= 0.7;
-      if (p) e.facing = p.x >= e.x ? 1 : -1;
+      damp(e, 0.7);
+      if (p) faceTo(e, p);
       if (e.st >= 20) { setState(e, 'attack'); e.atk = { inst: world.newInstance() }; }
     } else if (e.state === 'attack') {
-      e.vx = e.facing * 10;
-      const x0 = e.facing > 0 ? e.x : e.x - 1.1;
-      world.spawnHitbox({ owner: e, team: 'e', x0, x1: x0 + 1.1, y0: e.y, y1: e.y + 0.9, dmg: 8, kb: [e.facing * 5, 3], instance: e.atk.inst, cat: 'standard' });
+      e.vx = e.facing * 10; e.vz = fz(e) * 10;
+      world.spawnHitbox({ owner: e, team: 'e', ...strike(e, 0.55, 1.1, 0, 0.9), dmg: 8, kb: kbF(e, 5, 3), instance: e.atk.inst, cat: 'standard' });
       if (e.st >= 10) setState(e, 'recover');
     } else if (e.state === 'recover') {
-      e.vx *= 0.8;
+      damp(e, 0.8);
       if (e.st >= 26) { releaseToken(e, world); e.cd = 40 + Math.floor(Math.random() * 40); setState(e, 'idle'); }
     }
     physics(e);
@@ -176,27 +183,26 @@ export const BEHAVIOUR = {
     const p = nearestPlayer(e, world, 22);
     e.target = p;
     // The shield turns slowly, so flanking and attacking from above work
-    if (p && e.st % 36 === 0 && e.state !== 'attack') e.shieldDir = p.x >= e.x ? 1 : -1;
+    if (p && e.st % 36 === 0 && e.state !== 'attack') { const u = away(e, p, e); e.shieldDir = u.x; e.shieldDirZ = u.z; }
+    setFacing(e, e.shieldDir, e.shieldDirZ);
     if (e.state === 'idle' || e.state === 'approach') {
-      if (!p) { e.vx *= 0.8; physics(e); return; }
-      const dx = p.x - e.x;
-      e.facing = e.shieldDir;
-      if (Math.abs(dx) > 2.2 && Math.sign(dx) === e.shieldDir) e.vx = e.shieldDir * ENEMY_TYPES.shield.speed;
-      else e.vx *= 0.7;
-      const close = Math.abs(dx) < 2.5 && Math.abs(p.y - e.y) < 1.6 && Math.sign(dx) === e.shieldDir;
+      if (!p) { damp(e, 0.8); physics(e); return; }
+      const u = away(e, p, e), ahead = u.x * e.shieldDir + u.z * e.shieldDirZ > 0.5, d = hdist(e, p);
+      if (d > 2.2 && ahead) { e.vx = u.x * ENEMY_TYPES.shield.speed; e.vz = u.z * ENEMY_TYPES.shield.speed; }
+      else damp(e, 0.7);
+      const close = d < 2.5 && Math.abs(p.y - e.y) < 1.6 && ahead;
       if (close && e.cd === 0 && world.director.request(e, 'melee')) {
         setState(e, 'windup'); world.telegraph(e, 'standard', 22);
       }
     } else if (e.state === 'windup') {
-      e.vx *= 0.6;
+      damp(e, 0.6);
       if (e.st >= 22) { setState(e, 'attack'); e.atk = { inst: world.newInstance() }; }
     } else if (e.state === 'attack') {
-      e.vx = e.shieldDir * 8;
-      const x0 = e.shieldDir > 0 ? e.x : e.x - 1.3;
-      world.spawnHitbox({ owner: e, team: 'e', x0, x1: x0 + 1.3, y0: e.y + 0.2, y1: e.y + 1.8, dmg: 12, kb: [e.shieldDir * 7, 3], instance: e.atk.inst, cat: 'standard' });
+      e.vx = e.shieldDir * 8; e.vz = e.shieldDirZ * 8;
+      world.spawnHitbox({ owner: e, team: 'e', ...strike(e, 0.65, 1.3, 0.2, 1.8), dmg: 12, kb: kbF(e, 7, 3), instance: e.atk.inst, cat: 'standard' });
       if (e.st >= 8) setState(e, 'recover');
     } else if (e.state === 'recover') {
-      e.vx *= 0.75;
+      damp(e, 0.75);
       if (e.st >= 34) { releaseToken(e, world); e.cd = 60 + Math.floor(Math.random() * 40); setState(e, 'idle'); }
     }
     physics(e);
@@ -207,22 +213,21 @@ export const BEHAVIOUR = {
     if (e.state === 'idle') {
       e.target = p;
       if (p && e.cd === 0) {
-        const c = { x: e.x, y: e.y + 1.4 };
-        if (!segmentBlocked(c.x, c.y, p.x, p.y + 1) && world.director.request(e, 'ranged')) {
+        if (!segmentBlocked(e.x, e.y + 1.4, e.z, p.x, p.y + 1, p.z) && world.director.request(e, 'ranged')) {
           setState(e, 'aim'); world.telegraph(e, 'heavy', 64);
         }
       }
     } else if (e.state === 'aim') {
       const t = e.target;
       if (!t || !canTarget(t)) { releaseToken(e, world); e.target = null; setState(e, 'idle'); physics(e); return; }
-      e.aimX = t.x; e.aimY = t.y + 1.0;
-      e.facing = t.x >= e.x ? 1 : -1;
+      e.aimX = t.x; e.aimY = t.y + 1.0; e.aimZ = t.z;
+      faceTo(e, t);
       if (e.st >= 48) { setState(e, 'lock'); world.emit('lock', { e }); }
     } else if (e.state === 'lock') {
       if (e.st >= 16) {
-        const sx = e.x + e.facing * 0.5, sy = e.y + 1.4;
-        const dx = e.aimX - sx, dy = e.aimY - sy, d = Math.hypot(dx, dy) || 1;
-        world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, vx: dx / d * 24, vy: dy / d * 24, r: 0.28, dmg: 18, heavy: true, kind: 'heavy', ttl: 90 });
+        const sx = e.x + e.facing * 0.5, sy = e.y + 1.4, sz = e.z + fz(e) * 0.5;
+        const dx = e.aimX - sx, dy = e.aimY - sy, dz = (e.aimZ ?? e.z) - sz, d = Math.hypot(dx, dy, dz) || 1;
+        world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, z: sz, vx: dx / d * 24, vy: dy / d * 24, vz: dz / d * 24, r: 0.28, dmg: 18, heavy: true, kind: 'heavy', ttl: 90 });
         world.emit('enemyShot', { e, heavy: true });
         setState(e, 'recover');
       }
@@ -236,30 +241,29 @@ export const BEHAVIOUR = {
     const p = nearestPlayer(e, world, 30);
     e.target = p;
     if (e.state === 'idle' || e.state === 'approach') {
-      if (!p) { e.vx *= 0.8; physics(e); return; }
-      const dist = Math.abs(p.x - e.x);
+      if (!p) { damp(e, 0.8); physics(e); return; }
+      const dist = hdist(e, p);
       walkToward(e, p, ENEMY_TYPES.brute.speed, 2.0);
       if (e.cd === 0) {
         if (dist > 3.2 && dist < 8.5 && e.slamCd === 0 && world.director.request(e, 'melee')) {
-          setState(e, 'slamWindup'); e.vx = 0; world.telegraph(e, 'unblockable', 44);
+          setState(e, 'slamWindup'); e.vx = 0; e.vz = 0; world.telegraph(e, 'unblockable', 44);
         } else if (dist < 2.8 && Math.abs(p.y - e.y) < 2 && world.director.request(e, 'melee')) {
-          setState(e, 'windup'); e.vx = 0; world.telegraph(e, 'heavy', 26);
+          setState(e, 'windup'); e.vx = 0; e.vz = 0; world.telegraph(e, 'heavy', 26);
         }
       }
     } else if (e.state === 'windup') {
-      e.vx *= 0.6;
+      damp(e, 0.6);
       if (e.st >= 26) { setState(e, 'attack'); e.atk = { inst: world.newInstance() }; }
     } else if (e.state === 'attack') {
-      const x0 = e.facing > 0 ? e.x + 0.2 : e.x - 2.8;
-      world.spawnHitbox({ owner: e, team: 'e', x0, x1: x0 + 2.6, y0: e.y + 0.3, y1: e.y + 2.2, dmg: 20, kb: [e.facing * 10, 5], heavy: true, instance: e.atk.inst, cat: 'heavy' });
+      world.spawnHitbox({ owner: e, team: 'e', ...strike(e, 1.5, 2.6, 0.3, 2.2), dmg: 20, kb: kbF(e, 10, 5), heavy: true, instance: e.atk.inst, cat: 'heavy' });
       if (e.st >= 6) setState(e, 'recover');
     } else if (e.state === 'slamWindup') {
       if (e.st >= 44) {
-        world.spawnShockwave(e, 1, 22); world.spawnShockwave(e, -1, 22);
+        world.spawnShockwave(e, 22);
         world.emit('slam', { e }); setState(e, 'slamRecover');
       }
     } else if (e.state === 'recover' || e.state === 'slamRecover') {
-      e.vx *= 0.8;
+      damp(e, 0.8);
       const len = e.state === 'recover' ? 38 : 50;
       if (e.st >= len) {
         releaseToken(e, world);
@@ -276,7 +280,7 @@ export const BEHAVIOUR = {
     if (e.state === 'idle') {
       e.label = '';
       if (p && e.cd === 0) {
-        e.facing = p.x >= e.x ? 1 : -1;
+        faceTo(e, p);
         const cat = pattern[e.cycle % 3]; e.cycle++;
         const wind = cat === 'standard' ? 24 : cat === 'heavy' ? 30 : 44;
         e.atk = { cat, wind, inst: world.newInstance() };
@@ -285,14 +289,13 @@ export const BEHAVIOUR = {
       }
     } else if (e.state === 'windup') {
       if (e.st >= e.atk.wind) {
-        if (e.atk.cat === 'unblockable') { world.spawnShockwave(e, 1, 20, 0.6); world.spawnShockwave(e, -1, 20, 0.6); world.emit('slam', { e }); }
+        if (e.atk.cat === 'unblockable') { world.spawnShockwave(e, 20, 0.6); world.emit('slam', { e }); }
         setState(e, 'attack');
       }
     } else if (e.state === 'attack') {
       if (e.atk.cat !== 'unblockable') {
-        const x0 = e.facing > 0 ? e.x : e.x - 2.0;
-        world.spawnHitbox({ owner: e, team: 'e', x0, x1: x0 + 2.0, y0: e.y + 0.4, y1: e.y + 1.9, dmg: e.atk.cat === 'heavy' ? 16 : 8,
-          kb: [e.facing * 6, 3], heavy: e.atk.cat === 'heavy', instance: e.atk.inst, cat: e.atk.cat });
+        world.spawnHitbox({ owner: e, team: 'e', ...strike(e, 1.0, 2.0, 0.4, 1.9), dmg: e.atk.cat === 'heavy' ? 16 : 8,
+          kb: kbF(e, 6, 3), heavy: e.atk.cat === 'heavy', instance: e.atk.inst, cat: e.atk.cat });
       }
       if (e.st >= 5) setState(e, 'recover');
     } else if (e.state === 'recover') {
@@ -301,31 +304,33 @@ export const BEHAVIOUR = {
     physics(e);
   },
 
-  // Drone: hovers above and to one side of its target, bobbing, and fires parryable shots down at it
+  // Drone: hovers above its target, off to one side (the side it is already on), bobbing, and fires parryable
+  // shots down at it
   drone(e, world) {
     const p = nearestPlayer(e, world, 26);
     e.target = p;
     const sp = ENEMY_TYPES.drone.speed, bob = Math.sin((world.tick + e.id * 37) * 0.05) * 0.5;
-    let tx = e.homeX, ty = e.homeY + bob;
-    if (p) { const side = e.x >= p.x ? 1 : -1; tx = p.x + side * 5.5; ty = p.y + 3.4 + bob; e.facing = p.x >= e.x ? 1 : -1; }
+    let tx = e.homeX, ty = e.homeY + bob, tz = e.homeZ || 0;
+    if (p) { const u = away(p, e, { facing: -p.facing, facingZ: -fz(p) }); tx = p.x + u.x * 5.5; tz = p.z + u.z * 5.5; ty = p.y + 3.4 + bob; faceTo(e, p); }
     if (e.state === 'idle') {
       e.vx = approach(e.vx, clamp((tx - e.x) * 1.6, -sp, sp), 0.35);
       e.vy = approach(e.vy, clamp((ty - e.y) * 1.8, -sp, sp), 0.35);
-      if (p && e.cd === 0 && Math.abs(p.x - e.x) < 11 && !segmentBlocked(e.x, e.y + 0.3, p.x, p.y + 1) && world.director.request(e, 'ranged')) {
+      e.vz = approach(e.vz, clamp((tz - e.z) * 1.6, -sp, sp), 0.35);
+      if (p && e.cd === 0 && hdist(e, p) < 11 && !segmentBlocked(e.x, e.y + 0.3, e.z, p.x, p.y + 1, p.z) && world.director.request(e, 'ranged')) {
         setState(e, 'windup'); world.telegraph(e, 'standard', 26);
       }
     } else if (e.state === 'windup') {
-      e.vx *= 0.85; e.vy *= 0.85;
+      e.vx *= 0.85; e.vy *= 0.85; e.vz *= 0.85;
       if (e.st >= 26) {
         if (p && canTarget(p)) {
-          const sx = e.x + e.facing * 0.4, sy = e.y + 0.25, dx = p.x - sx, dy = p.y + 1 - sy, d = Math.hypot(dx, dy) || 1;
-          world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, vx: dx / d * 13, vy: dy / d * 13, r: 0.2, dmg: 6, kind: 'std', ttl: 110 });
+          const sx = e.x + e.facing * 0.4, sy = e.y + 0.25, sz = e.z + fz(e) * 0.4, dx = p.x - sx, dy = p.y + 1 - sy, dz = p.z - sz, d = Math.hypot(dx, dy, dz) || 1;
+          world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, z: sz, vx: dx / d * 13, vy: dy / d * 13, vz: dz / d * 13, r: 0.2, dmg: 6, kind: 'std', ttl: 110 });
           world.emit('enemyShot', { e, heavy: false });
         }
         setState(e, 'recover');
       }
     } else if (e.state === 'recover') {
-      e.vx *= 0.9; e.vy *= 0.9;
+      e.vx *= 0.9; e.vy *= 0.9; e.vz *= 0.9;
       if (e.st >= 24) { releaseToken(e, world); e.cd = 70 + (e.id * 13) % 50; setState(e, 'idle'); }
     } else setState(e, 'idle');
     physics(e);
@@ -337,22 +342,22 @@ export const BEHAVIOUR = {
     const p = nearestPlayer(e, world, MORTAR.range);
     if (e.state === 'idle') {
       e.target = p;
-      if (p && e.cd === 0 && Math.abs(p.x - e.x) > MORTAR.minRange && world.director.request(e, 'ranged')) {
-        e.facing = p.x >= e.x ? 1 : -1;
+      if (p && e.cd === 0 && hdist(e, p) > MORTAR.minRange && world.director.request(e, 'ranged')) {
+        faceTo(e, p);
         setState(e, 'windup'); world.telegraph(e, 'unblockable', MORTAR.wind);
       }
     } else if (e.state === 'windup') {
       const t = e.target;
-      if (t) e.facing = t.x >= e.x ? 1 : -1;
+      if (t) faceTo(e, t);
       if (e.st >= MORTAR.wind) {
         if (t && canTarget(t)) {
           // Aim where the target stands now; flight time grows with distance
-          const sx = e.x + e.facing * 0.5, sy = e.y + 1.35, tx = t.x, ty = Math.max(groundBelow(t.x, t.y + 0.3), t.y - 6);
-          const T = clamp(0.9 + Math.abs(tx - sx) / 25, 0.9, 1.5), g = MORTAR.gravity;
-          const vx = (tx - sx) / T, vy = (ty + 0.2 - sy + 0.5 * g * T * T) / T;
-          world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, vx, vy, gravity: g, r: 0.3, dmg: 0, heavy: true, kind: 'mortar',
+          const sx = e.x + e.facing * 0.5, sy = e.y + 1.35, sz = e.z + fz(e) * 0.5, tx = t.x, tz = t.z, ty = Math.max(groundBelow(t.x, t.y + 0.3, t.z), t.y - 6);
+          const T = clamp(0.9 + Math.hypot(tx - sx, tz - sz) / 25, 0.9, 1.5), g = MORTAR.gravity;
+          const vx = (tx - sx) / T, vz = (tz - sz) / T, vy = (ty + 0.2 - sy + 0.5 * g * T * T) / T;
+          world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, z: sz, vx, vy, vz, gravity: g, r: 0.3, dmg: 0, heavy: true, kind: 'mortar',
             ttl: 300, blast: { ...MORTAR.blast } });
-          world.emit('mortarShot', { e, x: tx, y: ty, r: MORTAR.blast.r, ticks: Math.round(T * 60) });
+          world.emit('mortarShot', { e, x: tx, y: ty, z: tz, r: MORTAR.blast.r, ticks: Math.round(T * 60) });
         }
         setState(e, 'recover');
       }
@@ -368,32 +373,30 @@ export const BEHAVIOUR = {
     const p = nearestPlayer(e, world, 26);
     e.target = p;
     if (e.state === 'idle' || e.state === 'approach') {
-      if (!p) { e.vx *= 0.8; physics(e); return; }
-      const dx = p.x - e.x, dist = Math.abs(dx), level = Math.abs(p.y - e.y) < 1.8;
-      e.facing = dx >= 0 ? 1 : -1;
-      if (dist < CHARGER.minRange + 1) e.vx = -e.facing * ENEMY_TYPES.charger.speed;   // backs off to get a run-up
-      else if (dist > CHARGER.maxRange - 2) e.vx = e.facing * ENEMY_TYPES.charger.speed;
-      else e.vx *= 0.7;
+      if (!p) { damp(e, 0.8); physics(e); return; }
+      const dist = hdist(e, p), level = Math.abs(p.y - e.y) < 1.8, u = faceTo(e, p), sp = ENEMY_TYPES.charger.speed;
+      if (dist < CHARGER.minRange + 1) { e.vx = -u.x * sp; e.vz = -u.z * sp; }   // backs off to get a run-up
+      else if (dist > CHARGER.maxRange - 2) { e.vx = u.x * sp; e.vz = u.z * sp; }
+      else damp(e, 0.7);
       e.state = 'approach';
       if (e.cd === 0 && level && dist >= CHARGER.minRange && dist <= CHARGER.maxRange && world.director.request(e, 'melee')) {
-        setState(e, 'windup'); e.vx = 0; world.telegraph(e, 'heavy', CHARGER.wind);
+        setState(e, 'windup'); e.vx = 0; e.vz = 0; world.telegraph(e, 'heavy', CHARGER.wind);
       }
     } else if (e.state === 'windup') {
-      e.vx *= 0.5;
-      if (p) e.facing = p.x >= e.x ? 1 : -1;
+      damp(e, 0.5);
+      if (p) faceTo(e, p);
       if (e.st >= CHARGER.wind) { setState(e, 'charge'); e.atk = { inst: world.newInstance(), x0: e.x }; world.emit('chargeStart', { e }); }
     } else if (e.state === 'charge') {
-      e.vx = e.facing * CHARGER.speed;
-      const x0 = e.facing > 0 ? e.x + 0.1 : e.x - 1.4;
-      world.spawnHitbox({ owner: e, team: 'e', x0, x1: x0 + 1.3, y0: e.y + 0.1, y1: e.y + 1.4, dmg: CHARGER.dmg, heavy: true,
-        kb: [e.facing * 12, 5], instance: e.atk.inst, cat: 'heavy' });
-      if (e.hitWall) { setState(e, 'dazed'); e.vx = -e.facing * 3; world.emit('chargeCrash', { e }); }
+      e.vx = e.facing * CHARGER.speed; e.vz = fz(e) * CHARGER.speed;
+      world.spawnHitbox({ owner: e, team: 'e', ...strike(e, 0.75, 1.3, 0.1, 1.4), dmg: CHARGER.dmg, heavy: true,
+        kb: kbF(e, 12, 5), instance: e.atk.inst, cat: 'heavy' });
+      if (e.hitWall) { setState(e, 'dazed'); e.vx = -e.facing * 3; e.vz = -fz(e) * 3; world.emit('chargeCrash', { e }); }
       else if (e.st >= CHARGER.maxTicks) setState(e, 'recover');
     } else if (e.state === 'dazed') {
-      e.vx *= 0.85;
+      damp(e, 0.85);
       if (e.st >= CHARGER.daze) { releaseToken(e, world); e.cd = CHARGER.cd; setState(e, 'idle'); }
     } else if (e.state === 'recover') {
-      e.vx *= 0.85;
+      damp(e, 0.85);
       if (e.st >= 30) { releaseToken(e, world); e.cd = CHARGER.cd; setState(e, 'idle'); }
     }
     physics(e);
@@ -403,7 +406,7 @@ export const BEHAVIOUR = {
     let target = null, bd = 13;
     for (const p of world.players) {
       if (!canTarget(p) || p.x > e.x + 0.5 || p.x < 44) continue;
-      const d = Math.hypot(p.x - e.x, p.y + 1 - e.y);
+      const d = Math.hypot(p.x - e.x, p.y + 1 - e.y, p.z - e.z);
       if (d < bd) { bd = d; target = p; }
     }
     if (e.state === 'idle') {
@@ -416,9 +419,9 @@ export const BEHAVIOUR = {
       if (e.st >= 24) {
         const t = e.target;
         if (t && canTarget(t)) {
-          const dx = t.x - e.x, dy = t.y + 1.0 - e.y, d = Math.hypot(dx, dy) || 1;
+          const sx = e.x - 0.5, sy = e.y + 0.4, sz = e.z, dx = t.x - sx, dy = t.y + 1.0 - sy, dz = t.z - sz, d = Math.hypot(dx, dy, dz) || 1;
           const sp = e.atk.heavy ? 14 : 12;
-          world.spawnProjectile({ team: 'e', owner: e, x: e.x - 0.5, y: e.y + 0.4, vx: dx / d * sp, vy: dy / d * sp, r: e.atk.heavy ? 0.28 : 0.2,
+          world.spawnProjectile({ team: 'e', owner: e, x: sx, y: sy, z: sz, vx: dx / d * sp, vy: dy / d * sp, vz: dz / d * sp, r: e.atk.heavy ? 0.28 : 0.2,
             dmg: e.atk.heavy ? 14 : 6, heavy: e.atk.heavy, kind: e.atk.heavy ? 'heavy' : 'std', ttl: 120 });
           world.emit('enemyShot', { e, heavy: e.atk.heavy });
         }
