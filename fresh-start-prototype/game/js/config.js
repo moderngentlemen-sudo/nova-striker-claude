@@ -11,9 +11,9 @@ export const MAX_FALL = 22;
 export const FAST_FALL = 30;
 export const HIGH_VEL = 16;         // speed above which melee becomes a Velocity Break
 
-export const COYOTE = 6;
-export const JUMP_BUFFER = 6;
-export const ACTION_BUFFER = 6;
+export const COYOTE = 7;          // ticks after leaving a ledge that a jump still counts
+export const JUMP_BUFFER = 8;     // ticks a jump pressed early (before landing) waits to go off
+export const ACTION_BUFFER = 8;   // ticks an attack, dash or ability pressed early waits for the current move to allow it
 export const PARRY_BUFFER = 3;      // short on purpose: long parry buffers make late parries
 
 export const PARRY = { window: 12, perfect: 4, whiff: 16 };

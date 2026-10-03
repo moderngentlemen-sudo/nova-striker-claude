@@ -226,9 +226,9 @@ var RISE_CUT_MULT = 2.4;
 var MAX_FALL = 22;
 var FAST_FALL = 30;
 var HIGH_VEL = 16;
-var COYOTE = 6;
-var JUMP_BUFFER = 6;
-var ACTION_BUFFER = 6;
+var COYOTE = 7;
+var JUMP_BUFFER = 8;
+var ACTION_BUFFER = 8;
 var PARRY_BUFFER = 3;
 var PARRY = { window: 12, perfect: 4, whiff: 16 };
 var MERCY_TICKS = 60;
@@ -14737,9 +14737,9 @@ var RamFX = class {
       }
       const k2 = Math.max(0, S.life / S.max), spd = Math.hypot(S.vx, S.vy);
       const T = planeDir(S.x, S.vx, S.vy, this.v).normalize(), f = pathFrame(S.x), Z = this.v2.set(f.nx, 0, f.nz).normalize();
-      const X = new THREE12.Vector3().crossVectors(T, Z).normalize();
+      const X = (this.vX || (this.vX = new THREE12.Vector3())).crossVectors(T, Z).normalize();
       this.q.setFromRotationMatrix(this.m4.makeBasis(X, T, Z));
-      this.m4.compose(toWorld(S.x, S.y, S.d, this.sc.clone()), this.q, this.sc.set(0.06 * (0.5 + 0.5 * k2), 0.06 + spd * 0.028, 1));
+      this.m4.compose(toWorld(S.x, S.y, S.d, this.vP || (this.vP = new THREE12.Vector3())), this.q, this.sc.set(0.06 * (0.5 + 0.5 * k2), 0.06 + spd * 0.028, 1));
       M.setMatrixAt(i, this.m4);
       M.setColorAt(i, this.col.copy(this.cool).lerp(S.c, Math.min(1, k2 * 1.6)));
     }
@@ -15693,6 +15693,25 @@ var FX = class {
       this.scene.add(m);
       keep.push(m);
     }
+    for (const c of ROSTER) {
+      const r = buildPlayerRig(c);
+      put(r.root);
+      this.scene.add(r.root);
+      keep.push(r.root);
+    }
+    for (const type of ["swarmer", "shield", "sniper", "brute", "post", "turret", "drone", "mortar", "charger", "warden"]) {
+      try {
+        const r = buildEnemyRig({ type, facing: 1, shieldDir: -1, w: 1, h: 1.8 });
+        put(r.root);
+        this.scene.add(r.root);
+        keep.push(r.root);
+      } catch (e) {
+      }
+    }
+    const ring = new THREE14.Mesh(new THREE14.RingGeometry(0.42, 0.55, 32), new THREE14.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.65, depthWrite: false }));
+    put(ring);
+    this.scene.add(ring);
+    keep.push(ring);
     for (const it of this.sprites.slice(0, 3)) {
       put(it.s);
       it.s.visible = true;
@@ -15721,6 +15740,13 @@ var FX = class {
       put(it.s);
       it.s.visible = true;
     }
+    for (const w of ["BROKEN", "PERFECT", "SLAM", "PROVOKE", "MEDKIT", "PLATING", "OVERCLOCK", "FURY", "ULT CELL", "SENTRY", "PATCH PYLON", "AMP COIL", "NEED SCRAP"]) {
+      this.popText(0, 0, w, "#ffffff", 0.01);
+      try {
+        renderer.initTexture(this.textTex[w].tex);
+      } catch (e) {
+      }
+    }
     const bl = new THREE14.Mesh(new THREE14.CylinderGeometry(0.1, 0.1, 1, 10, 1, true), new THREE14.MeshBasicMaterial({ color: 16777215, transparent: true, depthWrite: false, toneMapped: false }));
     put(bl);
     this.scene.add(bl);
@@ -15741,6 +15767,12 @@ var FX = class {
         renderer.setRenderTarget(null);
         renderer.compile(this.scene, camera);
       }
+      const sm = renderer.shadowMap.enabled;
+      renderer.shadowMap.enabled = false;
+      renderer.setRenderTarget(null);
+      renderer.compile(this.scene, camera);
+      renderer.render(this.scene, camera);
+      renderer.shadowMap.enabled = sm;
       renderer.setRenderTarget(prev);
     } catch (e) {
     }
@@ -17726,6 +17758,8 @@ var yawAt2 = (x) => {
   const f = pathFrame(x);
   return Math.atan2(-f.tz, f.tx);
 };
+var TURN_TIME = 0.08;
+var LEAD = { per: 0.22, max: 2.2, rate: 1.8 };
 function disposeTree(root, materials = true) {
   root.traverse((o) => {
     if (o.geometry && !o.isSprite) o.geometry.dispose();
@@ -18058,8 +18092,12 @@ var View = class {
       }
       const x = p.prevX + (p.x - p.prevX) * alpha, y = p.prevY + (p.y - p.prevY) * alpha;
       toWorld(x, y, 0, rig.root.position);
-      rig.root.rotation.y = yawAt2(x);
-      rig.flip.scale.x = p.facing;
+      if (rig.turn === void 0) rig.turn = p.facing;
+      const was = rig.turn;
+      rig.turn += Math.max(-dt * 2 / TURN_TIME, Math.min(dt * 2 / TURN_TIME, p.facing - rig.turn));
+      const tw = 1 - Math.abs(rig.turn), spin = Math.sign(rig.turn - was) || 0;
+      rig.root.rotation.y = yawAt2(x) - spin * tw * 0.9;
+      rig.flip.scale.x = Math.abs(rig.turn) < 0.12 ? (Math.sign(rig.turn) || p.facing) * 0.12 : rig.turn;
       animatePlayer(rig, p, dt, t);
       const cutting = p.state === "ult" && p.ultRun && p.ultRun.kind === "echo" && p.ultRun.t < p.ultRun.fin;
       const phasing = p.state === "dodge" && p.dodge && p.dodge.t <= 11 && Math.floor(t * 30) % 3 === 0;
@@ -18109,10 +18147,23 @@ var View = class {
   }
   // ---- Camera ----
   updateCamera(world2, dt) {
-    let T = world2.cam, rate = 5.5;
+    if (world2.tick !== this.camTick) {
+      this.camPrev = this.camCur || { ...world2.cam };
+      this.camCur = { ...world2.cam };
+      this.camTick = world2.tick;
+    }
+    const a = this.alpha ?? 1, P0 = this.camPrev || world2.cam, P1 = this.camCur || world2.cam;
+    let T = { x: P0.x + (P1.x - P0.x) * a, y: P0.y + (P1.y - P0.y) * a, dist: P0.dist + (P1.dist - P0.dist) * a }, rate = 5.5;
+    const act = world2.players.filter((p) => p.state !== "dead" && p.state !== "downed");
+    if (act.length) {
+      const vx = act.reduce((s, p) => s + p.vx, 0) / act.length, spread = Math.max(...act.map((p) => p.x)) - Math.min(...act.map((p) => p.x));
+      const want = Math.max(-LEAD.max, Math.min(LEAD.max, vx * LEAD.per)) * Math.max(0, 1 - spread / 8);
+      this.lead = (this.lead || 0) + (want - (this.lead || 0)) * (1 - Math.exp(-dt * LEAD.rate));
+      if (!world2.ultCast) T.x += this.lead;
+    }
     const U = world2.ultCast;
     if (U && U.members.length) {
-      const n = U.members.length, mx = U.members.reduce((a, m) => a + m.x, 0) / n, my = U.members.reduce((a, m) => a + m.y, 0) / n + 1.1;
+      const n = U.members.length, mx = U.members.reduce((a2, m) => a2 + m.x, 0) / n, my = U.members.reduce((a2, m) => a2 + m.y, 0) / n + 1.1;
       if (U.phase === "cast") {
         T = { x: mx, y: my + 0.4, dist: Math.max(8.5, T.dist * 0.6) };
         rate = 9;
@@ -18316,8 +18367,8 @@ var View = class {
   // (main.js) while it runs. At most one every 0.9 s. The same pass dims the world while an ultimate is called.
   startImpact(x, y, strength = 1, force = false) {
     if (!SETTINGS.impactFrames || this.impactCd > 0 && !force) return;
-    const s = this.screenOf(x, y), r = this.canvas.getBoundingClientRect();
-    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, r.width), cy: 1 - s.y / Math.max(1, r.height), k: strength, seed: Math.random() * 100 };
+    const s = this.screenOf(x, y);
+    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, this.w), cy: 1 - s.y / Math.max(1, this.h), k: strength, seed: Math.random() * 100 };
     const style = IMPACT_STYLES.includes(SETTINGS.impactStyle) ? SETTINGS.impactStyle : "scifi", U = this.ink.uniforms;
     let by = this.impactBy;
     if (!by && this.world) {
@@ -18369,6 +18420,7 @@ var View = class {
   }
   render(world2, alpha, dt) {
     this.time += dt;
+    this.alpha = alpha;
     const PI = this.pendingImpact;
     this.world = world2;
     if (PI && (PI.t -= dt) <= 0) {
@@ -18394,11 +18446,11 @@ var View = class {
     this.composer.render(dt);
   }
   // Sim point -> CSS pixel position on the canvas
+  // (the canvas size comes from resize, not a layout query: asking the page every frame forced a layout each time)
   screenOf(x, y, out = { x: 0, y: 0, vis: true }) {
-    const v = toWorld(x, y, 0, new THREE15.Vector3()).project(this.camera);
-    const r = this.canvas.getBoundingClientRect();
-    out.x = (v.x * 0.5 + 0.5) * r.width;
-    out.y = (-v.y * 0.5 + 0.5) * r.height;
+    const v = toWorld(x, y, 0, this.sv || (this.sv = new THREE15.Vector3())).project(this.camera);
+    out.x = (v.x * 0.5 + 0.5) * (this.w || 1);
+    out.y = (-v.y * 0.5 + 0.5) * (this.h || 1);
     out.vis = v.z < 1;
     return out;
   }
@@ -19654,8 +19706,7 @@ var UI = class {
         this.markers.set(p.slot, m);
       }
       const s = view2.screenOf(p.x, p.y + p.h + 0.45);
-      const r = view2.canvas.getBoundingClientRect();
-      const x = Math.max(16, Math.min(r.width - 16, s.x)), y = Math.max(16, Math.min(r.height - 16, s.y));
+      const x = Math.max(16, Math.min(view2.w - 16, s.x)), y = Math.max(16, Math.min(view2.h - 16, s.y));
       m.textContent = `${PLAYER_MARKS[p.slot]} P${p.slot + 1}${isBot(p) ? " AI" : ""}` + (p.state === "downed" ? " \xB7 DOWN" : p.veiled ? " \xB7 hidden" : "");
       m.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
       m.hidden = p.state === "dead";
@@ -21103,7 +21154,7 @@ var hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
 var CHORDS = [[38, "m"], [34, "M"], [41, "M"], [36, "M"], [38, "m"], [34, "M"], [43, "m"], [45, "M"]];
 var triad = (q) => q === "m" ? [0, 3, 7] : [0, 4, 7];
 var ARP = [0, 2, 3, 2, 4, 2, 3, 1, 0, 2, 3, 2, 5, 4, 3, 2];
-var LEAD = [
+var LEAD2 = [
   [0, 69, 3],
   [3, 74, 3],
   [6, 77, 4],
@@ -21288,7 +21339,7 @@ var Music = class {
     const ladder = [0, tones[1], tones[2], 12, 12 + tones[1], 12 + tones[2]];
     if (L > 0 || s % 2 === 0) this.arp(t, base + ladder[ARP[s]], L === 0 ? 0.22 : 0.26);
     if (s === 0) this.pad(t, [root + 12, root + 12 + tones[1], root + 12 + tones[2], root + 24], STEP * BAR);
-    for (const [st, n, len] of LEAD) if (st === step) this.lead(t, n, STEP * len);
+    for (const [st, n, len] of LEAD2) if (st === step) this.lead(t, n, STEP * len);
   }
   // ---- Instruments ----------------------------------------------------------------------
   env(g, t, a, peak, dur, rel) {

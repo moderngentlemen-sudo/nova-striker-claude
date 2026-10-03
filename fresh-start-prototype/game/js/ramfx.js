@@ -510,9 +510,9 @@ export class RamFX {
       if (S.y < g && S.y > g - 0.3) { S.y = g; S.vy = Math.abs(S.vy) * 0.35; S.vx *= 0.7; }   // skips off the floor
       const k = Math.max(0, S.life / S.max), spd = Math.hypot(S.vx, S.vy);
       const T = planeDir(S.x, S.vx, S.vy, this.v).normalize(), f = pathFrame(S.x), Z = this.v2.set(f.nx, 0, f.nz).normalize();
-      const X = new THREE.Vector3().crossVectors(T, Z).normalize();
+      const X = (this.vX || (this.vX = new THREE.Vector3())).crossVectors(T, Z).normalize();   // (scratch vectors: no garbage per spark)
       this.q.setFromRotationMatrix(this.m4.makeBasis(X, T, Z));
-      this.m4.compose(toWorld(S.x, S.y, S.d, this.sc.clone()), this.q, this.sc.set(0.06 * (0.5 + 0.5 * k), 0.06 + spd * 0.028, 1));
+      this.m4.compose(toWorld(S.x, S.y, S.d, this.vP || (this.vP = new THREE.Vector3())), this.q, this.sc.set(0.06 * (0.5 + 0.5 * k), 0.06 + spd * 0.028, 1));
       M.setMatrixAt(i, this.m4);
       M.setColorAt(i, this.col.copy(this.cool).lerp(S.c, Math.min(1, k * 1.6)));
     }

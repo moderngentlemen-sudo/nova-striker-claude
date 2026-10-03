@@ -1,7 +1,7 @@
 // Visual effects: particles, glints, telegraph markers, projectiles, barriers, lasers, scarf.
 import * as THREE from 'three';
 import { pathFrame, groundBelow } from './level.js';
-import { CHARS, HOSTILE, NOVA, SETTINGS, ATTACH_LOOK, DASH_CHARGE, DASH_SLASH, POUND, MARKSMAN, SUB_LOOK } from './config.js';
+import { CHARS, HOSTILE, NOVA, SETTINGS, ATTACH_LOOK, DASH_CHARGE, DASH_SLASH, POUND, MARKSMAN, SUB_LOOK, ROSTER } from './config.js';
 import { toWorld, planeDir } from './space.js';
 import { Ghosts } from './ghosts.js';
 import { buildPlayerRig } from './rigs.js';
@@ -157,6 +157,15 @@ export class FX {
     stand.root.traverse(q => { if (q.geometry) q.geometry.dispose(); });
     this.warmMats = []; stand.root.traverse(q => { if (q.material) this.warmMats.push(q.material); });
     for (const k in this.tmpl) { const m = this.tmpl[k](); put(m); this.scene.add(m); keep.push(m); }
+    // Every character's and enemy's model compiles now, not the moment one first appears (a teammate joining or
+    // an AI teammate added mid-run, a new enemy type): each first appearance was a visible hitch. Their materials
+    // are kept (not disposed), so the compiled shaders stay cached.
+    for (const c of ROSTER) { const r = buildPlayerRig(c); put(r.root); this.scene.add(r.root); keep.push(r.root); }
+    for (const type of ['swarmer', 'shield', 'sniper', 'brute', 'post', 'turret', 'drone', 'mortar', 'charger', 'warden']) {
+      try { const r = buildEnemyRig({ type, facing: 1, shieldDir: -1, w: 1, h: 1.8 }); put(r.root); this.scene.add(r.root); keep.push(r.root); } catch (e) { /* best effort */ }
+    }
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 32), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.65, depthWrite: false }));
+    put(ring); this.scene.add(ring); keep.push(ring);
     for (const it of this.sprites.slice(0, 3)) { put(it.s); it.s.visible = true; shown.push(it.s); }
     this.charge.shockRing(at, new THREE.Vector3(1, 0, 0), '#ffffff', 0.1, 0.2, 0.01, 0);
     this.charge.flash(at, 'glow', '#ffffff', 0.1, 0.01, 1);
@@ -166,6 +175,10 @@ export class FX {
       ...this.ram.warmShow(at), ...this.fixfx.warmShow(at)];
     for (const m of extra) { m.visible = true; }
     this.popText(0, 0, 'CRIT', '#ffffff', 0.01); for (const it of this.texts) { put(it.s); it.s.visible = true; }
+    // The common floating words are drawn and uploaded now (each one's first use made and uploaded a texture)
+    for (const w of ['BROKEN', 'PERFECT', 'SLAM', 'PROVOKE', 'MEDKIT', 'PLATING', 'OVERCLOCK', 'FURY', 'ULT CELL', 'SENTRY', 'PATCH PYLON', 'AMP COIL', 'NEED SCRAP']) {
+      this.popText(0, 0, w, '#ffffff', 0.01); try { renderer.initTexture(this.textTex[w].tex); } catch (e) { /* best effort */ }
+    }
     // Boss pieces that only appear mid-fight: a laser cylinder and the Stormcaller (its storm shield material)
     const bl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, toneMapped: false }));
     put(bl); this.scene.add(bl); keep.push(bl);
@@ -177,6 +190,11 @@ export class FX {
       const prev = renderer.getRenderTarget();
       renderer.setRenderTarget(target); renderer.compile(this.scene, camera); renderer.render(this.scene, camera);
       if (target) { renderer.setRenderTarget(null); renderer.compile(this.scene, camera); }   // low quality draws straight to the screen
+      // ...and without shadows, which is another set of shader variants: compiled now, or Low (the setting for
+      // slower machines) would hitch through its first minute as each material first appeared
+      const sm = renderer.shadowMap.enabled; renderer.shadowMap.enabled = false;
+      renderer.setRenderTarget(null); renderer.compile(this.scene, camera); renderer.render(this.scene, camera);
+      renderer.shadowMap.enabled = sm;
       renderer.setRenderTarget(prev);
     } catch (e) { /* warm-up is best effort */ }
     for (const q of shown) q.visible = false;

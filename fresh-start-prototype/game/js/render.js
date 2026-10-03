@@ -16,6 +16,10 @@ import { buildEnemyRig, animateEnemy } from './enemyRigs.js';
 import { FX, toWorld, ImpactShader } from './fx.js';
 
 const yawAt = x => { const f = pathFrame(x); return Math.atan2(-f.tz, f.tx); };
+const TURN_TIME = 0.08;   // s for a character to swing round to face the other way
+// The camera: how far it leads ahead of the team's running (s of their speed, and at most m), and how fast
+// it eases into the lead
+const LEAD = { per: 0.22, max: 2.2, rate: 1.8 };
 // A rig leaving the scene frees its geometry buffers. Enemy rigs free their materials too (a warmed stand-in
 // in fx.warm keeps those shaders compiled); player rigs keep theirs so a character swap never recompiles one.
 function disposeTree(root, materials = true) {
@@ -269,8 +273,13 @@ export class View {
       }
       const x = p.prevX + (p.x - p.prevX) * alpha, y = p.prevY + (p.y - p.prevY) * alpha;
       toWorld(x, y, 0, rig.root.position);
-      rig.root.rotation.y = yawAt(x);
-      rig.flip.scale.x = p.facing;
+      // Turning round: the rig swings through the turn over TURN_TIME with a twist of the body, instead of
+      // snapping to the mirrored pose in one frame
+      if (rig.turn === undefined) rig.turn = p.facing;
+      const was = rig.turn; rig.turn += Math.max(-dt * 2 / TURN_TIME, Math.min(dt * 2 / TURN_TIME, p.facing - rig.turn));
+      const tw = 1 - Math.abs(rig.turn), spin = Math.sign(rig.turn - was) || 0;
+      rig.root.rotation.y = yawAt(x) - spin * tw * 0.9;
+      rig.flip.scale.x = Math.abs(rig.turn) < 0.12 ? (Math.sign(rig.turn) || p.facing) * 0.12 : rig.turn;
       animatePlayer(rig, p, dt, t);
       // Echo is gone during Thousand Cuts until every cut lands at once; a dodging Nova flickers like a hologram
       const cutting = p.state === 'ult' && p.ultRun && p.ultRun.kind === 'echo' && p.ultRun.t < p.ultRun.fin;
@@ -306,7 +315,18 @@ export class View {
 
   // ---- Camera ----
   updateCamera(world, dt) {
-    let T = world.cam, rate = 5.5;
+    // The frame follows the sim's camera target interpolated between ticks (alpha), so on a 120/144 Hz screen it
+    // glides instead of stepping 60 times a second; and it leads a little ahead of where the team is running
+    if (world.tick !== this.camTick) { this.camPrev = this.camCur || { ...world.cam }; this.camCur = { ...world.cam }; this.camTick = world.tick; }
+    const a = this.alpha ?? 1, P0 = this.camPrev || world.cam, P1 = this.camCur || world.cam;
+    let T = { x: P0.x + (P1.x - P0.x) * a, y: P0.y + (P1.y - P0.y) * a, dist: P0.dist + (P1.dist - P0.dist) * a }, rate = 5.5;
+    const act = world.players.filter(p => p.state !== 'dead' && p.state !== 'downed');
+    if (act.length) {
+      const vx = act.reduce((s, p) => s + p.vx, 0) / act.length, spread = Math.max(...act.map(p => p.x)) - Math.min(...act.map(p => p.x));
+      const want = Math.max(-LEAD.max, Math.min(LEAD.max, vx * LEAD.per)) * Math.max(0, 1 - spread / 8);
+      this.lead = (this.lead || 0) + (want - (this.lead || 0)) * (1 - Math.exp(-dt * LEAD.rate));
+      if (!world.ultCast) T.x += this.lead;
+    }
     // An ultimate's call pushes in on whoever is calling it; while it plays out the frame eases back
     const U = world.ultCast;
     if (U && U.members.length) {
@@ -410,8 +430,8 @@ export class View {
   // (main.js) while it runs. At most one every 0.9 s. The same pass dims the world while an ultimate is called.
   startImpact(x, y, strength = 1, force = false) {
     if (!SETTINGS.impactFrames || (this.impactCd > 0 && !force)) return;
-    const s = this.screenOf(x, y), r = this.canvas.getBoundingClientRect();
-    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, r.width), cy: 1 - s.y / Math.max(1, r.height), k: strength, seed: Math.random() * 100 };
+    const s = this.screenOf(x, y);
+    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, this.w), cy: 1 - s.y / Math.max(1, this.h), k: strength, seed: Math.random() * 100 };
     const style = IMPACT_STYLES.includes(SETTINGS.impactStyle) ? SETTINGS.impactStyle : 'scifi', U = this.ink.uniforms;
     let by = this.impactBy;
     if (!by && this.world) { let bd = Infinity; for (const q of this.world.players) { const dd = Math.hypot(q.x - x, q.y - y); if (dd < bd) { bd = dd; by = q; } } }
@@ -442,7 +462,7 @@ export class View {
   }
 
   render(world, alpha, dt) {
-    this.time += dt;
+    this.time += dt; this.alpha = alpha;
     const PI = this.pendingImpact;
     this.world = world;
     if (PI && (PI.t -= dt) <= 0) { this.pendingImpact = null; this.impactBy = PI.by; this.startImpact(PI.x, PI.y, PI.k, true); this.punch = Math.min(this.punch, -0.6); this.trauma = 1; }
@@ -463,10 +483,10 @@ export class View {
   }
 
   // Sim point -> CSS pixel position on the canvas
+  // (the canvas size comes from resize, not a layout query: asking the page every frame forced a layout each time)
   screenOf(x, y, out = { x: 0, y: 0, vis: true }) {
-    const v = toWorld(x, y, 0, new THREE.Vector3()).project(this.camera);
-    const r = this.canvas.getBoundingClientRect();
-    out.x = (v.x * 0.5 + 0.5) * r.width; out.y = (-v.y * 0.5 + 0.5) * r.height; out.vis = v.z < 1;
+    const v = toWorld(x, y, 0, this.sv || (this.sv = new THREE.Vector3())).project(this.camera);
+    out.x = (v.x * 0.5 + 0.5) * (this.w || 1); out.y = (-v.y * 0.5 + 0.5) * (this.h || 1); out.vis = v.z < 1;
     return out;
   }
   aimFromMouse(mx, my, p) {

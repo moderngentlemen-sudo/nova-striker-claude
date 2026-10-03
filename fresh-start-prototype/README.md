@@ -57,6 +57,23 @@ Extra gamepads join by pressing any button, up to four players; each new player 
 nobody is using. H or View shows the full controls in game; B, A, Start or View closes them, and the D-pad
 scrolls.
 
+## What changed in Version 12.1: smoother play
+
+- **No more mid-game shader hitches.** Every character's and enemy's model, and the floating words, are
+  prepared at load. Graphics quality Low (no shadows) had about 15 shader variants that compiled the first
+  time each thing appeared on screen, each one a visible stutter in the first minute; it is now down to one.
+- **Less work per frame:** the name tags and markers asked the browser for the canvas size every frame, which
+  forced a page layout each time (about a quarter of the frame's JavaScript); the size now comes from the last
+  resize. RAM's spark streaks no longer make garbage for every spark every frame.
+- **The camera glides:** it follows its target interpolated between simulation ticks, so on 120/144 Hz screens
+  it no longer steps 60 times a second, and it leads up to 2.2 m ahead of where the team is running (less when
+  the team is spread out).
+- **Characters swing round** to face the other way over 80 ms, with a twist of the body, instead of snapping to
+  the mirrored pose in one frame.
+- **Slightly more forgiving input:** a jump pressed up to 8 ticks before landing (was 6) still goes off, as
+  does an attack, dash or ability pressed up to 8 ticks before the current move allows it; a jump up to 7
+  ticks after running off a ledge (was 6) still counts.
+
 ## What changed in Version 12
 
 - **Team commands for the AI teammates.** D-pad up: a tap is **Attack my target** (every bot goes for your

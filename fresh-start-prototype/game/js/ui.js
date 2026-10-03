@@ -503,8 +503,7 @@ export class UI {
       let m = this.markers.get(p.slot);
       if (!m) { m = h('div', 'pmarker'); m.style.setProperty('--pc', PLAYER_COLORS[p.slot]); this.labels.appendChild(m); this.markers.set(p.slot, m); }
       const s = view.screenOf(p.x, p.y + p.h + 0.45);
-      const r = view.canvas.getBoundingClientRect();
-      const x = Math.max(16, Math.min(r.width - 16, s.x)), y = Math.max(16, Math.min(r.height - 16, s.y));
+      const x = Math.max(16, Math.min(view.w - 16, s.x)), y = Math.max(16, Math.min(view.h - 16, s.y));
       m.textContent = `${PLAYER_MARKS[p.slot]} P${p.slot + 1}${isBot(p) ? ' AI' : ''}` + (p.state === 'downed' ? ' · DOWN' : p.veiled ? ' · hidden' : '');
       m.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
       m.hidden = p.state === 'dead';
