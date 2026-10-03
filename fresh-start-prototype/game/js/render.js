@@ -483,14 +483,30 @@ export class View {
     for (const c of this.views) {
       const v = c.vp, own = c.p ? this.rigs.get(c.p) : null, shown = own ? own.root.visible : false;
       if (own && c.close) own.root.visible = false;   // a camera pressed up against him looks through him
+      const hid = c.p ? this.clearSight(c, own) : null;   // and through a teammate between it and him
       r.setViewport(v.x, H - v.y - v.h, v.w, v.h); r.setScissor(v.x, H - v.y - v.h, v.w, v.h);
       this.aimSun(c);
       if (this.impact) { const s = this.project(c, this.impact.x, this.impact.y, this.impact.z); this.ink.uniforms.center.value.set(s.nx, s.ny); }
       if (low) r.render(this.scene, c.cam);
       else { this.renderPass.camera = c.cam; this.composer.render(dt); }
       if (own) own.root.visible = shown;
+      if (hid) for (const r of hid) r.root.visible = true;
     }
     r.setScissorTest(false); r.setViewport(0, 0, this.w || 1, H);
+  }
+
+  // Teammates standing between a view's camera and its player (or right up against the camera) are hidden from
+  // that view while it draws: returns the rigs hidden, to show again
+  clearSight(c, own) {
+    let out = null;
+    const A = c.cam.position, B = c.pivot, ab = this.tmpV.subVectors(B, A), L2 = ab.lengthSq() || 1;
+    for (const [q, rig] of this.rigs) {
+      if (rig === own || !rig.root.visible) continue;
+      const P = rig.root.position, t = Math.max(0, Math.min(1, ((P.x - A.x) * ab.x + (P.y + 1 - A.y) * ab.y + (P.z - A.z) * ab.z) / L2));
+      const dx = A.x + ab.x * t - P.x, dy = A.y + ab.y * t - (P.y + 1), dz = A.z + ab.z * t - P.z;
+      if (Math.hypot(dx, dz) < 0.5 + (q.w || 0.7) * 0.6 && Math.abs(dy) < (q.h || 1.8) * 0.6 && t < 0.9) { rig.root.visible = false; (out || (out = [])).push(rig); }
+    }
+    return out;
   }
 
   // A sim point in a view: CSS px on the canvas (x, y), normalised in the view (nx, ny: 0..1 from bottom left),
