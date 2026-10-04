@@ -24,14 +24,14 @@ static func f1(v: float) -> String:
 static func f0(v: float) -> String:
 	return "%.0f" % v
 
-# A world with one player at (x, 0), the enemies cleared, run for 10 idle ticks with mercy then cleared (the
+# A world with one player at (x, y), the enemies cleared, run for 10 idle ticks with mercy then cleared (the
 # prototype suites' setup())
-static func setup(x := 100.0, char := "nova", clear := true) -> Driver:
+static func setup(x := 100.0, char := "nova", clear := true, y := 0.0) -> Driver:
 	var w := World.new()
 	if clear:
 		w.enemies = []
 	var p := w.add_player("test", char)
-	p.x = x; p.y = 0
+	p.x = x; p.y = y; p.prev_x = x; p.prev_y = y
 	var d := Driver.new(w)
 	d.p = p
 	d.run({}, 10)

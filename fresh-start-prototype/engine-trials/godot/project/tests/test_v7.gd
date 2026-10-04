@@ -9,9 +9,7 @@ var M: Dictionary
 var C: Array
 
 func setup(x := 99.0, char := "nova", y := 0.0) -> TestKit.Driver:
-	var d := TestKit.setup(x, char)
-	d.p.y = y; d.p.prev_x = x; d.p.prev_y = y
-	return d
+	return TestKit.setup(x, char, true, y)
 
 func last(d: TestKit.Driver, type: String):
 	for i in range(d.log.size() - 1, -1, -1):
