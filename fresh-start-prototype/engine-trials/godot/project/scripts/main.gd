@@ -37,6 +37,11 @@ func _ready() -> void:
 	nova = NovaBody.new()
 	add_child(nova)
 	nova.setup(data, Vector2(data.route.spawn[0], data.route.spawn[1]))
+	# On the web, ?x=600 starts further along the stretch (the helix is at 586-662)
+	if OS.has_feature("web"):
+		var q = JavaScriptBridge.eval("new URLSearchParams(location.search).get('x') || ''")
+		if q is String and q.is_valid_float():
+			nova.place(Vector2(float(q), 30.0))
 	nova.event.connect(_on_event)
 	camera = Camera3D.new()
 	camera.fov = 40
@@ -44,6 +49,7 @@ func _ready() -> void:
 	camera.far = 1000
 	add_child(camera)
 	camera.make_current()
+	snap_camera()
 	hud = Label.new()
 	hud.position = Vector2(12, 10)
 	hud.add_theme_color_override("font_color", Color(1, 0.96, 0.9))
@@ -89,8 +95,12 @@ func _environment() -> void:
 	var sky := Sky.new(); sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.35
+	# (a flat warm ambient and no sky reflections: the Compatibility renderer used for the web doesn't blur the
+	# sky for rough surfaces, so sky lighting washed every surface out)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("8a6f5c")
+	env.ambient_light_energy = 0.55
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 0.9
 	env.glow_enabled = true
