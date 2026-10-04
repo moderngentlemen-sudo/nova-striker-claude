@@ -351,6 +351,28 @@ export class World {
     }
     this.emit('snipe', { p, x0, y0, x1: x0 + ax * endT, y1: y0 + ay * endT, ax, ay, f, full, crits, n, wall: endT === wall.t && wall.wall });
   }
+  // Echo's deflect spin stuns every enemy the twirling staff touches (DEFLECT.stunReach), once per spin: light
+  // enemies for DEFLECT.stun.light ticks, heavy ones for less. Bosses shrug it off; an enemy already staggered
+  // or rooted by a snare keeps that instead; the Movement Gym's drill post doesn't stun (it is there to practise
+  // parry timing against)
+  spinStun(p) {
+    const D = DEFLECT;
+    if (SETTINGS.echoKit !== 'hunter' || p.parryT < 1 || p.parryT > D.window) return;
+    if (p.parryT === 1 || !p.spinHit) p.spinHit = new Set();
+    for (const e of this.enemies) {
+      if (e.dead || e.boss || e.type === 'post' || p.spinHit.has(e) || e.state === 'stagger' || e.state === 'snared') continue;
+      const gap = Math.abs(e.x - p.x) - e.w / 2 - p.w / 2;
+      if (gap > D.stunReach || e.y > p.y + p.h + 0.3 || e.y + e.h < p.y - 0.3) continue;
+      p.spinHit.add(e);
+      const ticks = e.light ? D.stun.light : D.stun.heavy;
+      this.director.release(e);
+      e.stun = e.state === 'hitstun' ? Math.max(e.stun, e.st + ticks) : ticks;
+      if (e.state !== 'hitstun') { e.state = 'hitstun'; e.st = 0; }
+      e.atk = null; e.vx = (Math.sign(e.x - p.x) || p.facing) * 2.5; e.flash = Math.max(e.flash, 4);
+      this.emit('spinStun', { p, e, x: e.x, y: e.y + e.h * 0.6 });
+    }
+  }
+
   // Echo's staff knocks an enemy shot back toward whoever fired it, as his own, faster; a perfect parry
   // hits harder and opens a riposte
   deflect(p, pr) {
@@ -1900,6 +1922,7 @@ export class World {
       if (p.state === 'dead') { this.tickDead(p); continue; }
       const c0 = chest(p);
       updatePlayer(p, cmds[p.slot] || EMPTY_CMD, this);
+      if (p.state === 'parry' && p.char === 'echo') this.spinStun(p);
       // RAM's charges carry what they scoop up, after he has moved
       if (p.state === 'rush') this.ramPlow(p);
       else if (p.state === 'ult' && p.ultRun && p.ultRun.kind === 'ram') this.ultRamCarry(p);

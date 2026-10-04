@@ -581,7 +581,17 @@ var POUND = {
     { r: 4.6, dmg: 12, poise: 130, kb: 16, up: 9, armorBreak: true }
   ]
 };
-var DEFLECT = { window: 22, reach: 1.15, speed: 1.35, dmg: { standard: 3, heavy: 6 }, perfect: 1.6 };
+var DEFLECT = {
+  window: 22,
+  reach: 1.15,
+  speed: 1.35,
+  dmg: { standard: 3, heavy: 6 },
+  perfect: 1.6,
+  // The spin also stuns: an enemy the twirling staff touches (its body within `stunReach` m of Echo's edge,
+  // during the deflect window) is stunned for `stun` ticks, light ones longer than heavy; once per spin; not bosses
+  stunReach: 0.55,
+  stun: { light: 50, heavy: 26 }
+};
 var HUNTER = {
   snareCharges: 2,
   snareRecharge: 300,
@@ -6791,6 +6801,32 @@ var World = class {
     }
     this.emit("snipe", { p, x0, y0, x1: x0 + ax * endT, y1: y0 + ay * endT, ax, ay, f, full, crits, n, wall: endT === wall.t && wall.wall });
   }
+  // Echo's deflect spin stuns every enemy the twirling staff touches (DEFLECT.stunReach), once per spin: light
+  // enemies for DEFLECT.stun.light ticks, heavy ones for less. Bosses shrug it off; an enemy already staggered
+  // or rooted by a snare keeps that instead; the Movement Gym's drill post doesn't stun (it is there to practise
+  // parry timing against)
+  spinStun(p) {
+    const D = DEFLECT;
+    if (SETTINGS.echoKit !== "hunter" || p.parryT < 1 || p.parryT > D.window) return;
+    if (p.parryT === 1 || !p.spinHit) p.spinHit = /* @__PURE__ */ new Set();
+    for (const e of this.enemies) {
+      if (e.dead || e.boss || e.type === "post" || p.spinHit.has(e) || e.state === "stagger" || e.state === "snared") continue;
+      const gap = Math.abs(e.x - p.x) - e.w / 2 - p.w / 2;
+      if (gap > D.stunReach || e.y > p.y + p.h + 0.3 || e.y + e.h < p.y - 0.3) continue;
+      p.spinHit.add(e);
+      const ticks = e.light ? D.stun.light : D.stun.heavy;
+      this.director.release(e);
+      e.stun = e.state === "hitstun" ? Math.max(e.stun, e.st + ticks) : ticks;
+      if (e.state !== "hitstun") {
+        e.state = "hitstun";
+        e.st = 0;
+      }
+      e.atk = null;
+      e.vx = (Math.sign(e.x - p.x) || p.facing) * 2.5;
+      e.flash = Math.max(e.flash, 4);
+      this.emit("spinStun", { p, e, x: e.x, y: e.y + e.h * 0.6 });
+    }
+  }
   // Echo's staff knocks an enemy shot back toward whoever fired it, as his own, faster; a perfect parry
   // hits harder and opens a riposte
   deflect(p, pr) {
@@ -9220,6 +9256,7 @@ var World = class {
       }
       const c0 = chest(p);
       updatePlayer(p, cmds[p.slot] || EMPTY_CMD, this);
+      if (p.state === "parry" && p.char === "echo") this.spinStun(p);
       if (p.state === "rush") this.ramPlow(p);
       else if (p.state === "ult" && p.ultRun && p.ultRun.kind === "ram") this.ultRamCarry(p);
       if (p.state === "dash") {
@@ -16062,6 +16099,10 @@ var FX = class {
       case "armorHit":
         this.burst(ev.x, ev.y, "#b9c3d6", 5, 4, 0.25, 0.2);
         break;
+      case "spinStun":
+        this.sprite(ev.x, ev.y + 0.5, "star", ECHO_ORANGE, 0.8, 0.45, 1.3);
+        this.burst(ev.x, ev.y, ECHO_ORANGE, 10, 4, 0.3, 0.5);
+        break;
       case "stagger":
         this.sprite(ev.x, ev.y + 0.6, "star", "#fff4c2", 0.9, 0.5, 1.4);
         this.burst(ev.x, ev.y + 0.5, "#fff4c2", 12, 4, 0.3, 0.6);
@@ -20501,6 +20542,9 @@ var Sound = class {
       case "armorBreak":
         this.noise(0.35, 1200, 0.25, "lowpass");
         this.tone(200, 55, 0.35, "sawtooth", 0.12);
+        break;
+      case "spinStun":
+        this.tone(990, 495, 0.18, "triangle", 0.07);
         break;
       case "stagger":
         this.tone(880, 440, 0.25, "sine", 0.08);

@@ -57,6 +57,15 @@ Extra gamepads join by pressing any button, up to four players; each new player 
 nobody is using. H or View shows the full controls in game; B, A, Start or View closes them, and the D-pad
 scrolls.
 
+## What changed in Version 12.3: Echo's deflect spin stuns
+
+- **Echo's deflect spin stuns** (Hunter kit): while his staff twirls at the start of a parry (the same window
+  that deflects shots, all round him), any enemy it touches (within about half a metre of him) is stunned:
+  light enemies for 50 ticks (0.83 s), heavy ones such as the Brute for 26 (0.43 s). It cancels the attack
+  they were winding up. Each enemy is stunned once per spin, shown by an orange star and a chime. Bosses
+  shrug it off, an enemy already staggered or snared keeps that, and the Movement Gym's drill post is left
+  out so it still works for parry practice.
+
 ## What changed in Version 12.2: impact frame duration
 
 - **Impact frame duration** (Esc/Start, Settings): a slider from **0.30 to 5.00 seconds** (default 0.40, close

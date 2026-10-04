@@ -364,6 +364,7 @@ export class FX {
       case 'guardBreak': this.burst(ev.x, ev.y, '#ffffff', 22, 10, 0.5, 0.45); this.sprite(ev.x, ev.y, 'ring', '#ffffff', 1.2, 0.3, 3); break;
       case 'armorBreak': this.burst(ev.x, ev.y + 0.4, '#e6e9f0', 26, 11, 0.55, 0.6, { grav: 14 }); this.sprite(ev.x, ev.y, 'ring', HOSTILE, 1.5, 0.35, 3); break;
       case 'armorHit': this.burst(ev.x, ev.y, '#b9c3d6', 5, 4, 0.25, 0.2); break;
+      case 'spinStun': this.sprite(ev.x, ev.y + 0.5, 'star', ECHO_ORANGE, 0.8, 0.45, 1.3); this.burst(ev.x, ev.y, ECHO_ORANGE, 10, 4, 0.3, 0.5); break;
       case 'stagger': this.sprite(ev.x, ev.y + 0.6, 'star', '#fff4c2', 0.9, 0.5, 1.4); this.burst(ev.x, ev.y + 0.5, '#fff4c2', 12, 4, 0.3, 0.6); break;
       case 'kill':
         this.burst(ev.x, ev.y, HOSTILE, 24, 9, 0.45, 0.55, { grav: 6 }); this.burst(ev.x, ev.y, '#ffffff', 10, 5, 0.3, 0.3);

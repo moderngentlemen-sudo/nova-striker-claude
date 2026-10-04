@@ -373,6 +373,7 @@ export class Sound {
       case 'guardBreak': this.noise(0.25, 2000, 0.16, 'highpass'); this.tone(320, 140, 0.2, 'sawtooth', 0.1); break;
       case 'armorHit': if (this.limit('armor', 0.05)) this.tone(520, 480, 0.06, 'triangle', 0.08); break;
       case 'armorBreak': this.noise(0.35, 1200, 0.25, 'lowpass'); this.tone(200, 55, 0.35, 'sawtooth', 0.12); break;
+      case 'spinStun': this.tone(990, 495, 0.18, 'triangle', 0.07); break;
       case 'stagger': this.tone(880, 440, 0.25, 'sine', 0.08); this.tone(1320, 660, 0.25, 'sine', 0.05); break;
       case 'kill': this.tone(300, 900, 0.1, 'triangle', 0.08); this.noise(0.08, 2500, 0.08); break;
       case 'parry':

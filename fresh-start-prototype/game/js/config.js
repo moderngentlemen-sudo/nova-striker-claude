@@ -213,7 +213,10 @@ export const POUND = {
 // Echo's staff deflect: during a parry (the first `window` ticks) or any staff swing marked `deflect`, enemy
 // shots that reach him are knocked back toward whoever fired them, faster, as his own; a perfect parry
 // hits harder. Unblockable shells cannot be deflected.
-export const DEFLECT = { window: 22, reach: 1.15, speed: 1.35, dmg: { standard: 3, heavy: 6 }, perfect: 1.6 };
+export const DEFLECT = { window: 22, reach: 1.15, speed: 1.35, dmg: { standard: 3, heavy: 6 }, perfect: 1.6,
+  // The spin also stuns: an enemy the twirling staff touches (its body within `stunReach` m of Echo's edge,
+  // during the deflect window) is stunned for `stun` ticks, light ones longer than heavy; once per spin; not bosses
+  stunReach: 0.55, stun: { light: 50, heavy: 26 } };
 
 export const HUNTER = {
   snareCharges: 2, snareRecharge: 300, throwSpeed: 15, throwLift: 5, snareGravity: 32,
