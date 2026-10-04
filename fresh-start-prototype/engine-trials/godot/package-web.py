@@ -1,11 +1,11 @@
-# Packages the Godot web export (godot/build, made by `godot --headless --path godot/project --export-release Web
-# ../build/index.html`) into dist/godot for sharing as an artifact, which serves scripts but not Godot's .pck
+# Packages the Godot web export (godot/build/web, made by `godot --headless --path godot/project --export-release
+# Web ../build/web/index.html`) into dist/godot for sharing as an artifact, which serves scripts but not Godot's .pck
 # and caps each file at 15 MB (the engine wasm is 35 MB). So, like Emscripten's single-file mode, the binaries
 # ride inside scripts: the wasm gzipped (8 MB) and the pack, each as base64 in a small .js file, and a script in
 # the page answers the engine's fetches of index.wasm and index.pck from them (unpacking the wasm as it goes).
 # Run from engine-trials: python3 godot/package-web.py
 import gzip, os, shutil
-SRC, OUT = 'godot/build', 'dist/godot'
+SRC, OUT = 'godot/build/web', 'dist/godot'
 os.makedirs(OUT, exist_ok=True)
 for f in ['index.js', 'index.audio.worklet.js', 'index.png']:
     shutil.copy(os.path.join(SRC, f), OUT)
@@ -40,6 +40,5 @@ patch = """<script src="wasm-data.js"></script>
 </script>
 """
 html = html.replace('<script src="index.js"></script>', patch + '<script src="index.js"></script>', 1)
-html = html.replace('<title>Nova Striker Godot Trial</title>', '<title>Godot Engine Trial</title>')
 open(os.path.join(OUT, 'index.html'), 'w').write(html)
 print('packaged', sorted(os.listdir(OUT)))

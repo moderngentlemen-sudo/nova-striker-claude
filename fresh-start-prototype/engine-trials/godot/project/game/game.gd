@@ -5,7 +5,8 @@
 #
 # Command line (after `--`): --zone=<gym|arena|tower|skyline|foundry|undercity> starts in that zone,
 # --boss=<warden|stormcaller> in a boss fight, --hold=<action,...> holds actions down (a quick demo for
-# screenshots), --screenshot=<path> saves a frame after --frames=<n> (default 90) and quits.
+# screenshots), --screenshot=<path> saves a frame after --frames=<n> (default 90) and quits. On the web, the
+# page's query string takes the same options (?zone=foundry).
 class_name Game
 extends Node3D
 
@@ -36,7 +37,13 @@ func _ready() -> void:
 	pause_menu.zone.connect(func(id): world.teleport(id); _resume())
 	pause_menu.boss.connect(func(id): world.boss_rush(id); _resume())
 	world.add_player("kbm", "nova")
-	for a in OS.get_cmdline_user_args():
+	var args := Array(OS.get_cmdline_user_args())
+	if OS.has_feature("web"):   # on the web the page's query string does the same: ?zone=foundry, ?boss=warden
+		var q = JavaScriptBridge.eval("location.search")
+		if q is String:
+			for kv in (q as String).trim_prefix("?").split("&", false):
+				args.append("--" + kv)
+	for a in args:
 		if a.begins_with("--zone="):
 			world.teleport(a.trim_prefix("--zone="))
 		elif a.begins_with("--boss="):

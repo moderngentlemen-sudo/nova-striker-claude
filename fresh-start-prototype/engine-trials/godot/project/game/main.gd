@@ -6,7 +6,9 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	for a in args:
 		if a == "--tests" or a.begins_with("--tests="):
-			var failures := TestRunner.run_all(a.trim_prefix("--tests=") if a.begins_with("--tests=") else "")
+			# (loaded by path, not by class name, so exports can leave the tests out)
+			var runner: GDScript = load("res://tests/test_runner.gd")
+			var failures: int = runner.run_all(a.trim_prefix("--tests=") if a.begins_with("--tests=") else "")
 			get_tree().quit(1 if failures > 0 else 0)
 			return
 	add_child(load("res://game/game.tscn").instantiate())

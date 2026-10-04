@@ -2,13 +2,13 @@
 # for Nova's attachment, secondary weapon, charge stages, Focus, booster fuel, Aegis and Overcharge), the boss
 # bar, banners and toasts, the ultimate's title card, and the on-screen markers: player tags, lock-on
 # reticles, the rocket jump's height readout and the sparring posts' labels. Reads the World; changes nothing.
+# (Text sticks to characters the default font has: the web build has no system fonts to fall back on.)
 class_name Hud
 extends CanvasLayer
 
 const STAGE := { "charging": "charging", "L1": "Level 1", "L2": "Level 2", "perfect": "Release!", "L3": "Level 3", "L4": "Level 4 · Beam" }
 const ENEMY_NAMES := { "swarmer": "Swarmer", "shield": "Shieldbearer", "sniper": "Sniper", "brute": "Brute", "post": "Sparring post",
 	"turret": "Turret", "drone": "Drone", "mortar": "Mortar", "charger": "Charger" }
-const MARKS := ["▲", "◆", "●", "■"]
 const GOLD := "ffd889"
 const PERFECT := "fff3c4"
 
@@ -146,7 +146,7 @@ func _chip(text: String, color := "dfe8f2") -> String:
 	return "[color=#%s]%s[/color]   " % [color, text]
 
 func _pips(n: int, total: int) -> String:
-	return "◆".repeat(n) + "◇".repeat(maxi(0, total - n))
+	return "%d/%d" % [n, total]
 
 func _secs(t: float) -> String:
 	return "%ds" % ceili(t / 60.0)
@@ -192,7 +192,7 @@ func _make_panel(p: PlayerSim, row: HBoxContainer) -> Dictionary:
 	box.add_theme_constant_override("separation", 3)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(box)
-	var top := _label("%s P%d   %s · %s" % [MARKS[p.slot % 4], p.slot + 1, Tune.C.CHARS[p.char].name, "Marksman"], 16, col.to_html(false), false)
+	var top := _label("P%d   %s · %s" % [p.slot + 1, Tune.C.CHARS[p.char].name, "Marksman"], 16, col.to_html(false), false)
 	box.add_child(top)
 	var bar := _bar(300, 12, Color(0, 0, 0, 0.55))
 	box.add_child(bar)
@@ -216,7 +216,7 @@ func _make_panel(p: PlayerSim, row: HBoxContainer) -> Dictionary:
 
 func _chips(p: PlayerSim) -> String:
 	if p.state == "downed":
-		return _chip("Second Wind…" if p.auto_revive > 0 else "Down · revive %d%% · %s" % [floori(p.revive / 1.2), _secs(p.downed_t)], "ff8a6a")
+		return _chip("Second Wind..." if p.auto_revive > 0 else "Down · revive %d%% · %s" % [floori(p.revive / 1.2), _secs(p.downed_t)], "ff8a6a")
 	if p.state == "dead":
 		return _chip("Respawning in " + _secs(p.respawn_t), "ff8a6a")
 	var s := ""
@@ -258,7 +258,7 @@ func _chips(p: PlayerSim) -> String:
 	if p.state == "pound" and p.pound != null and p.pound.phase == "hold" and p.pound.level > 0:
 		s += _chip("Pound %d" % p.pound.level, PERFECT if p.pound.level == 3 else GOLD)
 	if p.lock_t != null:
-		s += _chip("◎ " + ENEMY_NAMES.get(p.lock_t.type, "Boss" if p.lock_t.boss else "Target"), "ff7fb2")
+		s += _chip("Lock: " + ENEMY_NAMES.get(p.lock_t.type, "Boss" if p.lock_t.boss else "Target"), "ff7fb2")
 	elif p.lock_suspend:
 		s += _chip("Lock paused", "9aa6b5")
 	if p.plate > 0.5:
@@ -291,24 +291,24 @@ func _markers() -> void:
 		if not markers.has(p.slot):
 			markers[p.slot] = _label("", 14, col, true); root.add_child(markers[p.slot])
 		var m: Label = markers[p.slot]
-		m.text = "%s P%d%s" % [MARKS[p.slot % 4], p.slot + 1, " · DOWN" if p.state == "downed" else ""]
+		m.text = "P%d%s" % [p.slot + 1, " · DOWN" if p.state == "downed" else ""]
 		var s: Vector2 = _screen(p.x, p.y + p.h + 0.45).pos
 		_place(m, Vector2(clampf(s.x, 16, r.x - 16), clampf(s.y, 16, r.y - 16)))
 		m.visible = p.state != "dead"
 		# The lock-on reticle on their target; several on one target nest
 		if not reticles.has(p.slot):
-			reticles[p.slot] = _label("", 40, col, true); root.add_child(reticles[p.slot])
-		var ret: Label = reticles[p.slot]
+			reticles[p.slot] = Reticle.new(); reticles[p.slot].color = Color(col); root.add_child(reticles[p.slot])
+		var ret: Reticle = reticles[p.slot]
 		var tg = p.lock_t if p.state != "dead" and p.state != "downed" else null
 		if tg == null:
 			ret.visible = false
 		else:
 			var n: int = on_target.get(tg, 0); on_target[tg] = n + 1
 			var sc := _screen(tg.x, tg.y + tg.h * 0.55)
-			ret.text = "◎"
-			ret.add_theme_font_size_override("font_size", int(40 + minf(70, tg.h * 14) + n * 12))
-			ret.rotation = 0
-			_place(ret, sc.pos, 0.5, 0.5)
+			ret.radius = (46 + minf(90, tg.h * 18) + n * 14) / 2.0
+			ret.position = sc.pos
+			if ret.target != tg:
+				ret.target = tg; ret.pop = 1.0
 			ret.visible = sc.vis
 		# The rocket jump's height readout beside its apex marker while Nova lines one up
 		if not apex.has(p.slot):
@@ -319,7 +319,7 @@ func _markers() -> void:
 			al.visible = false
 		else:
 			var sa := _screen(pv.x, pv.apex)
-			al.text = "▲ %.1f m%s" % [pv.apex - p.y, " · Perfect" if pv.perfect else ""]
+			al.text = "Apex %.1f m%s" % [pv.apex - p.y, " · Perfect" if pv.perfect else ""]
 			al.add_theme_color_override("font_color", Color(PERFECT if pv.perfect else GOLD))
 			_place(al, sa.pos + Vector2(34, 0), 0.0, 0.5)
 			al.visible = sa.vis
@@ -360,7 +360,7 @@ func _boss_bar() -> void:
 	boss_fill.size.x = 470 * clampf(e.hp / e.max_hp, 0, 1)
 	var shielded: bool = e.state == "roar" or e.state == "intro"
 	boss_fill.color = Color("9aa6b5") if shielded else (Color("ff5a4a") if e.phase == 2 else Color("ff2e7e"))
-	boss_armor.text = ("Armor " + "■".repeat(e.armor) + "□".repeat(maxi(0, e.armor_max - e.armor))) if e.armor_max else ""
+	boss_armor.text = ("Armor %d/%d" % [e.armor, e.armor_max]) if e.armor_max else ""
 
 # The ultimate: during the call its name fills the screen; while it plays out it sits small at the top
 func _ult_card() -> void:
@@ -383,3 +383,28 @@ func _ult_card() -> void:
 	else:
 		ult_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 		ult_card.offset_left = -500; ult_card.offset_right = 500; ult_card.offset_top = 60
+
+# A lock-on reticle (ui.js .reticle): four arcs turning round the target, popping in when the target changes
+class Reticle extends Control:
+	var color := Color.WHITE
+	var radius := 30.0
+	var target = null
+	var pop := 0.0
+	var spin := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(dt: float) -> void:
+		spin += dt * 1.6
+		pop = maxf(0.0, pop - dt * 5)
+		queue_redraw()
+
+	func _draw() -> void:
+		var r := radius * (1.0 + 0.35 * pop)
+		var outline := Color(0.05, 0.07, 0.12, 0.8)
+		for i in 4:
+			var a := spin + i * TAU / 4
+			draw_arc(Vector2.ZERO, r, a - 0.45, a + 0.45, 12, outline, 6.0, true)
+			draw_arc(Vector2.ZERO, r, a - 0.45, a + 0.45, 12, color, 3.0, true)
+		draw_circle(Vector2.ZERO, 3.0, color)
