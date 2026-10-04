@@ -1052,7 +1052,24 @@ func handle_fire(cmd: Cmd, world) -> void:
 	if marksman():
 		fire_marksman(cmd, world)
 		return
-	# (The Sentinel kit, Echo, RAM and Fix: later milestones)
+	if char == "nova":
+		# The Pass 1 Sentinel kit: a shot on the press, a Lance at charge1 and a Rail at charge2
+		var N: Dictionary = Tune.C.NOVA
+		if cmd.pressed.fire and fire_cd == 0 and can_fire():
+			world.fire_shot(self, 0); fire_cd = int(N.shotCd)
+		if cmd.held.fire and can_fire():
+			var t0 := charge_t
+			charge_t += boost_rate()
+			for level in crossed(t0, charge_t, [N.charge1, N.charge2]):
+				world.emit("chargeLevel", { "p": self, "level": level })
+		if cmd.released.fire or (not cmd.held.fire and charge_t > 0):
+			if charge_t >= N.charge2:
+				world.fire_shot(self, 2)
+			elif charge_t >= N.charge1:
+				world.fire_shot(self, 1)
+			charge_t = 0
+		return
+	# (Echo, RAM and Fix: milestone 2)
 	charge_t = 0
 
 static func level_of(t: float, C: Array) -> int:
