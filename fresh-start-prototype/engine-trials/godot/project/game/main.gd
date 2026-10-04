@@ -9,3 +9,4 @@ func _ready() -> void:
 			var failures := TestRunner.run_all(a.trim_prefix("--tests=") if a.begins_with("--tests=") else "")
 			get_tree().quit(1 if failures > 0 else 0)
 			return
+	add_child(load("res://game/game.tscn").instantiate())
