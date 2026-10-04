@@ -90,9 +90,10 @@ export function updateEnemy(e, world) {
   if (e.state === 'stagger' || e.state === 'hitstun') {
     if (e.onGround) e.vx *= 0.85;
     physics(e);
-    if (e.st >= e.stun) setState(e, 'idle');
+    if (e.st >= e.stun) { setState(e, 'idle'); e.dizzy = false; }
     return;
   }
+  e.dizzy = false;
   if (e.state === 'launched') {
     physics(e);
     if ((e.onGround || e.flier) && e.st > 6) { e.stun = 20; setState(e, 'hitstun'); }

@@ -106,6 +106,7 @@ const SETTING_DEFS = [
   { key: 'vbStop', label: 'Velocity Break stop', opts: [['hard', 'Hard stop'], ['keep30', 'Keep 30% momentum']] },
   { key: 'vbRefund', label: 'Velocity Break refunds air dash on hit', bool: true },
   { key: 'dashIframes', label: 'Dash invulnerability (A/B test)', bool: true },
+  { key: 'echoSpinStun', label: "Echo's deflect spin stun (light enemies; heavy about half)", range: [0.25, 3, 0.05], fmt: v => `${Number(v).toFixed(2)} s` },
   { key: 'impactFrames', label: 'Impact frames on big moments (Q-C test)', bool: true },
   { key: 'impactStyle', label: 'Impact frame style', opts: [['scifi', 'Sci-fi hologram'], ['comic', 'Comic ink (original)'], ['eclipse', 'Eclipse'], ['shatter', 'Shatter'], ['thunder', 'Thunderclap'], ['sumi', 'Sumi ink'], ['warp', 'Gravity well']] },
   { key: 'impactDuration', label: 'Impact frame duration', range: [0.3, 5, 0.05], fmt: v => `${Number(v).toFixed(2)} s` },

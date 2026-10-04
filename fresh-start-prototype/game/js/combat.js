@@ -78,8 +78,9 @@ export function hitEnemy(world, e, hit, source) {
   const ambush = source === 'melee' && owner && owner.kind === 'player' && owner.ambushT > 0;
   if (ambush) owner.ambushT = 0;
 
-  // Arc blasts come over the top of the shield, so only direct hits are checked against it
-  if (e.type === 'shield' && e.state !== 'stagger' && source !== 'blast') {
+  // Arc blasts come over the top of the shield, so only direct hits are checked against it (and a shield that is
+  // staggered, or stunned by Echo's spin, is down)
+  if (e.type === 'shield' && e.state !== 'stagger' && !(e.state === 'hitstun' && e.dizzy) && source !== 'blast') {
     const fromFront = source === 'proj' ? sign(-hit.vx) === e.shieldDir || Math.abs(hit.vx) < 1e-3
       : sign(owner.x - e.x) === e.shieldDir;
     const breaks = hit.armorBreak || hit.bulwark || (hit.vbTier || 0) >= 2 || hit.rail || hit.amplified || hit.ram || ambush;
@@ -143,7 +144,9 @@ export function hitEnemy(world, e, hit, source) {
     } else if (!e.flier && (e.state === 'launched' || (!e.onGround && canMove))) {
       e.state = 'launched'; e.st = 0; e.vy = Math.max(e.vy, 4); e.vx = hit.kb[0] * 0.3;
     } else if (e.state !== 'caught') {
-      e.state = 'hitstun'; e.st = 0; e.stun = T === 'swarmer' ? 16 : 12;
+      // (an enemy stunned by Echo's spin keeps what is left of that stun through the follow-up hits)
+      const left = e.state === 'hitstun' && e.dizzy ? e.stun - e.st : 0;
+      e.state = 'hitstun'; e.st = 0; e.stun = Math.max(T === 'swarmer' ? 16 : 12, left);
     }
   }
   // Chain lightning holds a light enemy it stuns for longer; everything it touches crackles for a moment

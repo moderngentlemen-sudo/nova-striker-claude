@@ -60,11 +60,16 @@ scrolls.
 ## What changed in Version 12.3: Echo's deflect spin stuns
 
 - **Echo's deflect spin stuns** (Hunter kit): while his staff twirls at the start of a parry (the same window
-  that deflects shots, all round him), any enemy it touches (within about half a metre of him) is stunned:
-  light enemies for 50 ticks (0.83 s), heavy ones such as the Brute for 26 (0.43 s). It cancels the attack
-  they were winding up. Each enemy is stunned once per spin, shown by an orange star and a chime. Bosses
-  shrug it off, an enemy already staggered or snared keeps that, and the Movement Gym's drill post is left
-  out so it still works for parry practice.
+  that deflects shots, all round him), any enemy it touches (its body within 0.8 m of him) is stunned, which
+  cancels the attack it was winding up. Each enemy is stunned once per spin.
+- **Stun length setting** (Esc/Start, Settings): *Echo's deflect spin stun*, **0.25 to 3.00 seconds** (default
+  0.85). That is the stun on light enemies; heavy ones such as the Brute get about half.
+- **Stunned enemies show it:** three gold stars circle the enemy's head for as long as the stun lasts. The
+  orbit tightens as time runs out, and the stars fade in the last fifth. Staggered enemies show the same stars.
+- **While stunned:** follow-up hits don't cut the stun short, and a Shield enemy's guard is down.
+- **Left alone:** bosses, enemies already staggered, dazed or snared, an enemy whose blow is already coming
+  (attack, charge, dive: the parry answers those, so a perfect parry still dazes a Charger), and the Movement
+  Gym's drill post (kept for parry practice).
 
 ## What changed in Version 12.2: impact frame duration
 

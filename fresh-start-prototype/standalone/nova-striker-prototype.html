@@ -588,9 +588,10 @@ var DEFLECT = {
   dmg: { standard: 3, heavy: 6 },
   perfect: 1.6,
   // The spin also stuns: an enemy the twirling staff touches (its body within `stunReach` m of Echo's edge,
-  // during the deflect window) is stunned for `stun` ticks, light ones longer than heavy; once per spin; not bosses
-  stunReach: 0.55,
-  stun: { light: 50, heavy: 26 }
+  // during the deflect window) is stunned, once per spin, not bosses. Light enemies for the Echo spin stun
+  // setting (seconds), heavy ones for `heavyMult` of that
+  stunReach: 0.8,
+  heavyMult: 0.52
 };
 var HUNTER = {
   snareCharges: 2,
@@ -1110,6 +1111,8 @@ var DEFAULT_SETTINGS = {
   // the look: scifi, comic (the original), eclipse, shatter, thunder, sumi, warp (fx.js ImpactShader)
   impactColor: "style",
   // its key colour: the look's own ('style'), the player's colour ('player') or the character's ('character')
+  echoSpinStun: 0.85,
+  // how long Echo's deflect spin stuns a light enemy, in seconds (0.25 to 3; heavy ones about half)
   impactDuration: 0.4,
   // how long a full-strength impact frame lasts, in seconds (0.3 to 5); lighter ones run a little shorter
   camera: "persp",
@@ -4369,9 +4372,13 @@ function updateEnemy(e, world2) {
   if (e.state === "stagger" || e.state === "hitstun") {
     if (e.onGround) e.vx *= 0.85;
     physics(e);
-    if (e.st >= e.stun) setState2(e, "idle");
+    if (e.st >= e.stun) {
+      setState2(e, "idle");
+      e.dizzy = false;
+    }
     return;
   }
+  e.dizzy = false;
   if (e.state === "launched") {
     physics(e);
     if ((e.onGround || e.flier) && e.st > 6) {
@@ -5535,7 +5542,7 @@ function hitEnemy(world2, e, hit, source) {
   }
   const ambush = source === "melee" && owner && owner.kind === "player" && owner.ambushT > 0;
   if (ambush) owner.ambushT = 0;
-  if (e.type === "shield" && e.state !== "stagger" && source !== "blast") {
+  if (e.type === "shield" && e.state !== "stagger" && !(e.state === "hitstun" && e.dizzy) && source !== "blast") {
     const fromFront = source === "proj" ? sign2(-hit.vx) === e.shieldDir || Math.abs(hit.vx) < 1e-3 : sign2(owner.x - e.x) === e.shieldDir;
     const breaks = hit.armorBreak || hit.bulwark || (hit.vbTier || 0) >= 2 || hit.rail || hit.amplified || hit.ram || ambush;
     if (fromFront && !breaks) {
@@ -5622,9 +5629,10 @@ function hitEnemy(world2, e, hit, source) {
       e.vy = Math.max(e.vy, 4);
       e.vx = hit.kb[0] * 0.3;
     } else if (e.state !== "caught") {
+      const left = e.state === "hitstun" && e.dizzy ? e.stun - e.st : 0;
       e.state = "hitstun";
       e.st = 0;
-      e.stun = T === "swarmer" ? 16 : 12;
+      e.stun = Math.max(T === "swarmer" ? 16 : 12, left);
     }
   }
   if (hit.shock) {
@@ -6344,6 +6352,11 @@ var BARKS = {
     upgrade: ["Tuned up.", "Better than new."]
   }
 };
+var SPIN_SPARED = /* @__PURE__ */ new Set(["stagger", "snared", "dazed", "attack", "charge", "dive"]);
+function spinStunTicks(e) {
+  const light = Math.round(Math.min(3, Math.max(0.25, Number(SETTINGS.echoSpinStun) || 0.85)) * 60);
+  return e.light ? light : Math.max(1, Math.round(light * DEFLECT.heavyMult));
+}
 var World = class {
   constructor() {
     this.players = [];
@@ -6802,19 +6815,20 @@ var World = class {
     this.emit("snipe", { p, x0, y0, x1: x0 + ax * endT, y1: y0 + ay * endT, ax, ay, f, full, crits, n, wall: endT === wall.t && wall.wall });
   }
   // Echo's deflect spin stuns every enemy the twirling staff touches (DEFLECT.stunReach), once per spin: light
-  // enemies for DEFLECT.stun.light ticks, heavy ones for less. Bosses shrug it off; an enemy already staggered
-  // or rooted by a snare keeps that instead; the Movement Gym's drill post doesn't stun (it is there to practise
+  // enemies for the Echo spin stun setting, heavy ones for about half (spinStunTicks). Bosses shrug it off; an enemy already staggered
+  // or rooted by a snare keeps that instead; an enemy whose blow is already coming (attack, charge, dive) is left
+  // to the parry, so a parry still counters it (a perfect parry dazes a Charger); the Movement Gym's drill post doesn't stun (it is there to practise
   // parry timing against)
   spinStun(p) {
     const D = DEFLECT;
     if (SETTINGS.echoKit !== "hunter" || p.parryT < 1 || p.parryT > D.window) return;
     if (p.parryT === 1 || !p.spinHit) p.spinHit = /* @__PURE__ */ new Set();
     for (const e of this.enemies) {
-      if (e.dead || e.boss || e.type === "post" || p.spinHit.has(e) || e.state === "stagger" || e.state === "snared") continue;
+      if (e.dead || e.boss || e.type === "post" || p.spinHit.has(e) || SPIN_SPARED.has(e.state)) continue;
       const gap = Math.abs(e.x - p.x) - e.w / 2 - p.w / 2;
       if (gap > D.stunReach || e.y > p.y + p.h + 0.3 || e.y + e.h < p.y - 0.3) continue;
       p.spinHit.add(e);
-      const ticks = e.light ? D.stun.light : D.stun.heavy;
+      const ticks = spinStunTicks(e);
       this.director.release(e);
       e.stun = e.state === "hitstun" ? Math.max(e.stun, e.st + ticks) : ticks;
       if (e.state !== "hitstun") {
@@ -6822,6 +6836,7 @@ var World = class {
         e.st = 0;
       }
       e.atk = null;
+      e.dizzy = true;
       e.vx = (Math.sign(e.x - p.x) || p.facing) * 2.5;
       e.flash = Math.max(e.flash, 4);
       this.emit("spinStun", { p, e, x: e.x, y: e.y + e.h * 0.6 });
@@ -18173,6 +18188,7 @@ var View = class {
         R.root.add(R.tag);
       }
       if (R.tag) R.tag.visible = e.tagged > 0 && !e.dead;
+      this.stunMarker(R, e, t);
     }
     for (const [e, R] of this.enemyRigs) if (!seenE.has(e)) {
       this.scene.remove(R.root);
@@ -18188,6 +18204,41 @@ var View = class {
       if (pd.pod.position.x > 260) pd.pod.position.x = -220;
       if (pd.pod.position.x < -220) pd.pod.position.x = 260;
     }
+  }
+  // Stunned (Echo's spin, or a stagger): three stars circle the enemy's head for as long as it lasts, the orbit
+  // tightening as the time runs out and the stars fading in the last fifth
+  stunMarker(R, e, t) {
+    const on = !e.dead && (e.state === "stagger" || e.state === "hitstun" && e.dizzy) && e.stun > 0;
+    if (!on) {
+      if (R.dizzy) R.dizzy.visible = false;
+      return;
+    }
+    if (!R.dizzy) {
+      R.dizzy = new THREE15.Group();
+      R.dizzy.stars = [];
+      for (let i = 0; i < 3; i++) {
+        const back = new THREE15.Sprite(new THREE15.SpriteMaterial({ map: this.fx.tex.star, color: 2758656, transparent: true, depthWrite: false }));
+        const s = new THREE15.Sprite(new THREE15.SpriteMaterial({ map: this.fx.tex.star, color: 16761370, transparent: true, depthWrite: false }));
+        back.renderOrder = 5;
+        s.renderOrder = 6;
+        R.dizzy.add(back, s);
+        R.dizzy.stars.push([s, back]);
+      }
+      R.root.add(R.dizzy);
+    }
+    const left = Math.max(0, 1 - e.st / e.stun), r = (0.28 + 0.32 * left) * Math.max(0.8, e.w), fade = Math.min(1, left * 5);
+    R.dizzy.visible = true;
+    R.dizzy.position.set(0, e.h + 0.28, 0);
+    R.dizzy.stars.forEach(([s, back], i) => {
+      const a = t * 5.5 + i * Math.PI * 2 / 3;
+      s.position.set(Math.cos(a) * r, Math.sin(a * 2) * 0.05, Math.sin(a) * r);
+      back.position.copy(s.position);
+      const k2 = 0.5 + 0.08 * Math.sin(t * 12 + i);
+      s.scale.set(k2, k2, 1);
+      back.scale.set(k2 * 1.35, k2 * 1.35, 1);
+      s.material.opacity = fade;
+      back.material.opacity = fade * 0.55;
+    });
   }
   // ---- Camera ----
   updateCamera(world2, dt) {
@@ -19184,6 +19235,7 @@ var SETTING_DEFS = [
   { key: "vbStop", label: "Velocity Break stop", opts: [["hard", "Hard stop"], ["keep30", "Keep 30% momentum"]] },
   { key: "vbRefund", label: "Velocity Break refunds air dash on hit", bool: true },
   { key: "dashIframes", label: "Dash invulnerability (A/B test)", bool: true },
+  { key: "echoSpinStun", label: "Echo's deflect spin stun (light enemies; heavy about half)", range: [0.25, 3, 0.05], fmt: (v) => `${Number(v).toFixed(2)} s` },
   { key: "impactFrames", label: "Impact frames on big moments (Q-C test)", bool: true },
   { key: "impactStyle", label: "Impact frame style", opts: [["scifi", "Sci-fi hologram"], ["comic", "Comic ink (original)"], ["eclipse", "Eclipse"], ["shatter", "Shatter"], ["thunder", "Thunderclap"], ["sumi", "Sumi ink"], ["warp", "Gravity well"]] },
   { key: "impactDuration", label: "Impact frame duration", range: [0.3, 5, 0.05], fmt: (v) => `${Number(v).toFixed(2)} s` },

@@ -303,6 +303,7 @@ export class View {
         R.tag.scale.set(0.7, 0.7, 1); R.tag.position.set(0, e.h + 0.5, 0); R.root.add(R.tag);
       }
       if (R.tag) R.tag.visible = e.tagged > 0 && !e.dead;
+      this.stunMarker(R, e, t);
     }
     for (const [e, R] of this.enemyRigs) if (!seenE.has(e)) { this.scene.remove(R.root); disposeTree(R.root); this.enemyRigs.delete(e); }
 
@@ -311,6 +312,31 @@ export class View {
       g.mesh.material.opacity = 0.35 + 0.12 * Math.sin(t * 6);
     }
     for (const pd of this.pods) { pd.pod.position.x += pd.speed * dt; if (pd.pod.position.x > 260) pd.pod.position.x = -220; if (pd.pod.position.x < -220) pd.pod.position.x = 260; }
+  }
+
+  // Stunned (Echo's spin, or a stagger): three stars circle the enemy's head for as long as it lasts, the orbit
+  // tightening as the time runs out and the stars fading in the last fifth
+  stunMarker(R, e, t) {
+    const on = !e.dead && (e.state === 'stagger' || (e.state === 'hitstun' && e.dizzy)) && e.stun > 0;
+    if (!on) { if (R.dizzy) R.dizzy.visible = false; return; }
+    if (!R.dizzy) {
+      R.dizzy = new THREE.Group(); R.dizzy.stars = [];
+      // each star has a dark backing a little larger than itself, so it reads on bright floors and dark ones
+      for (let i = 0; i < 3; i++) {
+        const back = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.fx.tex.star, color: 0x2a1800, transparent: true, depthWrite: false }));
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.fx.tex.star, color: 0xffc21a, transparent: true, depthWrite: false }));
+        back.renderOrder = 5; s.renderOrder = 6; R.dizzy.add(back, s); R.dizzy.stars.push([s, back]);
+      }
+      R.root.add(R.dizzy);
+    }
+    const left = Math.max(0, 1 - e.st / e.stun), r = (0.28 + 0.32 * left) * Math.max(0.8, e.w), fade = Math.min(1, left * 5);
+    R.dizzy.visible = true; R.dizzy.position.set(0, e.h + 0.28, 0);
+    R.dizzy.stars.forEach(([s, back], i) => {
+      const a = t * 5.5 + i * Math.PI * 2 / 3;
+      s.position.set(Math.cos(a) * r, Math.sin(a * 2) * 0.05, Math.sin(a) * r); back.position.copy(s.position);
+      const k = 0.5 + 0.08 * Math.sin(t * 12 + i); s.scale.set(k, k, 1); back.scale.set(k * 1.35, k * 1.35, 1);
+      s.material.opacity = fade; back.material.opacity = fade * 0.55;
+    });
   }
 
   // ---- Camera ----

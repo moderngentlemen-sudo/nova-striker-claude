@@ -1,6 +1,6 @@
 // Echo's deflect spin stuns: enemies the twirling staff touches are stunned (light ones longer than heavy),
-// once per spin; enemies out of reach, bosses and other characters' parries are left alone.
-import { World } from '../game/js/world.js';
+// once per spin; enemies out of reach, enemies already mid-blow (left to the parry), bosses and other characters' parries are left alone.
+import { World, spinStunTicks } from '../game/js/world.js';
 import { createEnemy } from '../game/js/enemies.js';
 import { SETTINGS, DEFLECT } from '../game/js/config.js';
 SETTINGS.novaKit = 'sentinel'; SETTINGS.echoKit = 'hunter'; SETTINGS.lockOn = false; SETTINGS.difficulty = 'normal';
@@ -31,7 +31,7 @@ const spin = run => { run({ held: { parry: true } }, 1); run({}, 4); };
   spin(run);
   const stunned = log.filter(e => e.type === 'spinStun').map(e => e.e);
   assert(p.state === 'parry', 'Echo is spinning (parry)');
-  assert(near.state === 'hitstun' && near.stun === DEFLECT.stun.light, `A light enemy in front is stunned for ${near.stun} ticks`);
+  assert(near.state === 'hitstun' && near.stun === 51, `A light enemy in front is stunned for ${near.stun} ticks`);
   assert(behind.state === 'hitstun' && stunned.includes(behind), 'An enemy behind him is stunned too (the spin goes all round)');
   assert(far.state !== 'hitstun' && !stunned.includes(far), 'An enemy 4 m away is not touched');
 }
@@ -40,8 +40,8 @@ const spin = run => { run({ held: { parry: true } }, 1); run({}, 4); };
   const brute = add('brute', 1.6);
   spin(run); run({}, 10);
   const n = log.filter(e => e.type === 'spinStun').length;
-  assert(n === 1 && brute.stun === DEFLECT.stun.heavy, `A brute is stunned once per spin, for ${brute.stun} ticks`);
-  run({}, DEFLECT.stun.heavy);
+  assert(n === 1 && brute.stun === 27, `A brute is stunned once per spin, for ${brute.stun} ticks`);
+  run({}, 27);
   assert(brute.state !== 'hitstun', 'The stun wears off');
 }
 { // Bosses shrug it off; a snared enemy keeps its root; Nova's parry doesn't stun
@@ -50,7 +50,27 @@ const spin = run => { run({ held: { parry: true } }, 1); run({}, 4); };
   rooted.state = 'snared'; rooted.st = 0; rooted.stun = 96;
   spin(run);
   assert(!log.some(e => e.type === 'spinStun'), 'A boss is not stunned, a snared enemy stays snared, and the drill post keeps swinging');
+  const A = setup(), mid = A.add('swarmer', 1.2); mid.state = 'attack'; mid.st = 0; mid.atk = { inst: 1 };
+  spin(A.run);
+  assert(!A.log.some(q => q.type === 'spinStun' && q.e === mid), 'An enemy whose blow is already coming is left to the parry');
   const N = setup('nova'), s = N.add('swarmer', 1.2);
   spin(N.run);
   assert(N.p.state === 'parry' && s.state !== 'hitstun', "Nova's parry does not stun");
+}
+{ // The setting sets the length (seconds, light; heavy about half), clamped to 0.25-3 s; the stun marks the enemy dizzy until it ends
+  const light = { light: true }, heavy = { light: false };
+  SETTINGS.echoSpinStun = 2; const a = [spinStunTicks(light), spinStunTicks(heavy)];
+  SETTINGS.echoSpinStun = 9; const b = spinStunTicks(light); SETTINGS.echoSpinStun = 0.1; const c = spinStunTicks(light);
+  assert(a[0] === 120 && a[1] === 62 && b === 180 && c === 15, `Stun setting: 2 s is ${a[0]}/${a[1]} ticks (light/heavy), clamped to ${c}-${b}`);
+  SETTINGS.echoSpinStun = 1;
+  const { run, add } = setup(); const e = add('swarmer', 1.2);
+  spin(run); const mid = e.dizzy && e.stun === 60;
+  run({}, 60);
+  assert(mid && !e.dizzy && e.state !== 'hitstun', 'At 1 s a swarmer is stunned 60 ticks, marked dizzy, then recovers unmarked');
+  // follow-up staff hits on a stunned enemy don't cut the stun short
+  SETTINGS.echoSpinStun = 2; const R = setup(); const f = R.add('shield', 1.2);
+  spin(R.run); R.run({}, 30); const before = f.stun - f.st; R.log.length = 0;
+  R.run({ held: { melee: true } }, 1); R.run({}, 8);
+  assert(R.log.some(q => q.type === 'hit' && q.e === f) && before > 60 && f.state === 'hitstun' && f.dizzy && f.stun - f.st >= before - 10, `A stunned shield's guard is down, and a follow-up hit keeps the stun (${before} ticks left before, ${f.stun - f.st} after)`);
+  SETTINGS.echoSpinStun = 0.85;
 }

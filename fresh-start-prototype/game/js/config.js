@@ -215,8 +215,9 @@ export const POUND = {
 // hits harder. Unblockable shells cannot be deflected.
 export const DEFLECT = { window: 22, reach: 1.15, speed: 1.35, dmg: { standard: 3, heavy: 6 }, perfect: 1.6,
   // The spin also stuns: an enemy the twirling staff touches (its body within `stunReach` m of Echo's edge,
-  // during the deflect window) is stunned for `stun` ticks, light ones longer than heavy; once per spin; not bosses
-  stunReach: 0.55, stun: { light: 50, heavy: 26 } };
+  // during the deflect window) is stunned, once per spin, not bosses. Light enemies for the Echo spin stun
+  // setting (seconds), heavy ones for `heavyMult` of that
+  stunReach: 0.8, heavyMult: 0.52 };
 
 export const HUNTER = {
   snareCharges: 2, snareRecharge: 300, throwSpeed: 15, throwLift: 5, snareGravity: 32,
@@ -573,6 +574,7 @@ export const DEFAULT_SETTINGS = {
   impactFrames: true,   // impact frames on the biggest moments (sci-fi look since Version 9; on by default since Version 8)
   impactStyle: 'scifi', // the look: scifi, comic (the original), eclipse, shatter, thunder, sumi, warp (fx.js ImpactShader)
   impactColor: 'style', // its key colour: the look's own ('style'), the player's colour ('player') or the character's ('character')
+  echoSpinStun: 0.85,   // how long Echo's deflect spin stuns a light enemy, in seconds (0.25 to 3; heavy ones about half)
   impactDuration: 0.4,  // how long a full-strength impact frame lasts, in seconds (0.3 to 5); lighter ones run a little shorter
   camera: 'persp',
   fov: 34,

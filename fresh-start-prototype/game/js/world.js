@@ -47,6 +47,13 @@ const BARKS = {
   },
 };
 
+const SPIN_SPARED = new Set(['stagger', 'snared', 'dazed', 'attack', 'charge', 'dive']);
+// Ticks Echo's deflect spin stuns an enemy for: the setting (seconds) for a light one, DEFLECT.heavyMult of it for a heavy one
+export function spinStunTicks(e) {
+  const light = Math.round(Math.min(3, Math.max(0.25, Number(SETTINGS.echoSpinStun) || 0.85)) * 60);
+  return e.light ? light : Math.max(1, Math.round(light * DEFLECT.heavyMult));
+}
+
 export class World {
   constructor() {
     this.players = []; this.enemies = []; this.projectiles = []; this.hitboxes = [];
@@ -352,23 +359,24 @@ export class World {
     this.emit('snipe', { p, x0, y0, x1: x0 + ax * endT, y1: y0 + ay * endT, ax, ay, f, full, crits, n, wall: endT === wall.t && wall.wall });
   }
   // Echo's deflect spin stuns every enemy the twirling staff touches (DEFLECT.stunReach), once per spin: light
-  // enemies for DEFLECT.stun.light ticks, heavy ones for less. Bosses shrug it off; an enemy already staggered
-  // or rooted by a snare keeps that instead; the Movement Gym's drill post doesn't stun (it is there to practise
+  // enemies for the Echo spin stun setting, heavy ones for about half (spinStunTicks). Bosses shrug it off; an enemy already staggered
+  // or rooted by a snare keeps that instead; an enemy whose blow is already coming (attack, charge, dive) is left
+  // to the parry, so a parry still counters it (a perfect parry dazes a Charger); the Movement Gym's drill post doesn't stun (it is there to practise
   // parry timing against)
   spinStun(p) {
     const D = DEFLECT;
     if (SETTINGS.echoKit !== 'hunter' || p.parryT < 1 || p.parryT > D.window) return;
     if (p.parryT === 1 || !p.spinHit) p.spinHit = new Set();
     for (const e of this.enemies) {
-      if (e.dead || e.boss || e.type === 'post' || p.spinHit.has(e) || e.state === 'stagger' || e.state === 'snared') continue;
+      if (e.dead || e.boss || e.type === 'post' || p.spinHit.has(e) || SPIN_SPARED.has(e.state)) continue;
       const gap = Math.abs(e.x - p.x) - e.w / 2 - p.w / 2;
       if (gap > D.stunReach || e.y > p.y + p.h + 0.3 || e.y + e.h < p.y - 0.3) continue;
       p.spinHit.add(e);
-      const ticks = e.light ? D.stun.light : D.stun.heavy;
+      const ticks = spinStunTicks(e);
       this.director.release(e);
       e.stun = e.state === 'hitstun' ? Math.max(e.stun, e.st + ticks) : ticks;
       if (e.state !== 'hitstun') { e.state = 'hitstun'; e.st = 0; }
-      e.atk = null; e.vx = (Math.sign(e.x - p.x) || p.facing) * 2.5; e.flash = Math.max(e.flash, 4);
+      e.atk = null; e.dizzy = true; e.vx = (Math.sign(e.x - p.x) || p.facing) * 2.5; e.flash = Math.max(e.flash, 4);
       this.emit('spinStun', { p, e, x: e.x, y: e.y + e.h * 0.6 });
     }
   }
