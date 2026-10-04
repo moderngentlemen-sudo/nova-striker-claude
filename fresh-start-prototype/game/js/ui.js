@@ -108,6 +108,7 @@ const SETTING_DEFS = [
   { key: 'dashIframes', label: 'Dash invulnerability (A/B test)', bool: true },
   { key: 'impactFrames', label: 'Impact frames on big moments (Q-C test)', bool: true },
   { key: 'impactStyle', label: 'Impact frame style', opts: [['scifi', 'Sci-fi hologram'], ['comic', 'Comic ink (original)'], ['eclipse', 'Eclipse'], ['shatter', 'Shatter'], ['thunder', 'Thunderclap'], ['sumi', 'Sumi ink'], ['warp', 'Gravity well']] },
+  { key: 'impactDuration', label: 'Impact frame duration', range: [0.3, 5, 0.05], fmt: v => `${Number(v).toFixed(2)} s` },
   { key: 'impactColor', label: 'Impact frame colour', opts: [['style', "The style's own"], ['player', 'Colour of the player who set it off'], ['character', "That player's character colour"]] },
   { key: 'camera', label: 'Camera projection', opts: [['persp', 'Perspective'], ['ortho', 'Orthographic']] },
   { key: 'fov', label: 'Camera field of view', range: [24, 50, 1] },
@@ -214,6 +215,10 @@ export class UI {
       else if (d.range) {
         input = h('input'); input.type = 'range'; [input.min, input.max, input.step] = d.range.map(String); input.value = String(SETTINGS[d.key]);
         input.addEventListener('input', () => { SETTINGS[d.key] = Number(input.value); saveSettings(); });
+        if (d.fmt) {   // a slider with a unit shows its value beside the label
+          const out = h('output', 'val', d.fmt(input.value)); lab.firstChild.append(' ', out);
+          input.addEventListener('input', () => { out.textContent = d.fmt(input.value); });
+        }
       } else {
         input = h('select'); for (const [v, t] of d.opts) { const o = h('option', '', t); o.value = v; input.appendChild(o); }
         input.value = SETTINGS[d.key]; input.addEventListener('change', () => { SETTINGS[d.key] = input.value; saveSettings(); });

@@ -57,6 +57,15 @@ Extra gamepads join by pressing any button, up to four players; each new player 
 nobody is using. H or View shows the full controls in game; B, A, Start or View closes them, and the D-pad
 scrolls.
 
+## What changed in Version 12.2: impact frame duration
+
+- **Impact frame duration** (Esc/Start, Settings): a slider from **0.30 to 5.00 seconds** (default 0.40, close
+  to the old fixed length), with the value shown beside it. It sets how long a full-strength impact frame
+  lasts. Lighter frames (a perfect dodge) run a little shorter and the strongest (ultimates) a little longer,
+  always within 0.3 to 5 s. The opening white flash stays a few frames long however long the frame runs, so a
+  long setting doesn't hold the screen on a bright flash. Frames longer than 0.9 s play one at a time instead of
+  restarting each other.
+
 ## What changed in Version 12.1: smoother play
 
 - **No more mid-game shader hitches.** Every character's and enemy's model, and the floating words, are

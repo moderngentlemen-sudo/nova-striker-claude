@@ -570,6 +570,7 @@ export const DEFAULT_SETTINGS = {
   impactFrames: true,   // impact frames on the biggest moments (sci-fi look since Version 9; on by default since Version 8)
   impactStyle: 'scifi', // the look: scifi, comic (the original), eclipse, shatter, thunder, sumi, warp (fx.js ImpactShader)
   impactColor: 'style', // its key colour: the look's own ('style'), the player's colour ('player') or the character's ('character')
+  impactDuration: 0.4,  // how long a full-strength impact frame lasts, in seconds (0.3 to 5); lighter ones run a little shorter
   camera: 'persp',
   fov: 34,
   aimAssist: true,

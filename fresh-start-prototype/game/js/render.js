@@ -427,17 +427,21 @@ export class View {
   // the seven) spreading from the hit, a zoom punch and colour split, easing back out. Its key colour is the
   // look's own, or (Settings: Impact frame colour) the player colour or character colour of whoever set it off
   // (the event's player, or the player nearest the impact). In play, a short hit-pause holds the simulation
-  // (main.js) while it runs. At most one every 0.9 s. The same pass dims the world while an ultimate is called.
+  // (main.js) while it runs. Its length is the Impact frame duration setting (0.3 to 5 s, for a full-strength
+  // frame; lighter and heavier ones in proportion, always within 0.3 to 5 s), but the opening flash always stays a few frames long, however long the
+  // frame runs. At most one every 0.9 s (or one at a time, when they run longer than that). The same pass dims the
+  // world while an ultimate is called.
   startImpact(x, y, strength = 1, force = false) {
     if (!SETTINGS.impactFrames || (this.impactCd > 0 && !force)) return;
     const s = this.screenOf(x, y);
-    this.impact = { t: 0, dur: 0.26 + 0.12 * strength, cx: s.x / Math.max(1, this.w), cy: 1 - s.y / Math.max(1, this.h), k: strength, seed: Math.random() * 100 };
+    const base = 0.26 + 0.12 * strength, len = Math.min(5, Math.max(0.3, Number(SETTINGS.impactDuration) || 0.4));
+    this.impact = { t: 0, base, dur: Math.min(5, Math.max(0.3, base * len / 0.38)), cx: s.x / Math.max(1, this.w), cy: 1 - s.y / Math.max(1, this.h), k: strength, seed: Math.random() * 100 };
     const style = IMPACT_STYLES.includes(SETTINGS.impactStyle) ? SETTINGS.impactStyle : 'scifi', U = this.ink.uniforms;
     let by = this.impactBy;
     if (!by && this.world) { let bd = Infinity; for (const q of this.world.players) { const dd = Math.hypot(q.x - x, q.y - y); if (dd < bd) { bd = dd; by = q; } } }
     const mode = SETTINGS.impactColor, col = by && mode === 'player' ? PLAYER_COLORS[by.slot] : by && mode === 'character' ? CHARS[by.char].energy : null;
     U.style.value = IMPACT_STYLES.indexOf(style); U.accent.value.set(col || IMPACT_ACCENT[style]); U.tinted.value = col ? 1 : 0;
-    this.impactCd = 0.9; this.hitPause = 0.05 + 0.05 * strength;
+    this.impactCd = Math.max(0.9, this.impact.dur); this.hitPause = 0.05 + 0.05 * strength;
     this.trauma = Math.min(1, this.trauma + 0.25 * strength); this.bloomKick = Math.min(1.4, this.bloomKick + 0.4 * strength);
   }
   updateImpact(dt, world) {
@@ -452,7 +456,8 @@ export class View {
     if (!I) { U.amount.value = 0; this.ink.enabled = this.dim > 0; return this.ink.enabled; }
     I.t += dt; const k = Math.min(1, I.t / I.dur);
     U.center.value.set(I.cx, I.cy); U.seed.value = I.seed;
-    U.invert.value = k < 0.1 ? 1 : Math.max(0, 1 - (k - 0.1) / 0.06);
+    const kf = I.t / I.base;   // (the flash runs on the frame's base length, not the stretched one)
+    U.invert.value = kf < 0.1 ? 1 : Math.max(0, 1 - (kf - 0.1) / 0.06);
     U.amount.value = k < 0.78 ? 1 : Math.max(0, 1 - (k - 0.78) / 0.22);
     U.zoom.value = 0.07 * I.k * (1 - k) * (1 - k); U.split.value = 0.008 * I.k * (1 - k);
     U.ring.value = 0.05 + k * 1.25; U.glitch.value = Math.max(0, 1 - k * 2.4) * Math.min(1, I.k); U.phase.value = k;
