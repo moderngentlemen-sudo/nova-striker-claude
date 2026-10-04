@@ -1,12 +1,12 @@
-; Engine trial: Godot 4.3. Nova on the Helix Foundry stretch (see ../README.md).
+; Nova Striker, the Godot port (see ../../README.md, "Godot 4.3").
 
 config_version=5
 
 [application]
 
-config/name="Nova Striker Godot Trial"
-run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.3", "GL Compatibility")
+config/name="Nova Striker"
+run/main_scene="res://game/main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
 
 [display]
 
@@ -17,9 +17,10 @@ window/size/viewport_height=720
 
 common/physics_ticks_per_second=60
 common/max_physics_steps_per_frame=5
+common/physics_jitter_fix=0.0
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
+renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="gl_compatibility"
 anti_aliasing/quality/msaa_3d=1

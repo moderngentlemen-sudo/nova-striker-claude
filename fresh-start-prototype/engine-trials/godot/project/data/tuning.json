@@ -1,0 +1,2838 @@
+{
+ "ACTION_BUFFER": 8,
+ "AEGIS": {
+  "hp": 70,
+  "ticks": 300,
+  "cd": 660,
+  "radius": 1.55,
+  "over": {
+   "perDmg": 2.2,
+   "max": 100,
+   "hold": 360,
+   "drain": 0.25,
+   "charge": 1.6,
+   "dmg": 1.4,
+   "cost": 34
+  },
+  "shatter": {
+   "r": 3.2,
+   "dmg": 3,
+   "poise": 45,
+   "kb": 10
+  },
+  "detonate": {
+   "r": 3,
+   "dmg": 4,
+   "poise": 45,
+   "kb": 10,
+   "over": 20
+  }
+ },
+ "ATTACH_LOOK": {
+  "lance": {
+   "name": "Lance",
+   "tint": "#ffb547"
+  },
+  "volley": {
+   "name": "Volley",
+   "tint": "#ffd889"
+  },
+  "arc": {
+   "name": "Arc",
+   "tint": "#ff9f40"
+  },
+  "prism": {
+   "name": "Prism",
+   "tint": "#fff0c8"
+  }
+ },
+ "CHARS": {
+  "nova": {
+   "name": "Nova",
+   "role": "Sentinel",
+   "hp": 100,
+   "run": 7.4,
+   "backpedal": 0.8,
+   "accelG": 95,
+   "decelG": 120,
+   "accelA": 60,
+   "crouchSpeed": 0.4,
+   "jumpV": 17.7,
+   "dblV": 15.2,
+   "dash": {
+    "ticks": 11,
+    "speed": 22,
+    "exitKeep": 0.3,
+    "cooldown": 18
+   },
+   "slide": {
+    "ticks": 16,
+    "speed": 12.5,
+    "decay": 0.965
+   },
+   "wall": {
+    "slide": 3.6,
+    "jumpVx": 9.5,
+    "jumpVy": 16,
+    "lock": 7
+   },
+   "width": 0.72,
+   "height": 1.72,
+   "crouchH": 0.95,
+   "energy": "#ffb547",
+   "trim": "#2f5f9e",
+   "base": "#eef2f7",
+   "under": "#1c2c48"
+  },
+  "echo": {
+   "name": "Echo",
+   "role": "Pursuit",
+   "hp": 100,
+   "run": 8.8,
+   "backpedal": 0.65,
+   "accelG": 70,
+   "decelG": 50,
+   "accelA": 52,
+   "crouchSpeed": 0.45,
+   "jumpV": 17.7,
+   "dblV": 15.2,
+   "dash": {
+    "ticks": 13,
+    "speed": 24,
+    "exitKeep": 0.6,
+    "cooldown": 16
+   },
+   "slide": {
+    "ticks": 18,
+    "speed": 13.5,
+    "decay": 0.972
+   },
+   "wall": {
+    "slide": 4.2,
+    "jumpVx": 10.5,
+    "jumpVy": 16,
+    "lock": 6
+   },
+   "width": 0.68,
+   "height": 1.74,
+   "crouchH": 0.95,
+   "energy": "#ff9a1f",
+   "trim": "#15151b",
+   "base": "#f4f4f2",
+   "under": "#1b1b22"
+  },
+  "ram": {
+   "name": "RAM",
+   "role": "Vanguard",
+   "hp": 350,
+   "run": 6.3,
+   "backpedal": 0.75,
+   "accelG": 62,
+   "decelG": 85,
+   "accelA": 42,
+   "crouchSpeed": 0.35,
+   "jumpV": 16.4,
+   "dblV": 13.8,
+   "dash": {
+    "ticks": 14,
+    "speed": 15,
+    "exitKeep": 0.35,
+    "cooldown": 26
+   },
+   "slide": {
+    "ticks": 16,
+    "speed": 11.5,
+    "decay": 0.965
+   },
+   "wall": {
+    "slide": 3,
+    "jumpVx": 9,
+    "jumpVy": 15.8,
+    "lock": 8
+   },
+   "width": 1.04,
+   "height": 2.3,
+   "crouchH": 0.95,
+   "scale": 1.34,
+   "energy": "#58a6ff",
+   "trim": "#2d3540",
+   "base": "#aeb8c4",
+   "under": "#1b2129"
+  },
+  "fix": {
+   "name": "Fix",
+   "role": "Mechanic",
+   "hp": 95,
+   "run": 7.8,
+   "backpedal": 0.8,
+   "accelG": 88,
+   "decelG": 95,
+   "accelA": 58,
+   "crouchSpeed": 0.45,
+   "jumpV": 17.9,
+   "dblV": 15.4,
+   "dash": {
+    "ticks": 12,
+    "speed": 23,
+    "exitKeep": 0.4,
+    "cooldown": 16
+   },
+   "slide": {
+    "ticks": 18,
+    "speed": 13,
+    "decay": 0.97
+   },
+   "wall": {
+    "slide": 3.8,
+    "jumpVx": 10,
+    "jumpVy": 16,
+    "lock": 6
+   },
+   "width": 0.64,
+   "height": 1.6,
+   "crouchH": 0.9,
+   "scale": 0.94,
+   "energy": "#3cf0b0",
+   "trim": "#2e7d6f",
+   "base": "#f3f0ea",
+   "under": "#2a2e36"
+  }
+ },
+ "COYOTE": 7,
+ "DASH_CHARGE": {
+  "tap": 6,
+  "charge": [
+   16,
+   34,
+   54
+  ],
+  "speed": [
+   1.15,
+   1.3,
+   1.45
+  ],
+  "ticks": [
+   1.25,
+   1.5,
+   1.75
+  ],
+  "exitKeep": [
+   0.45,
+   0.55,
+   0.65
+  ],
+  "iframes": [
+   0,
+   10,
+   99
+  ],
+  "jumpCarry": 25,
+  "strike": {
+   "dmg": 2.5,
+   "poise": 40,
+   "kb": 9
+  }
+ },
+ "DASH_SLASH": {
+  "ticks": 12,
+  "speed": [
+   19,
+   22,
+   26
+  ],
+  "keep": 0.93,
+  "box": {
+   "fx": 0.9,
+   "w": 2.5,
+   "h": 1.6
+  },
+  "dmg": [
+   2.8,
+   4.5,
+   7
+  ],
+  "poise": [
+   30,
+   50,
+   90
+  ],
+  "armorBreak": [
+   false,
+   true,
+   true
+  ],
+  "recover": 9,
+  "hitRecover": 4
+ },
+ "DEFAULT_SETTINGS": {
+  "novaKit": "marksman",
+  "echoKit": "hunter",
+  "echoHead": "helmet",
+  "echoRanged": "B",
+  "dashIframes": false,
+  "vbStop": "hard",
+  "vbRefund": true,
+  "impactFrames": true,
+  "impactStyle": "scifi",
+  "impactColor": "style",
+  "echoSpinStun": 0.85,
+  "impactDuration": 0.4,
+  "camera": "persp",
+  "fov": 34,
+  "aimAssist": true,
+  "difficulty": "normal",
+  "shake": true,
+  "quality": "high",
+  "hitboxes": false,
+  "barks": true,
+  "volume": 0.6,
+  "music": 0.6,
+  "p1Aim": "mouse",
+  "lockOn": true,
+  "lockMode": "auto",
+  "dashCharge": true,
+  "haptics": true,
+  "hapticStrength": 0.8,
+  "echoBelt": "fire",
+  "aiTeammates": 0,
+  "aiSkill": "veteran",
+  "settingsVersion": 9
+ },
+ "DEFLECT": {
+  "window": 22,
+  "reach": 1.15,
+  "speed": 1.35,
+  "dmg": {
+   "standard": 3,
+   "heavy": 6
+  },
+  "perfect": 1.6,
+  "stunReach": 0.8,
+  "heavyMult": 0.52
+ },
+ "DIFFICULTY": {
+  "easy": {
+   "tokens": -1,
+   "dmg": 0.7
+  },
+  "normal": {
+   "tokens": 0,
+   "dmg": 1
+  },
+  "hard": {
+   "tokens": 1,
+   "dmg": 1.3
+  }
+ },
+ "DODGE": {
+  "ticks": 16,
+  "speed": 13,
+  "airSpeed": 11,
+  "keep": 0.86,
+  "iframes": 11,
+  "perfect": 7,
+  "cd": 28,
+  "slowTicks": 100,
+  "slowRange": 7,
+  "over": 20
+ },
+ "DT": 0.016666666666666666,
+ "ECHO": {
+  "cellsMax": 4,
+  "boltCd": 12,
+  "boltDmg": 1.5,
+  "boltSpeed": 34,
+  "tracerCd": 72,
+  "tracerHold": 24,
+  "tracerDmg": 0.8,
+  "lashRange": 6.5,
+  "lashCharges": 2,
+  "lashRecharge": 240,
+  "zipSpeed": 24,
+  "resolveHalf": 50
+ },
+ "FALL_MULT": 1.35,
+ "FAST_FALL": 30,
+ "FIX": {
+  "scrap": {
+   "max": 100,
+   "start": 60,
+   "regen": 2.5,
+   "perDmg": 0.35,
+   "kill": 6,
+   "killRange": 12
+  },
+  "rivet": {
+   "cd": 14,
+   "n": 3,
+   "every": 3,
+   "speed": 34,
+   "dmg": 0.8,
+   "poise": 6,
+   "r": 0.11,
+   "ttl": 40,
+   "charge": [
+    32,
+    66,
+    102
+   ],
+   "hot": {
+    "speed": 30,
+    "r": 0.16,
+    "fuse": 34,
+    "ttl": 60,
+    "dmg": [
+     2,
+     3,
+     4.5
+    ],
+    "poise": [
+     16,
+     24,
+     36
+    ],
+    "blast": [
+     {
+      "r": 1.5,
+      "dmg": 3,
+      "poise": 25
+     },
+     {
+      "r": 1.9,
+      "dmg": 5,
+      "poise": 40
+     },
+     {
+      "r": 2.4,
+      "dmg": 7.5,
+      "poise": 65,
+      "armorBreak": true
+     }
+    ]
+   }
+  },
+  "beam": {
+   "range": 9,
+   "keep": 12,
+   "heal": 24,
+   "self": 8,
+   "plate": 25,
+   "plateRate": 10,
+   "tune": 1.5,
+   "revive": 3,
+   "slow": 0.6
+  },
+  "revive": 3,
+  "reviveHp": 0.6,
+  "gadgets": [
+   "pylon",
+   "sentry",
+   "coil"
+  ],
+  "gadget": {
+   "pylon": {
+    "cost": 40,
+    "life": [
+     900,
+     1080,
+     1260
+    ],
+    "hp": 60,
+    "r": [
+     4,
+     5,
+     6
+    ],
+    "heal": [
+     6,
+     9,
+     12
+    ],
+    "revive": [
+     0.35,
+     0.45,
+     0.6
+    ],
+    "plate": [
+     0,
+     0,
+     3
+    ],
+    "plateMax": 15
+   },
+   "sentry": {
+    "cost": 50,
+    "life": [
+     1200,
+     1320,
+     1440
+    ],
+    "hp": 50,
+    "range": [
+     12,
+     13,
+     14
+    ],
+    "every": [
+     22,
+     16,
+     12
+    ],
+    "dmg": [
+     1.1,
+     1.3,
+     1.5
+    ],
+    "poise": 8,
+    "speed": 30,
+    "rocket": {
+     "every": 80,
+     "speed": 18,
+     "blast": {
+      "r": 1.6,
+      "dmg": 4,
+      "poise": 40
+     }
+    }
+   },
+   "coil": {
+    "cost": 45,
+    "life": [
+     900,
+     1080,
+     1260
+    ],
+    "hp": 50,
+    "r": [
+     4.5,
+     5.5,
+     6.5
+    ],
+    "rate": [
+     1.5,
+     1.75,
+     2
+    ]
+   }
+  },
+  "pad": {
+   "life": 210,
+   "bounce": 21,
+   "w": 1.1,
+   "enemyBounce": 13
+  },
+  "powers": [
+   "overclock",
+   "plating",
+   "medkit"
+  ],
+  "power": {
+   "cost": 25,
+   "range": 14,
+   "speed": 14,
+   "lift": 6,
+   "gravity": 30,
+   "life": 900,
+   "grab": 0.9,
+   "ownerDelay": 30,
+   "overclock": {
+    "ticks": 600,
+    "rate": 1.6
+   },
+   "plating": {
+    "plate": 35
+   },
+   "medkit": {
+    "heal": 40
+   }
+  },
+  "poundHeal": [
+   8,
+   11,
+   14,
+   18
+  ],
+  "maxRate": 2.6
+ },
+ "FIX_LOOK": {
+  "pylon": {
+   "name": "Patch Pylon",
+   "tint": "#5cf2a6"
+  },
+  "sentry": {
+   "name": "Sentry",
+   "tint": "#ffcf5a"
+  },
+  "coil": {
+   "name": "Amp Coil",
+   "tint": "#6fe3ff"
+  },
+  "overclock": {
+   "name": "Overclock",
+   "tint": "#6fe3ff"
+  },
+  "plating": {
+   "name": "Plating",
+   "tint": "#a9c8ff"
+  },
+  "medkit": {
+   "name": "Medkit",
+   "tint": "#5cf2a6"
+  },
+  "ultcell": {
+   "name": "Ult Cell",
+   "tint": "#ffd23f"
+  },
+  "fury": {
+   "name": "Fury",
+   "tint": "#ff5a4a"
+  }
+ },
+ "GRAVITY": 49,
+ "HIGH_VEL": 16,
+ "HOSTILE": "#ff2e7e",
+ "HUNTER": {
+  "snareCharges": 2,
+  "snareRecharge": 300,
+  "throwSpeed": 15,
+  "throwLift": 5,
+  "snareGravity": 32,
+  "armTicks": 10,
+  "life": 600,
+  "maxPlanted": 2,
+  "rootLight": 96,
+  "rootHeavyPoise": 38,
+  "leashTicks": 110,
+  "leashLen": 2.3,
+  "yankPoise": 45,
+  "rifle": {
+   "raise": 10,
+   "focus": 60,
+   "cd": 48,
+   "range": 60,
+   "minDmg": 5,
+   "maxDmg": 18,
+   "poise": [
+    18,
+    70
+   ],
+   "crit": 1.6,
+   "critZone": 0.62,
+   "kb": 6,
+   "slow": 0.35,
+   "tag": 600
+  }
+ },
+ "IMPACT_ACCENT": {
+  "scifi": "#38c8ff",
+  "comic": "#14101a",
+  "eclipse": "#ffb347",
+  "shatter": "#bfe8ff",
+  "thunder": "#8f7bff",
+  "sumi": "#c8202c",
+  "warp": "#a070ff"
+ },
+ "IMPACT_STYLES": [
+  "scifi",
+  "comic",
+  "eclipse",
+  "shatter",
+  "thunder",
+  "sumi",
+  "warp"
+ ],
+ "JUMP_BUFFER": 8,
+ "LOCK": {
+  "range": 18,
+  "keep": 24,
+  "hold": 20,
+  "lost": 90,
+  "magnet": 2.8,
+  "lunge": 18,
+  "auto": 14
+ },
+ "MARKSMAN": {
+  "attachments": [
+   "lance",
+   "volley",
+   "arc",
+   "prism"
+  ],
+  "switchCd": 10,
+  "charge": [
+   34,
+   72,
+   115
+  ],
+  "perfectWindow": 10,
+  "perfectMult": 1.5,
+  "life": 900,
+  "round": {
+   "splash": {
+    "r": 0.9,
+    "dmg": 0.35,
+    "poise": 4
+   }
+  },
+  "lance": {
+   "1": {
+    "speed": 40,
+    "dmg": 4.2,
+    "poise": 36,
+    "r": 0.22,
+    "kb": 5,
+    "splash": {
+     "r": 1,
+     "dmg": 1.6,
+     "poise": 12,
+     "rocket": true
+    }
+   },
+   "2": {
+    "speed": 46,
+    "dmg": 7,
+    "poise": 60,
+    "r": 0.26,
+    "kb": 8,
+    "armorBreak": true,
+    "splash": {
+     "r": 1.4,
+     "dmg": 2.8,
+     "poise": 20,
+     "rocket": true
+    }
+   },
+   "3": {
+    "speed": 52,
+    "dmg": 11.5,
+    "poise": 95,
+    "r": 0.32,
+    "kb": 11,
+    "armorBreak": true,
+    "rail": true,
+    "splash": {
+     "r": 1.9,
+     "dmg": 4.5,
+     "poise": 30,
+     "rocket": true
+    }
+   }
+  },
+  "volley": {
+   "darts": {
+    "1": 3,
+    "2": 5,
+    "3": 7,
+    "perfect": 9
+   },
+   "fan": {
+    "1": 0.9,
+    "2": 1.1,
+    "3": 1.35,
+    "perfect": 1.6
+   },
+   "speed": 20,
+   "dmg": 1.55,
+   "poise": 11,
+   "r": 0.14,
+   "seekDelay": 6,
+   "seekFor": 150,
+   "turn": 0.1,
+   "seekRange": 16,
+   "seekCone": 1.2,
+   "splash": {
+    "r": 0.8,
+    "dmg": 0.55,
+    "poise": 5
+   },
+   "rocket": true
+  },
+  "arc": {
+   "1": {
+    "r": 1.8,
+    "dmg": 4.2,
+    "poise": 42,
+    "rocket": true
+   },
+   "2": {
+    "r": 2.3,
+    "dmg": 6.3,
+    "poise": 60,
+    "armorBreak": true,
+    "rocket": true
+   },
+   "3": {
+    "r": 2.9,
+    "dmg": 9,
+    "poise": 90,
+    "armorBreak": true,
+    "rocket": true
+   },
+   "speed": 17,
+   "lift": 0.7,
+   "gravity": 32,
+   "perfectRadius": 1.25
+  },
+  "prism": {
+   "1": {
+    "dmg": 2.2,
+    "poise": 17,
+    "shards": 2,
+    "bounces": 1,
+    "splash": {
+     "r": 1.2,
+     "dmg": 0.85,
+     "poise": 7,
+     "rocket": true
+    }
+   },
+   "2": {
+    "dmg": 3.1,
+    "poise": 22,
+    "shards": 3,
+    "bounces": 1,
+    "splash": {
+     "r": 1.4,
+     "dmg": 1.25,
+     "poise": 10,
+     "rocket": true
+    }
+   },
+   "3": {
+    "dmg": 4.2,
+    "poise": 29,
+    "shards": 5,
+    "bounces": 2,
+    "splash": {
+     "r": 1.7,
+     "dmg": 1.7,
+     "poise": 12,
+     "rocket": true
+    }
+   },
+   "speed": 30,
+   "r": 0.2,
+   "perfectBounces": 1,
+   "shard": {
+    "speed": 24,
+    "dmg": 1.7,
+    "poise": 10,
+    "r": 0.12,
+    "fan": 0.36,
+    "splash": {
+     "r": 0.7,
+     "dmg": 0.5,
+     "poise": 5
+    }
+   }
+  },
+  "burst": {
+   "1": {
+    "pellets": 7,
+    "fan": 0.7,
+    "speed": 29,
+    "dmg": 0.6,
+    "poise": 10,
+    "kb": 10
+   },
+   "2": {
+    "pellets": 9,
+    "fan": 0.8,
+    "speed": 30,
+    "dmg": 0.7,
+    "poise": 12,
+    "kb": 12,
+    "armorBreak": true
+   },
+   "3": {
+    "pellets": 12,
+    "fan": 0.9,
+    "speed": 32,
+    "dmg": 0.8,
+    "poise": 14,
+    "kb": 14,
+    "armorBreak": true,
+    "blast": {
+     "r": 1.7,
+     "dmg": 2.5,
+     "poise": 30
+    }
+   },
+   "cd": 24,
+   "charge": [
+    30,
+    62,
+    98
+   ],
+   "perfectWindow": 10,
+   "falloff": 14,
+   "tap": {
+    "pellets": 5,
+    "fan": 0.63,
+    "speed": 28,
+    "dmg": 0.5,
+    "poise": 7,
+    "kb": 8
+   }
+  },
+  "rocket": {
+   "h": [
+    3.6,
+    8.4
+   ],
+   "perfect": 10.5,
+   "attach": {
+    "lance": 0.95,
+    "volley": 0.8,
+    "arc": 1,
+    "prism": 0.9
+   },
+   "reach": 1.1,
+   "close": 0.9,
+   "slack": 0.35,
+   "falloff": 0.45,
+   "air": [
+    1,
+    0.6,
+    0.35,
+    0.2
+   ],
+   "side": 0.6,
+   "sideMax": 18,
+   "freeze": [
+    2,
+    3,
+    4
+   ]
+  },
+  "beam": {
+   "at": 170,
+   "ticks": 96,
+   "pulse": 6,
+   "dmg": 2.4,
+   "poise": 16,
+   "width": 0.34,
+   "range": 42,
+   "turn": 0.04,
+   "slow": 0.2,
+   "hover": 0.8,
+   "armorEvery": 24,
+   "volley": {
+    "every": 10
+   },
+   "arc": {
+    "every": 14,
+    "blast": {
+     "r": 1.7,
+     "dmg": 2.4,
+     "poise": 22
+    }
+   },
+   "prism": {
+    "bounces": 1
+   }
+  },
+  "melee": {
+   "reach": 1.9,
+   "up": 1.6
+  },
+  "boost": {
+   "fuel": 60,
+   "rise": 3.5,
+   "thrust": 70,
+   "refill": 2.5,
+   "minStart": 6,
+   "air": 1.1
+  },
+  "focus": {
+   "max": 5,
+   "dmgPer": 0.06,
+   "perRound": 0.34,
+   "decay": 360,
+   "decayStep": 120
+  },
+  "skate": {
+   "top": 8.2,
+   "accel": 60,
+   "coast": 30,
+   "carve": 95,
+   "tuck": 12,
+   "tuckMin": 3,
+   "backpedal": 1
+  }
+ },
+ "MAX_FALL": 22,
+ "MERCY_TICKS": 60,
+ "MOVES": {
+  "nova_jab1": {
+   "su": 5,
+   "ac": 3,
+   "rc": 12,
+   "box": {
+    "fx": 0.8,
+    "y": 1.15,
+    "w": 1,
+    "h": 0.7
+   },
+   "dmg": 1.2,
+   "poise": 12,
+   "kb": [
+    2,
+    0
+   ],
+   "next": "nova_jab2"
+  },
+  "nova_jab2": {
+   "su": 5,
+   "ac": 3,
+   "rc": 12,
+   "box": {
+    "fx": 0.8,
+    "y": 1.15,
+    "w": 1,
+    "h": 0.7
+   },
+   "dmg": 1.2,
+   "poise": 12,
+   "kb": [
+    2.5,
+    0
+   ],
+   "next": "nova_shove"
+  },
+  "nova_shove": {
+   "su": 8,
+   "ac": 4,
+   "rc": 16,
+   "box": {
+    "fx": 0.85,
+    "y": 1.1,
+    "w": 1.2,
+    "h": 1.1
+   },
+   "dmg": 1.6,
+   "poise": 30,
+   "kb": [
+    11,
+    3
+   ],
+   "shove": true
+  },
+  "nova_brace": {
+   "su": 13,
+   "ac": 4,
+   "rc": 18,
+   "box": {
+    "fx": 0.9,
+    "y": 1.1,
+    "w": 1.4,
+    "h": 1.3
+   },
+   "dmg": 2.5,
+   "poise": 55,
+   "kb": [
+    15,
+    4
+   ],
+   "shove": true,
+   "armorBreak": true
+  },
+  "nova_air": {
+   "su": 5,
+   "ac": 4,
+   "rc": 10,
+   "box": {
+    "fx": 0.75,
+    "y": 0.9,
+    "w": 1.1,
+    "h": 1
+   },
+   "dmg": 1.2,
+   "poise": 12,
+   "kb": [
+    4,
+    2
+   ],
+   "air": true
+  },
+  "nova_k1": {
+   "su": 4,
+   "ac": 3,
+   "rc": 11,
+   "box": {
+    "fx": 0.85,
+    "y": 1.15,
+    "w": 1.15,
+    "h": 0.85
+   },
+   "dmg": 1.8,
+   "poise": 16,
+   "kb": [
+    2.5,
+    0
+   ],
+   "next": "nova_k2",
+   "fist": true
+  },
+  "nova_k2": {
+   "su": 4,
+   "ac": 3,
+   "rc": 11,
+   "box": {
+    "fx": 0.85,
+    "y": 1,
+    "w": 1.15,
+    "h": 0.95
+   },
+   "dmg": 1.8,
+   "poise": 16,
+   "kb": [
+    2.5,
+    0
+   ],
+   "next": "nova_k3",
+   "fist": true,
+   "offhand": true
+  },
+  "nova_k3": {
+   "su": 7,
+   "ac": 4,
+   "rc": 16,
+   "box": {
+    "fx": 1,
+    "y": 1.1,
+    "w": 1.45,
+    "h": 1.15
+   },
+   "dmg": 3.5,
+   "poise": 45,
+   "kb": [
+    12,
+    4
+   ],
+   "shove": true,
+   "fist": true,
+   "heavy": true,
+   "blastFist": {
+    "r": 1.3,
+    "dmg": 1.5,
+    "poise": 15
+   }
+  },
+  "nova_kair": {
+   "su": 5,
+   "ac": 4,
+   "rc": 10,
+   "box": {
+    "fx": 0.8,
+    "y": 0.65,
+    "w": 1.25,
+    "h": 1.1
+   },
+   "dmg": 2.2,
+   "poise": 20,
+   "kb": [
+    4,
+    -2
+   ],
+   "air": true,
+   "fist": true
+  },
+  "nova_rise": {
+   "su": 4,
+   "ac": 14,
+   "rc": 14,
+   "box": {
+    "fx": 0.45,
+    "y": 1.55,
+    "w": 1.35,
+    "h": 2.1
+   },
+   "dmg": 1.4,
+   "poise": 16,
+   "kb": [
+    1,
+    16
+   ],
+   "launcher": true,
+   "fist": true,
+   "rise": 16,
+   "airRise": 0.8,
+   "multi": 5,
+   "riseBlast": {
+    "r": 1.7,
+    "dmg": 3,
+    "poise": 40
+   }
+  },
+  "echo_g1": {
+   "su": 4,
+   "ac": 3,
+   "rc": 10,
+   "box": {
+    "fx": 0.75,
+    "y": 1.15,
+    "w": 1,
+    "h": 0.7
+   },
+   "dmg": 1.3,
+   "poise": 12,
+   "kb": [
+    1.5,
+    0
+   ],
+   "next": "echo_g2",
+   "blade": true
+  },
+  "echo_g2": {
+   "su": 5,
+   "ac": 3,
+   "rc": 11,
+   "box": {
+    "fx": 0.8,
+    "y": 1.15,
+    "w": 1.1,
+    "h": 0.8
+   },
+   "dmg": 1.3,
+   "poise": 12,
+   "kb": [
+    2,
+    0
+   ],
+   "next": "echo_g3",
+   "blade": true
+  },
+  "echo_g3": {
+   "su": 7,
+   "ac": 4,
+   "rc": 16,
+   "box": {
+    "fx": 1,
+    "y": 1,
+    "w": 1.9,
+    "h": 1.2
+   },
+   "dmg": 2.2,
+   "poise": 28,
+   "kb": [
+    7,
+    2
+   ],
+   "staff": true
+  },
+  "echo_launch": {
+   "su": 8,
+   "ac": 4,
+   "rc": 14,
+   "box": {
+    "fx": 0.8,
+    "y": 1.4,
+    "w": 1.2,
+    "h": 1.6
+   },
+   "dmg": 1.5,
+   "poise": 20,
+   "kb": [
+    1.5,
+    15
+   ],
+   "launcher": true,
+   "staff": true
+  },
+  "echo_air1": {
+   "su": 4,
+   "ac": 3,
+   "rc": 9,
+   "box": {
+    "fx": 0.75,
+    "y": 0.95,
+    "w": 1.1,
+    "h": 1
+   },
+   "dmg": 1.1,
+   "poise": 10,
+   "kb": [
+    1.5,
+    5
+   ],
+   "air": true,
+   "hover": true,
+   "next": "echo_air2",
+   "blade": true
+  },
+  "echo_air2": {
+   "su": 4,
+   "ac": 3,
+   "rc": 9,
+   "box": {
+    "fx": 0.75,
+    "y": 0.95,
+    "w": 1.1,
+    "h": 1
+   },
+   "dmg": 1.1,
+   "poise": 10,
+   "kb": [
+    1.5,
+    5
+   ],
+   "air": true,
+   "hover": true,
+   "next": "echo_air3",
+   "blade": true
+  },
+  "echo_air3": {
+   "su": 6,
+   "ac": 4,
+   "rc": 12,
+   "box": {
+    "fx": 0.9,
+    "y": 0.9,
+    "w": 1.6,
+    "h": 1.2
+   },
+   "dmg": 1.8,
+   "poise": 22,
+   "kb": [
+    7,
+    1
+   ],
+   "air": true,
+   "staff": true
+  },
+  "echo_charged": {
+   "su": 14,
+   "ac": 4,
+   "rc": 18,
+   "box": {
+    "fx": 1.1,
+    "y": 1,
+    "w": 2.2,
+    "h": 1.4
+   },
+   "dmg": 7,
+   "poise": 60,
+   "kb": [
+    10,
+    3
+   ],
+   "armorBreak": true,
+   "staff": true,
+   "heavy": true,
+   "deflect": true,
+   "wave": {
+    "speed": 22,
+    "ttl": 38,
+    "dmg": 5,
+    "poise": 40,
+    "r": 0.75
+   }
+  },
+  "echo_riposte": {
+   "su": 2,
+   "ac": 4,
+   "rc": 12,
+   "box": {
+    "fx": 1,
+    "y": 1.1,
+    "w": 1.8,
+    "h": 1.4
+   },
+   "dmg": 7,
+   "poise": 80,
+   "kb": [
+    8,
+    3
+   ],
+   "staff": true,
+   "deflect": true
+  },
+  "echo_b1": {
+   "su": 3,
+   "ac": 2,
+   "rc": 8,
+   "box": {
+    "fx": 0.7,
+    "y": 1.15,
+    "w": 1.05,
+    "h": 0.85
+   },
+   "dmg": 1.7,
+   "poise": 12,
+   "kb": [
+    1,
+    0
+   ],
+   "next": "echo_b2",
+   "blade": true
+  },
+  "echo_b2": {
+   "su": 3,
+   "ac": 2,
+   "rc": 8,
+   "box": {
+    "fx": 0.75,
+    "y": 1.15,
+    "w": 1.1,
+    "h": 0.85
+   },
+   "dmg": 1.7,
+   "poise": 12,
+   "kb": [
+    1,
+    0
+   ],
+   "next": "echo_b3",
+   "blade": true,
+   "offhand": true
+  },
+  "echo_b3": {
+   "su": 4,
+   "ac": 3,
+   "rc": 9,
+   "box": {
+    "fx": 0.85,
+    "y": 1.1,
+    "w": 1.3,
+    "h": 1
+   },
+   "dmg": 2.1,
+   "poise": 16,
+   "kb": [
+    1.5,
+    0
+   ],
+   "next": "echo_b4",
+   "blade": true,
+   "cross": true
+  },
+  "echo_b4": {
+   "su": 5,
+   "ac": 5,
+   "rc": 13,
+   "box": {
+    "fx": 1.1,
+    "y": 1,
+    "w": 2.3,
+    "h": 1.4
+   },
+   "dmg": 4.2,
+   "poise": 40,
+   "kb": [
+    8,
+    2
+   ],
+   "staff": true,
+   "glaive": true,
+   "deflect": true
+  },
+  "echo_rise": {
+   "su": 3,
+   "ac": 15,
+   "rc": 12,
+   "box": {
+    "fx": 0.55,
+    "y": 1.35,
+    "w": 1.6,
+    "h": 2.1
+   },
+   "dmg": 1.5,
+   "poise": 18,
+   "kb": [
+    1.5,
+    16
+   ],
+   "launcher": true,
+   "staff": true,
+   "glaive": true,
+   "rise": 15,
+   "multi": 5,
+   "deflect": true
+  },
+  "echo_ab1": {
+   "su": 3,
+   "ac": 3,
+   "rc": 8,
+   "box": {
+    "fx": 0.75,
+    "y": 0.95,
+    "w": 1.15,
+    "h": 1.05
+   },
+   "dmg": 1.6,
+   "poise": 11,
+   "kb": [
+    1.5,
+    5
+   ],
+   "air": true,
+   "hover": true,
+   "next": "echo_ab2",
+   "blade": true
+  },
+  "echo_ab2": {
+   "su": 3,
+   "ac": 3,
+   "rc": 8,
+   "box": {
+    "fx": 0.75,
+    "y": 0.95,
+    "w": 1.15,
+    "h": 1.05
+   },
+   "dmg": 1.6,
+   "poise": 11,
+   "kb": [
+    1.5,
+    5
+   ],
+   "air": true,
+   "hover": true,
+   "next": "echo_ab3",
+   "blade": true,
+   "offhand": true
+  },
+  "echo_ab3": {
+   "su": 5,
+   "ac": 4,
+   "rc": 11,
+   "box": {
+    "fx": 0.95,
+    "y": 0.9,
+    "w": 1.8,
+    "h": 1.3
+   },
+   "dmg": 3.2,
+   "poise": 28,
+   "kb": [
+    7,
+    1
+   ],
+   "air": true,
+   "staff": true,
+   "glaive": true,
+   "deflect": true
+  },
+  "echo_spin": {
+   "su": 2,
+   "ac": 16,
+   "rc": 10,
+   "box": {
+    "fx": 0,
+    "y": 0.9,
+    "w": 2.6,
+    "h": 2.4
+   },
+   "dmg": 1.3,
+   "poise": 12,
+   "kb": [
+    4,
+    4
+   ],
+   "air": true,
+   "staff": true,
+   "glaive": true,
+   "spin": true,
+   "multi": 4,
+   "hoverAll": 0.35,
+   "deflect": true
+  },
+  "echo_wall": {
+   "su": 3,
+   "ac": 4,
+   "rc": 10,
+   "box": {
+    "fx": 1.1,
+    "y": 1,
+    "w": 2.1,
+    "h": 2
+   },
+   "dmg": 2.6,
+   "poise": 26,
+   "kb": [
+    7,
+    3
+   ],
+   "air": true,
+   "blade": true,
+   "wall": true,
+   "deflect": true
+  },
+  "ram_b1": {
+   "su": 7,
+   "ac": 4,
+   "rc": 13,
+   "box": {
+    "fx": 1.05,
+    "y": 1.3,
+    "w": 1.6,
+    "h": 1.9
+   },
+   "dmg": 2.6,
+   "poise": 24,
+   "kb": [
+    5,
+    1
+   ],
+   "next": "ram_b2",
+   "shield": true
+  },
+  "ram_b2": {
+   "su": 6,
+   "ac": 4,
+   "rc": 13,
+   "box": {
+    "fx": 1.05,
+    "y": 1.3,
+    "w": 1.7,
+    "h": 1.9
+   },
+   "dmg": 2.6,
+   "poise": 24,
+   "kb": [
+    5,
+    1
+   ],
+   "next": "ram_b3",
+   "shield": true,
+   "offhand": true
+  },
+  "ram_b3": {
+   "su": 10,
+   "ac": 5,
+   "rc": 18,
+   "box": {
+    "fx": 1.2,
+    "y": 1.2,
+    "w": 2,
+    "h": 2
+   },
+   "dmg": 5.5,
+   "poise": 65,
+   "kb": [
+    14,
+    4
+   ],
+   "shove": true,
+   "heavy": true,
+   "armorBreak": true,
+   "fist": true
+  },
+  "ram_air": {
+   "su": 6,
+   "ac": 5,
+   "rc": 12,
+   "box": {
+    "fx": 0.95,
+    "y": 0.9,
+    "w": 1.7,
+    "h": 1.7
+   },
+   "dmg": 3,
+   "poise": 28,
+   "kb": [
+    6,
+    -3
+   ],
+   "air": true,
+   "shield": true
+  },
+  "ram_bash": {
+   "su": 3,
+   "ac": 4,
+   "rc": 12,
+   "box": {
+    "fx": 1.05,
+    "y": 1.2,
+    "w": 1.5,
+    "h": 2.2
+   },
+   "dmg": 2,
+   "poise": 40,
+   "kb": [
+    11,
+    3
+   ],
+   "shove": true,
+   "shield": true
+  },
+  "ram_rise": {
+   "su": 6,
+   "ac": 12,
+   "rc": 16,
+   "box": {
+    "fx": 0.95,
+    "y": 1.6,
+    "w": 2,
+    "h": 2.7
+   },
+   "dmg": 2.4,
+   "poise": 12,
+   "kb": [
+    2,
+    17
+   ],
+   "launcher": true,
+   "shield": true,
+   "rise": 12.5,
+   "airRise": 0.75,
+   "multi": 6,
+   "sweep": true,
+   "riseBlast": {
+    "r": 2.2,
+    "dmg": 3.5,
+    "poise": 45
+   },
+   "blastKind": "upliftBlast"
+  },
+  "ram_slam": {
+   "su": 16,
+   "ac": 4,
+   "rc": 20,
+   "box": {
+    "fx": 1,
+    "y": 0.8,
+    "w": 2.6,
+    "h": 1.6
+   },
+   "dmg": 6,
+   "poise": 70,
+   "kb": [
+    8,
+    9
+   ],
+   "heavy": true,
+   "armorBreak": true,
+   "shield": true,
+   "quake": {
+    "dmg": 4,
+    "poise": 45,
+    "speed": 12,
+    "ttl": 34,
+    "h": 1.1
+   }
+  },
+  "fix_w1": {
+   "su": 4,
+   "ac": 3,
+   "rc": 10,
+   "box": {
+    "fx": 0.8,
+    "y": 1,
+    "w": 1.15,
+    "h": 0.9
+   },
+   "dmg": 1.5,
+   "poise": 12,
+   "kb": [
+    2,
+    0
+   ],
+   "next": "fix_w2",
+   "wrench": true
+  },
+  "fix_w2": {
+   "su": 4,
+   "ac": 3,
+   "rc": 10,
+   "box": {
+    "fx": 0.8,
+    "y": 1,
+    "w": 1.15,
+    "h": 0.9
+   },
+   "dmg": 1.5,
+   "poise": 12,
+   "kb": [
+    2,
+    0
+   ],
+   "next": "fix_w3",
+   "wrench": true,
+   "offhand": true
+  },
+  "fix_w3": {
+   "su": 7,
+   "ac": 4,
+   "rc": 15,
+   "box": {
+    "fx": 0.95,
+    "y": 0.95,
+    "w": 1.5,
+    "h": 1.3
+   },
+   "dmg": 3.4,
+   "poise": 40,
+   "kb": [
+    9,
+    4
+   ],
+   "shove": true,
+   "heavy": true,
+   "wrench": true
+  },
+  "fix_air": {
+   "su": 4,
+   "ac": 4,
+   "rc": 10,
+   "box": {
+    "fx": 0.75,
+    "y": 0.85,
+    "w": 1.3,
+    "h": 1.1
+   },
+   "dmg": 1.8,
+   "poise": 16,
+   "kb": [
+    4,
+    2
+   ],
+   "air": true,
+   "wrench": true
+  },
+  "fix_slam": {
+   "su": 13,
+   "ac": 4,
+   "rc": 18,
+   "box": {
+    "fx": 0.95,
+    "y": 0.9,
+    "w": 1.8,
+    "h": 1.4
+   },
+   "dmg": 5,
+   "poise": 55,
+   "kb": [
+    9,
+    6
+   ],
+   "heavy": true,
+   "armorBreak": true,
+   "wrench": true,
+   "spark": {
+    "r": 2.8,
+    "dmg": 2,
+    "poise": 30,
+    "stun": 50
+   }
+  },
+  "fix_rise": {
+   "su": 5,
+   "ac": 11,
+   "rc": 13,
+   "box": {
+    "fx": 0.55,
+    "y": 1.3,
+    "w": 1.35,
+    "h": 2
+   },
+   "dmg": 1.5,
+   "poise": 18,
+   "kb": [
+    1,
+    15
+   ],
+   "launcher": true,
+   "wrench": true,
+   "rise": 16,
+   "airRise": 0.8,
+   "multi": 5,
+   "jack": true
+  }
+ },
+ "NOVA": {
+  "shotCd": 8,
+  "shotSpeed": 30,
+  "shotDmg": 1,
+  "shotRange": 20,
+  "charge1": 30,
+  "charge2": 72,
+  "lance": {
+   "dmg": 3,
+   "poise": 30,
+   "speed": 36
+  },
+  "rail": {
+   "dmg": 6,
+   "poise": 60,
+   "speed": 44
+  },
+  "bulwarkCd": 480,
+  "bulwarkRange": 4,
+  "barrierTicks": 120,
+  "barrierHalf": 1.6
+ },
+ "PARRY": {
+  "window": 12,
+  "perfect": 4,
+  "whiff": 16
+ },
+ "PARRY_BUFFER": 3,
+ "PLATE_MAX": 60,
+ "PLAYER_COLORS": [
+  "#5ac8fa",
+  "#7ed957",
+  "#f5f5f5",
+  "#4dd0b8"
+ ],
+ "PLAYER_MARKS": [
+  "▲",
+  "◆",
+  "●",
+  "■"
+ ],
+ "POUND": {
+  "windup": 5,
+  "hang": 1.2,
+  "maxHold": 110,
+  "charge": [
+   20,
+   44,
+   72
+  ],
+  "speed": 34,
+  "maxDrop": 100,
+  "aimDown": -0.9,
+  "bounce": 13,
+  "box": {
+   "w": 1.3,
+   "h": 1.6
+  },
+  "drop": {
+   "dmg": 2.5,
+   "poise": 24
+  },
+  "recover": 12,
+  "hitRecover": 5,
+  "fallBonus": 0.6,
+  "land": [
+   {
+    "r": 2.4,
+    "dmg": 4,
+    "poise": 45,
+    "kb": 9,
+    "up": 6
+   },
+   {
+    "r": 3,
+    "dmg": 6,
+    "poise": 65,
+    "kb": 11,
+    "up": 7
+   },
+   {
+    "r": 3.7,
+    "dmg": 8.5,
+    "poise": 90,
+    "kb": 13,
+    "up": 8,
+    "armorBreak": true
+   },
+   {
+    "r": 4.6,
+    "dmg": 12,
+    "poise": 130,
+    "kb": 16,
+    "up": 9,
+    "armorBreak": true
+   }
+  ]
+ },
+ "POWERUPS": {
+  "ultcell": {
+   "ult": 40
+  },
+  "fury": {
+   "ticks": 720,
+   "dmg": 1.5,
+   "kb": 1.3
+  },
+  "dropLife": 1500
+ },
+ "RAM": {
+  "guard": {
+   "integrity": 100,
+   "regen": 22,
+   "delay": 60,
+   "perfect": 8,
+   "walk": 0.35,
+   "half": 1.35,
+   "reach": 1,
+   "brokenStun": 44,
+   "recover": 40,
+   "kinetic": 1,
+   "perfectKinetic": 15,
+   "reflect": 1.4,
+   "minNy": -0.35
+  },
+  "release": {
+   "min": 15,
+   "cone": 0.95,
+   "r": [
+    2.6,
+    5.4
+   ],
+   "dmg": [
+    4,
+    18
+   ],
+   "poise": [
+    40,
+    120
+   ],
+   "kb": [
+    9,
+    15
+   ]
+  },
+  "cannon": {
+   "1": {
+    "speed": 32,
+    "dmg": 5,
+    "poise": 50,
+    "kb": 10,
+    "r": 0.26,
+    "ttl": 40,
+    "pierce": 1
+   },
+   "2": {
+    "speed": 34,
+    "dmg": 8,
+    "poise": 80,
+    "kb": 12,
+    "r": 0.32,
+    "ttl": 44,
+    "pierce": 2,
+    "armorBreak": true
+   },
+   "3": {
+    "speed": 36,
+    "dmg": 12,
+    "poise": 110,
+    "kb": 15,
+    "r": 0.4,
+    "ttl": 48,
+    "pierce": 3,
+    "armorBreak": true,
+    "blast": {
+     "r": 2.2,
+     "dmg": 6,
+     "poise": 60
+    }
+   },
+   "cd": 24,
+   "charge": [
+    36,
+    76,
+    118
+   ],
+   "slug": {
+    "speed": 30,
+    "dmg": 2.6,
+    "poise": 26,
+    "kb": 8,
+    "r": 0.2,
+    "ttl": 34
+   }
+  },
+  "beam": {
+   "at": 170,
+   "ticks": 110,
+   "pulse": 6,
+   "dmg": 3.2,
+   "poise": 30,
+   "width": 0.55,
+   "range": 40,
+   "turn": 0.035,
+   "slow": 0.15,
+   "hover": 0.6,
+   "armorEvery": 18,
+   "kb": 7
+  },
+  "rush": {
+   "ticks": [
+    14,
+    18,
+    24,
+    30
+   ],
+   "speed": [
+    15,
+    17,
+    19.5,
+    22
+   ],
+   "keep": 0.35,
+   "catchDmg": [
+    2,
+    3,
+    4.5,
+    6
+   ],
+   "poise": [
+    30,
+    45,
+    70,
+    100
+   ],
+   "reach": 0.95,
+   "end": {
+    "kb": [
+     14,
+     5
+    ]
+   },
+   "splat": {
+    "dmg": [
+     4,
+     5,
+     7,
+     10
+    ],
+    "poise": [
+     60,
+     80,
+     110,
+     160
+    ],
+    "stun": 70
+   },
+   "bonk": {
+    "dmg": [
+     3,
+     4,
+     6,
+     9
+    ],
+    "poise": [
+     45,
+     65,
+     95,
+     140
+    ]
+   },
+   "heavyFrom": 2
+  },
+  "knock": {
+   "light": 1.6,
+   "heavy": 1.25,
+   "launchAt": 9,
+   "lift": 6
+  },
+  "rushTaken": 0.6,
+  "pound": 1.3,
+  "wall": {
+   "cd": 720,
+   "ticks": 480,
+   "hp": 160,
+   "dist": 1.8,
+   "half": 1.75
+  },
+  "link": {
+   "cd": 720,
+   "ticks": 480,
+   "range": 18,
+   "leapAt": 4.5,
+   "leapTicks": 34,
+   "share": 0.6,
+   "plate": 25,
+   "breakAt": 22,
+   "land": {
+    "r": 2.4,
+    "dmg": 3,
+    "poise": 45
+   }
+  },
+  "provoke": {
+   "cd": 600,
+   "ticks": 240,
+   "range": 11,
+   "brace": 0.6,
+   "shove": {
+    "r": 2.6,
+    "kb": 13
+   }
+  }
+ },
+ "RISE_CUT_MULT": 2.4,
+ "ROSTER": [
+  "nova",
+  "echo",
+  "ram",
+  "fix"
+ ],
+ "SCARF": {
+  "modes": [
+   "tether",
+   "veil",
+   "flare"
+  ],
+  "switchCd": 10,
+  "veilFade": 20,
+  "veilRearm": 150,
+  "ambushWindow": 24,
+  "ambushDmg": 1.5,
+  "flareRange": 12,
+  "flareParry": 4,
+  "flarePerfect": 3,
+  "flareResolve": 1.6,
+  "flareTrickle": 2,
+  "challengeRange": 9,
+  "tauntTicks": 180
+ },
+ "SUB": {
+  "switchCd": 10,
+  "grenade": {
+   "cd": 26,
+   "speed": [
+    14,
+    15,
+    16.5,
+    18
+   ],
+   "lift": 0.55,
+   "gravity": 30,
+   "bounce": 0.5,
+   "roll": 0.82,
+   "r": 0.2,
+   "fuse": [
+    58,
+    64,
+    70,
+    76
+   ],
+   "blast": [
+    {
+     "r": 1.8,
+     "dmg": 3,
+     "poise": 30
+    },
+    {
+     "r": 2.2,
+     "dmg": 4.5,
+     "poise": 45
+    },
+    {
+     "r": 2.7,
+     "dmg": 6.5,
+     "poise": 65,
+     "armorBreak": true
+    },
+    {
+     "r": 3.2,
+     "dmg": 9,
+     "poise": 90,
+     "armorBreak": true
+    }
+   ],
+   "bomblets": {
+    "n": 4,
+    "speed": 8,
+    "lift": 7,
+    "fuse": 28,
+    "blast": {
+     "r": 1.3,
+     "dmg": 2.2,
+     "poise": 22
+    }
+   }
+  },
+  "chain": {
+   "cd": 28,
+   "range": [
+    7,
+    8,
+    9,
+    10
+   ],
+   "jumps": [
+    3,
+    4,
+    5,
+    7
+   ],
+   "hop": 5,
+   "dmg": [
+    1.3,
+    1.9,
+    2.5,
+    3.4
+   ],
+   "poise": [
+    12,
+    18,
+    26,
+    38
+   ],
+   "stun": [
+    14,
+    20,
+    28,
+    40
+   ],
+   "cone": 0.9
+  },
+  "disc": {
+   "cd": 16,
+   "speed": [
+    22,
+    24,
+    26,
+    28
+   ],
+   "out": [
+    16,
+    18,
+    20,
+    22
+   ],
+   "hover": [
+    0,
+    0,
+    40,
+    60
+   ],
+   "back": 26,
+   "r": [
+    0.4,
+    0.45,
+    0.55,
+    0.65
+   ],
+   "dmg": [
+    1.6,
+    2.2,
+    3,
+    4
+   ],
+   "poise": [
+    12,
+    16,
+    22,
+    30
+   ],
+   "tick": 8,
+   "maxBack": 150
+  },
+  "well": {
+   "cd": 30,
+   "speed": 13,
+   "travel": [
+    24,
+    26,
+    28,
+    30
+   ],
+   "life": [
+    70,
+    90,
+    110,
+    130
+   ],
+   "r": [
+    3.2,
+    3.6,
+    4.2,
+    5
+   ],
+   "pull": [
+    6,
+    7,
+    8,
+    9.5
+   ],
+   "heavy": 0.3,
+   "tick": 12,
+   "tickDmg": [
+    0.35,
+    0.45,
+    0.6,
+    0.8
+   ],
+   "lift": 1.1,
+   "implode": [
+    {
+     "r": 2.2,
+     "dmg": 3,
+     "poise": 40
+    },
+    {
+     "r": 2.6,
+     "dmg": 4.5,
+     "poise": 55
+    },
+    {
+     "r": 3.1,
+     "dmg": 6.5,
+     "poise": 75,
+     "armorBreak": true
+    },
+    {
+     "r": 3.8,
+     "dmg": 9,
+     "poise": 100,
+     "armorBreak": true
+    }
+   ]
+  }
+ },
+ "SUBS": [
+  "scatter",
+  "grenade",
+  "chain",
+  "disc",
+  "well"
+ ],
+ "SUB_LOOK": {
+  "scatter": {
+   "name": "Scatter",
+   "tint": "#ffcf7a"
+  },
+  "grenade": {
+   "name": "Grenade",
+   "tint": "#ff9a3d"
+  },
+  "chain": {
+   "name": "Chain",
+   "tint": "#ffe066"
+  },
+  "disc": {
+   "name": "Disc",
+   "tint": "#ffd36b"
+  },
+  "well": {
+   "name": "Gravity Well",
+   "tint": "#ffb547"
+  }
+ },
+ "TICK_HZ": 60,
+ "ULT": {
+  "max": 100,
+  "gain": {
+   "dealt": 0.6,
+   "taken": 0.35,
+   "kill": 2,
+   "perfect": 6,
+   "blocked": 0.4,
+   "heal": 0.3
+  },
+  "chord": 6,
+  "cast": 54,
+  "join": 18,
+  "boss": 0.5,
+  "mercy": 60,
+  "nova": {
+   "name": "Supernova",
+   "rise": 1.6,
+   "gather": 24,
+   "beam": 110,
+   "pulse": 5,
+   "dmg": 5,
+   "width": 1.25,
+   "range": 40,
+   "turn": 0.06,
+   "nova": {
+    "r": 6,
+    "dmg": 12,
+    "poise": 120
+   },
+   "end": 150
+  },
+  "echo": {
+   "name": "Thousand Cuts",
+   "range": 16,
+   "targets": 8,
+   "strikes": 20,
+   "every": 3,
+   "dmg": 3,
+   "start": 10,
+   "finisher": 14,
+   "flourish": {
+    "r": 5,
+    "dmg": 10
+   },
+   "end": 40
+  },
+  "ram": {
+   "name": "Siege Breaker",
+   "brace": 16,
+   "charge": 84,
+   "speed": 15,
+   "catchDmg": 3,
+   "every": 10,
+   "dmg": 2,
+   "slam": {
+    "r": 6,
+    "dmg": 14,
+    "poise": 140
+   },
+   "end": 34,
+   "fortify": 40
+  },
+  "fix": {
+   "name": "Overhaul",
+   "drop": 22,
+   "pod": {
+    "r": 3.2,
+    "dmg": 6,
+    "poise": 60
+   },
+   "pulses": [
+    42,
+    60,
+    78
+   ],
+   "heal": 0.35,
+   "dmg": 4,
+   "end": 100,
+   "overclock": 720,
+   "plate": 40
+  },
+  "team": {
+   "power": 1.3,
+   "dmg": 12,
+   "t": 50
+  },
+  "teamNames": {
+   "echo+nova": "Eclipse Protocol",
+   "nova+nova": "Binary Star",
+   "echo+echo": "Twin Phantom",
+   "nova+ram": "Starbreaker",
+   "echo+ram": "Shatterpoint",
+   "fix+nova": "Solar Overdrive",
+   "echo+fix": "Razorwire",
+   "fix+ram": "Heavy Metal",
+   "ram+ram": "Stampede",
+   "fix+fix": "Assembly Line"
+  },
+  "teamAll": "Full Resonance"
+ },
+ "VB": {
+  "stopTicks": 2,
+  "activeFrom": 2,
+  "activeTo": 6,
+  "whiffRecovery": 10,
+  "driftAfter": 6,
+  "tiers": {
+   "1": {
+    "dmg": 2,
+    "poise": 30,
+    "kb": 6,
+    "armorBreak": false
+   },
+   "2": {
+    "dmg": 3.5,
+    "poise": 50,
+    "kb": 9,
+    "armorBreak": true
+   },
+   "3": {
+    "dmg": 6,
+    "poise": 90,
+    "kb": 13,
+    "armorBreak": true
+   }
+  }
+ },
+ "WALL": {
+  "grip": 8,
+  "gripSpeed": 1.1,
+  "ease": 14,
+  "brake": 90,
+  "fast": 2.2,
+  "stick": 7,
+  "coyote": 6,
+  "climb": {
+   "vx": 4.2,
+   "lock": 5
+  },
+  "leapVy": 0.92
+ },
+ "ENEMY_TYPES": {
+  "swarmer": {
+   "w": 0.7,
+   "h": 0.8,
+   "hp": 3,
+   "poise": 18,
+   "speed": 5.2,
+   "flinch": true,
+   "light": true
+  },
+  "shield": {
+   "w": 0.95,
+   "h": 1.85,
+   "hp": 8,
+   "poise": 55,
+   "speed": 2.6,
+   "flinch": true,
+   "light": true
+  },
+  "sniper": {
+   "w": 0.8,
+   "h": 1.7,
+   "hp": 4,
+   "poise": 25,
+   "speed": 0,
+   "flinch": true,
+   "light": true,
+   "stationary": true
+  },
+  "brute": {
+   "w": 1.5,
+   "h": 2.5,
+   "hp": 45,
+   "poise": 100,
+   "speed": 2.1,
+   "flinch": false,
+   "light": false,
+   "armor": 3
+  },
+  "post": {
+   "w": 0.9,
+   "h": 2.1,
+   "hp": "inf",
+   "poise": 60,
+   "speed": 0,
+   "flinch": false,
+   "light": false,
+   "stationary": true
+  },
+  "turret": {
+   "w": 0.8,
+   "h": 0.8,
+   "hp": "inf",
+   "poise": 999,
+   "speed": 0,
+   "flinch": false,
+   "light": false,
+   "stationary": true,
+   "noGravity": true
+  },
+  "drone": {
+   "w": 0.8,
+   "h": 0.6,
+   "hp": 3,
+   "poise": 16,
+   "speed": 5,
+   "flinch": true,
+   "light": true,
+   "flier": true
+  },
+  "mortar": {
+   "w": 1.1,
+   "h": 1.2,
+   "hp": 8,
+   "poise": 40,
+   "speed": 0,
+   "flinch": false,
+   "light": false,
+   "stationary": true
+  },
+  "charger": {
+   "w": 1.2,
+   "h": 1.5,
+   "hp": 12,
+   "poise": 60,
+   "speed": 3.2,
+   "flinch": false,
+   "light": false,
+   "armor": 1
+  },
+  "warden": {
+   "w": 2.2,
+   "h": 3.4,
+   "hp": 240,
+   "poise": 420,
+   "speed": 2.4,
+   "flinch": false,
+   "light": false,
+   "armor": 4,
+   "boss": true
+  },
+  "stormcaller": {
+   "w": 3,
+   "h": 1.5,
+   "hp": 260,
+   "poise": 380,
+   "speed": 7,
+   "flinch": false,
+   "light": false,
+   "flier": true,
+   "boss": true
+  }
+ },
+ "MORTAR": {
+  "range": 24,
+  "minRange": 3,
+  "wind": 36,
+  "gravity": 26,
+  "blast": {
+   "r": 1.9,
+   "dmg": 14
+  },
+  "cd": 170
+ },
+ "CHARGER": {
+  "wind": 34,
+  "speed": 15,
+  "maxTicks": 48,
+  "dmg": 16,
+  "daze": 80,
+  "cd": 100,
+  "minRange": 3,
+  "maxRange": 13
+ },
+ "BOSS": {
+  "warden": {
+   "name": "Lockwarden",
+   "title": "The lock’s last guard",
+   "hp": 240,
+   "armor": 4,
+   "rearm": 2,
+   "poise": 420,
+   "poiseDecay": 0.6,
+   "stagger": 150,
+   "staggerCd": 420,
+   "daze": 110,
+   "walk": 2.4,
+   "cd": [
+    46,
+    28
+   ],
+   "sweep": {
+    "wind": 22,
+    "active": 8,
+    "rec": 30,
+    "reach": 3.6,
+    "dmg": 14,
+    "kb": [
+     9,
+     4
+    ]
+   },
+   "hammer": {
+    "wind": 34,
+    "active": 6,
+    "rec": 44,
+    "reach": 3.9,
+    "dmg": 24,
+    "kb": [
+     12,
+     6
+    ]
+   },
+   "stomp": {
+    "wind": 40,
+    "jump": 13,
+    "hop": 6,
+    "dmg": 22,
+    "rec": 40
+   },
+   "missiles": {
+    "wind": 26,
+    "n": [
+     3,
+     5
+    ],
+    "dmg": 10,
+    "gravity": 16,
+    "rec": 34
+   },
+   "charge": {
+    "wind": 36,
+    "speed": 16,
+    "maxTicks": 120,
+    "dmg": 26,
+    "rec": 30
+   },
+   "laser": {
+    "wind": 50,
+    "ticks": 42,
+    "dmg": 20,
+    "low": [
+     0.3,
+     0.8
+    ],
+    "high": [
+     1.15,
+     1.55
+    ],
+    "range": 40,
+    "rec": 36
+   }
+  },
+  "stormcaller": {
+   "name": "Stormcaller",
+   "title": "It keeps the relay beacon",
+   "hp": 260,
+   "armor": 0,
+   "rearm": 2,
+   "poise": 380,
+   "poiseDecay": 0.6,
+   "stagger": 140,
+   "staggerCd": 420,
+   "hover": 6.6,
+   "speed": 7,
+   "cd": [
+    40,
+    26
+   ],
+   "padX": [
+    300.5,
+    313.5
+   ],
+   "floor": 18.6,
+   "volley": {
+    "wind": 24,
+    "bursts": [
+     3,
+     4
+    ],
+    "every": 10,
+    "speed": 14,
+    "dmg": 8,
+    "spread": 0.12,
+    "rec": 26
+   },
+   "rain": {
+    "wind": 40,
+    "n": [
+     4,
+     6
+    ],
+    "blast": {
+     "r": 1.7,
+     "dmg": 16
+    },
+    "gravity": 26,
+    "rec": 30
+   },
+   "sweep": {
+    "wind": 50,
+    "ticks": 44,
+    "low": [
+     0.3,
+     0.8
+    ],
+    "high": [
+     1.15,
+     1.55
+    ],
+    "hoverY": 2.4,
+    "dmg": 20,
+    "rec": 60
+   },
+   "dive": {
+    "wind": 36,
+    "speed": 22,
+    "maxTicks": 60,
+    "dmg": 24,
+    "crash": 70,
+    "parried": 115,
+    "rise": 40
+   },
+   "drones": 2
+  }
+ }
+}
