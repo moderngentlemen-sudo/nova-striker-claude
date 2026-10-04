@@ -57,6 +57,39 @@ Extra gamepads join by pressing any button, up to four players; each new player 
 nobody is using. H or View shows the full controls in game; B, A, Start or View closes them, and the D-pad
 scrolls.
 
+## What changed in Version 13: the look (graphics upgrade, phase 1) and character models (phase 2 groundwork)
+
+Toward the look of a modern 3D fighter, in code (`game/js/look.js`, `game/js/models.js`):
+
+- **Reflections (image-based lighting).** Each route has an environment map: its sky, a key and a fill panel,
+  and strips of the route's neon, prefiltered so glossy surfaces show a sharp highlight and rough ones a soft
+  one. Armour now reads as painted metal: the characters' plates are clear-lacquered (clearcoat), take more of
+  the reflected light than the level does, and catch the route's neon along their edges.
+- **Ink outlines** on every character and enemy (a back-face shell pushed out along the normals), the
+  comic-book edge that separates them from busy backgrounds. They hide while Echo's Veil fades him out.
+- **Each route's own light and grade** (`LOOK` in look.js): key, fill and rim lights (the rim takes the
+  route's colour: cool blue in Skyport and the Foundry, magenta in the Undercity), reflection strength,
+  exposure, and a colour grade (lift, gamma, gain, saturation, contrast, vignette). They blend in as you arrive.
+- **Surface detail on the level:** riveted wall plating with vents, grip-pattern deck plates, rusted plate and
+  poured concrete, each with relief and roughness maps drawn procedurally at load, projected in world space so
+  they tile evenly round every curve.
+- **Shockwaves:** the biggest blows bend the picture in a ring (impact frames, RAM's slams, Level 2+ pounds,
+  kinetic releases, pillars breaking, enemy slams). Off with Screen shake.
+- **Sharper edges:** the post chain now renders multisampled (the canvas's own antialiasing never reached it).
+- **Graphics quality** now has three tiers: **Ultra** adds ambient occlusion (crevices and contact shadows);
+  **High** (default) has everything else; **Low** drops shadows, post, outlines, reflections and surface relief.
+  Switching tiers recompiles some shaders once.
+- **Character models (groundwork):** Settings > *Character models* can draw authored, animated 3D models
+  (glTF/GLB) over the characters. The built-in rig keeps running invisibly underneath, so effects and gear
+  (blades, shields, the bracer's glow) still ride its joints like attachment points. Each model plays the clip
+  for the character's state (idle, walk, run, jump, fall, dash, attack, shoot, hurt, down), blending between
+  them; outlines follow the skeleton. Adding a character is one entry in `MODELS` (file, clips, tint). The only
+  model so far is a **stand-in to prove the pipeline**: RobotExpressive by Tomás Laulhé (Quaternius), CC0,
+  loaded from the three.js examples, standing in for Nova. If it can't load, the built-in rig stays.
+
+Real character models (sculpted, textured, rigged) are the next step for the characters to reach that level of
+detail; the code to bring them in is ready.
+
 ## What changed in Version 12.3: Echo's deflect spin stuns
 
 - **Echo's deflect spin stuns** (Hunter kit): while his staff twirls at the start of a parry (the same window

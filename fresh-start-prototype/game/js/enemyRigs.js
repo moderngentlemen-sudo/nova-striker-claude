@@ -9,7 +9,7 @@ const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 4, 10);
 
 function mats() {
   return {
-    plate: new THREE.MeshStandardMaterial({ color: 0xe6e9f0, roughness: 0.34, metalness: 0.06, emissive: 0xffffff, emissiveIntensity: 0 }),
+    plate: new THREE.MeshPhysicalMaterial({ color: 0xe6e9f0, roughness: 0.36, metalness: 0.15, clearcoat: 0.5, clearcoatRoughness: 0.2, emissive: 0xffffff, emissiveIntensity: 0 }),
     joint: new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.6, metalness: 0.2 }),
     energy: new THREE.MeshStandardMaterial({ color: HOSTILE, emissive: HOSTILE, emissiveIntensity: 2.2, roughness: 0.3 }),
   };

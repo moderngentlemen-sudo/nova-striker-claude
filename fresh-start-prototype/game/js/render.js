@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BOXES, GATES, pathFrame, ARC_START, ARC_END, ARC_R, TOWER_CENTER, curvedSpan, routeAt } from './level.js';
 import { buildLandmarks, Breakables, ATMOS } from './landmarks.js';
@@ -14,6 +15,8 @@ import { buildPlayerRig } from './rigs.js';
 import { animatePlayer } from './anim.js';
 import { buildEnemyRig, animateEnemy } from './enemyRigs.js';
 import { FX, toWorld, ImpactShader } from './fx.js';
+import { LOOK, buildEnvMaps, GradeShader, addOutlines, applySurface, worldUVs, showOutlines, surfaceRelief } from './look.js';
+import { ModelSkin, hasModel } from './models.js';
 
 const yawAt = x => { const f = pathFrame(x); return Math.atan2(-f.tz, f.tx); };
 const TURN_TIME = 0.08;   // s for a character to swing round to face the other way
@@ -25,7 +28,7 @@ const LEAD = { per: 0.22, max: 2.2, rate: 1.8 };
 function disposeTree(root, materials = true) {
   root.traverse(o => {
     if (o.geometry && !o.isSprite) o.geometry.dispose();
-    if (materials && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+    if (materials && o.material && !o.userData.outline) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
   });
 }
 
@@ -52,19 +55,32 @@ export class View {
     const sc = this.sun.shadow.camera; sc.left = -30; sc.right = 30; sc.top = 24; sc.bottom = -24; sc.near = 1; sc.far = 120;
     this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.03;
     this.scene.add(this.sun); this.scene.add(this.sun.target);
-    const rim = new THREE.DirectionalLight(0xa9dbff, 1.4); rim.position.set(14, 12, -26); this.scene.add(rim);
+    const rim = new THREE.DirectionalLight(0xa9dbff, 1.4); rim.position.set(14, 12, -26); this.scene.add(rim); this.rim = rim;
+    // Image-based lighting (look.js): one prefiltered environment per route, set before anything compiles so
+    // every material's shader is built with it
+    this.envMaps = buildEnvMaps(this.r, ATMOS);
+    this.scene.environment = this.envMaps.skyport; this.scene.environmentIntensity = LOOK.skyport.env; this.envRoute = 'skyport';
 
     this.fx = new FX(this.scene, this.rigs);
     this.baked = new Map();
     this.buildSky(); this.buildBackdrop(); this.buildLevel(); this.buildProps(); buildLandmarks(this); this.flushBaked();
     this.breakables = new Breakables(this.scene, this.fx);
 
-    this.composer = new EffectComposer(this.r);
+    // The post chain renders into a multisampled target (the canvas's own antialiasing doesn't reach the
+    // composer's buffers, so edges were jagged on High): scene, ambient occlusion (Ultra), bloom, tone mapping,
+    // the grade and shockwaves (look.js), then the impact frame
+    const rt = new THREE.WebGLRenderTarget(1280, 720, { type: THREE.HalfFloatType, samples: 4 });
+    this.composer = new EffectComposer(this.r, rt);
     this.renderPass = new RenderPass(this.scene, this.camera);
+    this.gtao = new GTAOPass(this.scene, this.camera, 1280, 720);
+    this.gtao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12 });
+    this.gtao.blendIntensity = 0.85; this.gtao.enabled = false;
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1280, 720), 0.65, 0.5, 1.5);
     this.output = new OutputPass();
+    this.grade = new ShaderPass(GradeShader); this.waves = [];
     this.ink = new ShaderPass(ImpactShader); this.ink.enabled = false; this.dim = 0;
-    this.composer.addPass(this.renderPass); this.composer.addPass(this.bloom); this.composer.addPass(this.output); this.composer.addPass(this.ink);
+    for (const p of [this.renderPass, this.gtao, this.bloom, this.output, this.grade, this.ink]) this.composer.addPass(p);
+    this.look = null;
     this.fx.warm(this.r, this.camera, this.composer.renderTarget1);
     // The impact frame's pass is off until the first big moment: compile it now so that moment never stalls
     try { this.ink.enabled = true; this.ink.uniforms.amount.value = 1; this.composer.render(0); } catch (e) { /* best effort */ }
@@ -75,7 +91,8 @@ export class View {
     this.r.setSize(w, h, false);
     this.composer.setSize(w, h);
     this.persp.aspect = w / h; this.persp.updateProjectionMatrix();
-    this.ink.uniforms.res.value.set(w, h);
+    this.ink.uniforms.res.value.set(w, h); this.grade.uniforms.res.value.set(w, h);
+    this.gtao.setSize(w, h);
     if (world) world.aspect = w / h;
     this.w = w; this.h = h;
   }
@@ -93,7 +110,9 @@ export class View {
   }
   flushBaked() {
     for (const { mat, cast, geos } of this.baked.values()) {
-      const m = new THREE.Mesh(mergeGeometries(geos, false), mat);
+      const merged = mergeGeometries(geos, false);
+      if (mat.userData.worldUV) worldUVs(merged, mat.userData.worldUV);   // (surface detail tiles in world space: look.js)
+      const m = new THREE.Mesh(merged, mat);
       m.castShadow = cast; m.receiveShadow = true; this.scene.add(m);
     }
     this.baked.clear();
@@ -169,13 +188,15 @@ export class View {
       gate: new THREE.MeshStandardMaterial({ color: 0xff2e7e, emissive: 0xff2e7e, emissiveIntensity: 1.6, transparent: true, opacity: 0.45, depthWrite: false }),
     };
     this.gateMeshes = [];
+    // Surface detail (look.js): riveted plating on the walls, grip deck on the tops, plating on the platforms
+    applySurface(M.body, 'panel', 3); applySurface(M.dark, 'panel', 2.5); applySurface(M.cap, 'floor', 2.2, 0.5);
     const pc = document.createElement('canvas'); pc.width = pc.height = 128;
     const g = pc.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 128, 128);
     g.fillStyle = '#c9d2dc'; g.fillRect(0, 0, 128, 3); g.fillRect(0, 0, 3, 128);
     g.fillStyle = '#e6ebf0'; g.fillRect(62, 20, 4, 88);
     this.panelTex = new THREE.CanvasTexture(pc); this.panelTex.colorSpace = THREE.SRGBColorSpace;
     this.panelTex.wrapS = this.panelTex.wrapT = THREE.RepeatWrapping; this.panelTex.anisotropy = 4;
-    M.capTex = M.cap.clone(); M.capTex.map = this.panelTex;
+    M.capTex = M.cap;   // (the cap's deck pattern now comes from its surface set)
     const depthFor = b => (b.type === 'o' ? 2.6 : ['panel', 'column', 'pillar'].includes(b.tag) ? 1.8 : b.type === 'g' ? 3.2 : 4.4);
     for (const b of BOXES) {
       const depth = depthFor(b), h = b.y1 - b.y0;
@@ -263,12 +284,13 @@ export class View {
       seen.add(p);
       let rig = this.rigs.get(p);
       if (!rig || rig.char !== p.char) {
-        if (rig) { this.scene.remove(rig.root); disposeTree(rig.root, false); }
+        if (rig) { if (rig.skin) rig.skin.dispose(); this.scene.remove(rig.root); disposeTree(rig.root, false); }
         rig = buildPlayerRig(p.char);
         const ringMat = new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[p.slot], transparent: true, opacity: 0.65, depthWrite: false });
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 32), ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03;
         ring.scale.setScalar(Math.max(1, CHARS[p.char].width / 0.72));   // RAM stands in a wider ring
         rig.root.add(ring); rig.ring = ring;
+        rig.shells = addOutlines(rig.root, 0x0b0f18, 0.016);
         this.scene.add(rig.root); this.rigs.set(p, rig);
       }
       const x = p.prevX + (p.x - p.prevX) * alpha, y = p.prevY + (p.y - p.prevY) * alpha;
@@ -281,19 +303,25 @@ export class View {
       rig.root.rotation.y = yawAt(x) - spin * tw * 0.9;
       rig.flip.scale.x = Math.abs(rig.turn) < 0.12 ? (Math.sign(rig.turn) || p.facing) * 0.12 : rig.turn;
       animatePlayer(rig, p, dt, t);
+      // A 3D model drawn over the rig, where one exists and Settings asks for models (models.js)
+      const model = SETTINGS.charModels === 'models' && hasModel(p.char);
+      if (model && !rig.skin) rig.skin = new ModelSkin(rig, p.char);
+      if (rig.skin) rig.skin.update(p, dt, model && !rig.skin.failed);
       // Echo is gone during Thousand Cuts until every cut lands at once; a dodging Nova flickers like a hologram
       const cutting = p.state === 'ult' && p.ultRun && p.ultRun.kind === 'echo' && p.ultRun.t < p.ultRun.fin;
       const phasing = p.state === 'dodge' && p.dodge && p.dodge.t <= 11 && Math.floor(t * 30) % 3 === 0;
       rig.root.visible = p.state !== 'dead' && !cutting && !phasing && !(p.mercy > 0 && p.state !== 'downed' && p.state !== 'ult' && Math.floor(t * 14) % 2 === 0);
       rig.ring.visible = p.state !== 'downed';
+      const inked = !rig.cloak || rig.cloak < 0.05;
+      if (rig.inked !== inked) { rig.inked = inked; for (const s of rig.shells) s.visible = inked; }
     }
-    for (const [p, rig] of this.rigs) if (!seen.has(p)) { this.scene.remove(rig.root); disposeTree(rig.root, false); this.rigs.delete(p); }
+    for (const [p, rig] of this.rigs) if (!seen.has(p)) { if (rig.skin) rig.skin.dispose(); this.scene.remove(rig.root); disposeTree(rig.root, false); this.rigs.delete(p); }
 
     const seenE = new Set();
     for (const e of world.enemies) {
       seenE.add(e);
       let R = this.enemyRigs.get(e);
-      if (!R) { R = buildEnemyRig(e); this.scene.add(R.root); this.enemyRigs.set(e, R); }
+      if (!R) { R = buildEnemyRig(e); addOutlines(R.root, 0x12060c, 0.018); this.scene.add(R.root); this.enemyRigs.set(e, R); }
       const x = e.prevX + (e.x - e.prevX) * alpha, y = e.prevY + (e.y - e.prevY) * alpha;
       toWorld(x, y, 0, R.root.position);
       R.root.rotation.y = yawAt(x);
@@ -375,6 +403,7 @@ export class View {
     lerpC(this.scene.fog.color, A.fog); this.scene.fog.near += (A.near - this.scene.fog.near) * ka; this.scene.fog.far += (A.far - this.scene.fog.far) * ka;
     const SU = this.sky.material.uniforms; lerpC(SU.top.value, A.top); lerpC(SU.mid.value, A.mid); lerpC(SU.bot.value, A.bot);
     lerpC(this.sun.color, A.sun); lerpC(this.hemi.color, A.hemi);
+    this.updateLook(routeAt(this.cam.x).id, ka);
     const f = pathFrame(this.cam.x);
     const look = new THREE.Vector3(f.px, this.cam.y, f.pz);
     const ortho = SETTINGS.camera === 'ortho';
@@ -397,10 +426,54 @@ export class View {
     this.sun.position.set(look.x - 18, 30 + look.y, look.z + 22); this.sun.target.position.copy(look);
   }
 
+  // The route's look (look.js LOOK) blends in with its atmosphere: light intensities, the rim light's colour,
+  // reflections, exposure and the grade. The environment map itself switches with the route (routes are
+  // separate places, reached by a zone load, so there is no blend to see).
+  updateLook(id, k) {
+    const L = LOOK[id] || LOOK.skyport;
+    if (!this.look) this.look = { key: L.key, fill: L.fill, rim: L.rim, env: L.env, exposure: L.exposure, sat: L.sat, contrast: L.contrast, vignette: L.vignette,
+      rimColor: new THREE.Color(L.rimColor), lift: new THREE.Vector3(...L.lift), gamma: new THREE.Vector3(...L.gamma), gain: new THREE.Vector3(...L.gain) };
+    const S = this.look, lerp = key => { S[key] += (L[key] - S[key]) * k; };
+    for (const key of ['key', 'fill', 'rim', 'env', 'exposure', 'sat', 'contrast', 'vignette']) lerp(key);
+    S.rimColor.lerp(this.tmpC.set(L.rimColor), k);
+    for (const key of ['lift', 'gamma', 'gain']) S[key].lerp(this.tmpV3 ? this.tmpV3.set(...L[key]) : (this.tmpV3 = new THREE.Vector3(...L[key])), k);
+    if (this.envRoute !== id && this.envMaps[id]) { this.envRoute = id; if (!this.lowLook) this.scene.environment = this.envMaps[id]; }
+    this.sun.intensity = S.key; this.hemi.intensity = S.fill; this.rim.intensity = S.rim; this.rim.color.copy(S.rimColor);
+    this.scene.environmentIntensity = S.env; this.r.toneMappingExposure = S.exposure;
+    const U = this.grade.uniforms;
+    U.lift.value.copy(S.lift); U.gamma.value.copy(S.gamma); U.gain.value.copy(S.gain);
+    U.sat.value = S.sat; U.contrast.value = S.contrast; U.vignette.value = S.vignette;
+  }
+
+  // A shockwave: a ring that bends the picture outward from a big hit (look.js GradeShader, at most four)
+  shockwave(x, y, strength = 1, dur = 0.5) {
+    if (SETTINGS.quality === 'low' || !SETTINGS.shake) return;
+    const s = this.screenOf(x, y);
+    if (!s.vis) return;
+    if (this.waves.length >= 4) this.waves.shift();
+    this.waves.push({ u: s.x / Math.max(1, this.w), v: 1 - s.y / Math.max(1, this.h), t: 0, dur, k: strength });
+  }
+  updateWaves(dt) {
+    const W = this.grade.uniforms.waves.value;
+    this.waves = this.waves.filter(w => (w.t += dt) < w.dur);
+    for (let i = 0; i < 4; i++) {
+      const w = this.waves[i];
+      if (!w) { W[i].set(0, 0, 0, 0); continue; }
+      const f = w.t / w.dur;
+      W[i].set(w.u, w.v, 0.04 + f * 0.55 * Math.min(1.4, w.k), w.k * (1 - f) * (1 - f));
+    }
+  }
+
   onEvent(ev) {
     this.fx.onEvent(ev);
     if (ev.type === 'boxChip' || ev.type === 'boxBreak' || ev.type === 'liftBounce') this.breakables.onEvent(ev);
     if (ev.type === 'boxBreak') this.trauma = Math.min(1, this.trauma + (ev.b.tag === 'pillar' ? 0.4 : ev.b.tag === 'glass' ? 0.12 : 0.2));
+    // Shockwaves from the heaviest blows (an impact frame adds its own in startImpact)
+    if (ev.type === 'boxBreak' && ev.b.tag === 'pillar') this.shockwave(ev.x, ev.y, 0.7);
+    else if (ev.type === 'ramSlam') this.shockwave(ev.x, ev.y, 1);
+    else if (ev.type === 'slam' && ev.e) this.shockwave(ev.e.x, ev.e.y, 0.8);
+    else if (ev.type === 'poundLand' && ev.level >= 2) this.shockwave(ev.x, ev.y, 0.5 + 0.25 * ev.level);
+    else if (ev.type === 'kineticRelease' && ev.k >= 0.5) this.shockwave(ev.x, ev.y, 0.6 + ev.k * 0.5);
     const shake = { armorBreak: 0.5, slam: 0.45, guardBreak: 0.3, impact: 0.5, ambush: 0.35, challenge: 0.2, playerHit: ev.heavy ? 0.35 : 0.15,
       blast: 0.14 + (ev.level || 1) * 0.06 + (ev.perfect ? 0.1 : 0), burst: ev.charged ? 0.06 + ev.level * 0.04 : 0.05, perfectRelease: 0.1,
       splash: ev.level ? 0.04 + ev.level * 0.03 : 0, rocketJump: 0.2 + 0.42 * (ev.power || 0.5), enemyBlast: 0.3, chargeCrash: 0.3,
@@ -467,6 +540,7 @@ export class View {
     if (!by && this.world) { let bd = Infinity; for (const q of this.world.players) { const dd = Math.hypot(q.x - x, q.y - y); if (dd < bd) { bd = dd; by = q; } } }
     const mode = SETTINGS.impactColor, col = by && mode === 'player' ? PLAYER_COLORS[by.slot] : by && mode === 'character' ? CHARS[by.char].energy : null;
     U.style.value = IMPACT_STYLES.indexOf(style); U.accent.value.set(col || IMPACT_ACCENT[style]); U.tinted.value = col ? 1 : 0;
+    this.shockwave(x, y, 0.6 + 0.4 * strength, 0.55);
     this.impactCd = Math.max(0.9, this.impact.dur); this.hitPause = 0.05 + 0.05 * strength;
     this.trauma = Math.min(1, this.trauma + 0.25 * strength); this.bloomKick = Math.min(1.4, this.bloomKick + 0.4 * strength);
   }
@@ -502,14 +576,24 @@ export class View {
     this.fx.update(dt, world, { alpha, rigs: this.rigs, camera: this.camera });
     this.breakables.update(dt, world);
     const inking = this.updateImpact(dt, world);
+    // Low quality: no outlines, no reflections, no surface relief (each switch recompiles shaders once)
+    const low = SETTINGS.quality === 'low';
+    if (this.lowLook !== low) {
+      this.lowLook = low; showOutlines(!low); surfaceRelief(!low);
+      this.scene.environment = low ? null : this.envMaps[this.envRoute];
+    }
     if (SETTINGS.quality === 'low' && !inking) {
       this.r.shadowMap.enabled = false;
       this.r.render(this.scene, this.camera);
       return;
     }
+    // High: shadows, bloom, the grade and shockwaves, antialiased; Ultra adds ambient occlusion
+    this.updateWaves(dt);
     this.r.shadowMap.enabled = SETTINGS.quality !== 'low';
     this.bloom.enabled = SETTINGS.quality !== 'low';
     this.bloom.strength = 0.65 + this.bloomKick * 0.9;
+    this.gtao.enabled = SETTINGS.quality === 'ultra';
+    if (this.gtao.enabled && this.gtao.camera !== this.camera) { this.gtao.camera = this.camera; this.gtao.updateGtaoMaterial({}); }
     this.composer.render(dt);
   }
 

@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { SEGS, BOXES, DESTRUCT, LIFTS, groundBelow, pathFrame } from './level.js';
 import { toWorld, planeDir } from './space.js';
+import { applySurface } from './look.js';
 
 const yawAt = x => { const f = pathFrame(x); return Math.atan2(-f.tz, f.tx); };
 let seed = 1234; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -67,6 +68,8 @@ export function buildLandmarks(view) {
     train: new THREE.MeshStandardMaterial({ color: 0xe9edf3, roughness: 0.35, emissive: 0x4fd6ff, emissiveIntensity: 0.15 }),
   };
   M.windows.emissiveMap = M.windows.map; M.windows.emissiveIntensity = 1.3;
+  // Surface detail (look.js): plating on the steelwork and the reactor core, rusted plate, poured concrete
+  applySurface(M.steel, 'panel', 3.5); applySurface(M.rust, 'panel', 3, 0.9); applySurface(M.core, 'panel', 4, 0.5); applySurface(M.concrete, 'concrete', 4, 0.6);
 
   for (const g of SEGS) {
     const foundry = g.route === 'foundry';

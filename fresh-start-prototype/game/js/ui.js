@@ -125,7 +125,8 @@ const SETTING_DEFS = [
   { key: 'difficulty', label: 'Difficulty', opts: [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']] },
   { key: 'barks', label: 'Character lines (CP-09 test)', bool: true },
   { key: 'shake', label: 'Screen shake', bool: true },
-  { key: 'quality', label: 'Graphics quality', opts: [['high', 'High (bloom, shadows)'], ['low', 'Low']] },
+  { key: 'charModels', label: 'Character models', opts: [['builtin', 'Built-in rigs'], ['models', '3D models where available (test: a CC0 robot stands in for Nova)']] },
+  { key: 'quality', label: 'Graphics quality', opts: [['ultra', 'Ultra (adds ambient occlusion)'], ['high', 'High (bloom, shadows, grading)'], ['low', 'Low']] },
   { key: 'volume', label: 'Sound effects volume', range: [0, 1, 0.05] },
   { key: 'music', label: 'Music volume', range: [0, 1, 0.05] },
 ];
@@ -170,6 +171,7 @@ export class UI {
             <li>RT fire · LT parry / dodge / guard / beam · LB character action</li>
             <li>LT + RT ultimate · D-pad swap character · Start pause</li></ul></div>
         </div>
+        <p class="fine">New in Version 13: a new look. Armour that reflects its surroundings, ink outlines, each route with its own light and colour grade, riveted and plated surfaces, shockwaves on the biggest hits, and an Ultra setting with ambient occlusion. Character models can now be brought in (Settings, with a test stand-in for Nova).</p>
         <p class="fine">New in Version 12: team commands for AI teammates (D-pad up/down, or <kbd>Z</kbd> <kbd>G</kbd> <kbd>X</kbd> <kbd>C</kbd>), two long new levels that wind through 3D (the <b>Helix Foundry</b> and the <b>Undercity Descent</b>, in <kbd>Esc</kbd>/Start), breakable crates, barricades, glass and pillars, and power-ups along the way.</p>
         <p class="fine">New in Version 11: smarter AI teammates with a skill setting, a controller-friendly pause menu, RAM's Level 4 <b>Breach Beam</b> (keep holding fire) and a shield that cracks and shatters, seven impact frame styles that can take your player colour, and Echo's snares on LB as an option. All in <kbd>Esc</kbd>/Start.</p>
         <p class="fine">New in Version 10: two new characters. <b>RAM</b>, the tank: hold LT to raise his tower shield (it blocks, covers everyone behind him and stores Kinetic; fire while guarding releases it), a dash that plows enemies into walls, a hard-light wall, a guardian link and a war cry. <b>Fix</b>, the support: hold LT for a beam that heals, revives from range and tunes teammates up (faster charging and bars), gadgets on Y, power-ups tossed with X. Players join as Nova, Echo, RAM and Fix; swap with the D-pad or <kbd>1</kbd>–<kbd>4</kbd>.</p>

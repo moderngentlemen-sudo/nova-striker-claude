@@ -31,8 +31,12 @@ export function addRim(mat, color, strength = 0.45, power = 2.4) {
 
 function mats(c) {
   const std = (color, rough, metal = 0.08) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+  // Armour (Version 13): painted metal under a clear lacquer, so it carries a soft coloured sheen and a sharp
+  // highlight from the route's environment map (look.js); it takes more of that light than the level does, so
+  // characters stand out from the stage
+  const armour = (color, rough, metal) => new THREE.MeshPhysicalMaterial({ color, roughness: rough, metalness: metal, clearcoat: 0.65, clearcoatRoughness: 0.18, envMapIntensity: 1.5 });
   return {
-    base: std(c.base, 0.36), trim: std(c.trim, 0.42, 0.18), under: std(c.under, 0.72),
+    base: armour(c.base, 0.4, 0.1), trim: armour(c.trim, 0.36, 0.3), under: std(c.under, 0.62, 0.15),
     energy: new THREE.MeshStandardMaterial({ color: c.energy, emissive: c.energy, emissiveIntensity: 2.4, roughness: 0.3 }),
     visor: new THREE.MeshStandardMaterial({ color: 0x0b1018, roughness: 0.12, metalness: 0.7 }),
     amber: new THREE.MeshStandardMaterial({ color: 0xffa53a, emissive: 0xff8a1a, emissiveIntensity: 0.6, roughness: 0.1, transparent: true, opacity: 0.72 }),

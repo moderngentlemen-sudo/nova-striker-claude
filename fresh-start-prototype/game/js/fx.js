@@ -6,6 +6,7 @@ import { toWorld, planeDir } from './space.js';
 import { Ghosts } from './ghosts.js';
 import { buildPlayerRig } from './rigs.js';
 import { buildEnemyRig } from './enemyRigs.js';
+import { addOutlines } from './look.js';
 import { ChargeFX } from './chargefx.js';
 import { SweepTrails } from './trails.js';
 import { AegisFX } from './aegisfx.js';
@@ -160,9 +161,9 @@ export class FX {
     // Every character's and enemy's model compiles now, not the moment one first appears (a teammate joining or
     // an AI teammate added mid-run, a new enemy type): each first appearance was a visible hitch. Their materials
     // are kept (not disposed), so the compiled shaders stay cached.
-    for (const c of ROSTER) { const r = buildPlayerRig(c); put(r.root); this.scene.add(r.root); keep.push(r.root); }
+    for (const c of ROSTER) { const r = buildPlayerRig(c); addOutlines(r.root, 0x0b0f18, 0.016); put(r.root); this.scene.add(r.root); keep.push(r.root); }
     for (const type of ['swarmer', 'shield', 'sniper', 'brute', 'post', 'turret', 'drone', 'mortar', 'charger', 'warden']) {
-      try { const r = buildEnemyRig({ type, facing: 1, shieldDir: -1, w: 1, h: 1.8 }); put(r.root); this.scene.add(r.root); keep.push(r.root); } catch (e) { /* best effort */ }
+      try { const r = buildEnemyRig({ type, facing: 1, shieldDir: -1, w: 1, h: 1.8 }); addOutlines(r.root, 0x12060c, 0.018); put(r.root); this.scene.add(r.root); keep.push(r.root); } catch (e) { /* best effort */ }
     }
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 32), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.65, depthWrite: false }));
     put(ring); this.scene.add(ring); keep.push(ring);

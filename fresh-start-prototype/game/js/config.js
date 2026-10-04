@@ -582,6 +582,7 @@ export const DEFAULT_SETTINGS = {
   difficulty: 'normal',
   shake: true,
   quality: 'high',
+  charModels: 'builtin',   // 'builtin' rigs, or 'models': authored 3D models where one exists (models.js)
   hitboxes: false,
   barks: true,
   volume: 0.6,
