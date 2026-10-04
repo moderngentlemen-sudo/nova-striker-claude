@@ -1,5 +1,9 @@
 # Engine trials: Babylon.js and Godot
 
+> **This is the Godot branch.** It carries the Godot slice only (`godot/`); the Babylon.js slice lives on
+> `claude/engine-babylon`, and the three.js game with both slices on `claude/wizardly-wozniak-r0q6no`. The comparison
+> below covers all three.
+
 Two small slices built beside the three.js prototype, to compare how each engine feels and how the game is built
 in it. Both cover the same ground: Nova on the **Helix Foundry** stretch (the approach, the pit, the trench that
 bends round the camera, the smelter bend and the helix climb), on the same geometry and the same curved 3D path.
