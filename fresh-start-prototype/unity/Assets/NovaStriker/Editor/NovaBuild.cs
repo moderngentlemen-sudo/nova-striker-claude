@@ -54,7 +54,10 @@ namespace NovaStriker.EditorTools
                 var report = BuildPipeline.BuildPlayer(opts);
                 var s = report.summary;
                 Debug.Log($"Nova Striker: build {s.result}: {s.totalErrors} errors, {s.totalWarnings} warnings, {s.totalSize / (1024 * 1024)} MB, {s.totalTime}");
-                if (batch) EditorApplication.Exit(s.result == BuildResult.Succeeded ? 0 : 1);
+                // (a build that logged errors, such as a shader that didn't compile, counts as failed)
+                bool ok = s.result == BuildResult.Succeeded && s.totalErrors == 0;
+                if (!ok && s.result == BuildResult.Succeeded) Debug.LogError("Nova Striker: the build logged errors (search the log for 'error'), so it counts as failed");
+                if (batch) EditorApplication.Exit(ok ? 0 : 1);
                 else if (s.result == BuildResult.Succeeded) EditorUtility.RevealInFinder(path);
             }
             catch (Exception e)

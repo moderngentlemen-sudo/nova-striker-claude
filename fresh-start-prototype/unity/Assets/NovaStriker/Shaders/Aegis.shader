@@ -49,7 +49,7 @@ Shader "NovaStriker/Aegis"
                 float crackK = i.info.x, shard = i.info.y, fade = i.info.z;
                 if (fade <= 0.0) discard;
                 float3 N = normalize(i.n), V = normalize(GetCameraPositionWS() - i.posWS);
-                float rim = pow(1.0 - abs(dot(N, V)), 2.2);
+                float rim = pow(saturate(1.0 - abs(dot(N, V))), 2.2);
                 float e = min(min(i.bary.x, i.bary.y), i.bary.z), edge = 1.0 - smoothstep(0.0, 0.045, e);
                 float c = SAMPLE_TEXTURE2D(_CrackTex, sampler_CrackTex, i.uv).r, crack = (c > 0.05 && c > 1.0 - crackK) ? 1.0 : 0.0;
                 float3 objN = normalize(i.objN);

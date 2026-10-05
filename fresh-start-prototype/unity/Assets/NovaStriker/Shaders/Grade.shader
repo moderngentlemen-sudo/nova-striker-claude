@@ -151,8 +151,8 @@ Shader "NovaStriker/Grade"
                     float sat = max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b);
                     comic = lerp(comic, c * 1.2, smoothstep(0.35, 0.6, sat) * step(0.5, l));
                     float n = 110.0, cell = floor(a * n), w = hash(cell * 1.37 + seed), band = frac(a * n);
-                    float line = step(0.5, w) * step(abs(band - 0.5), 0.05 + 0.15 * hash(cell + seed * 3.1)) * smoothstep(0.16 + 0.22 * w, 0.42 + 0.3 * w, r);
-                    comic = lerp(comic, lerp(inkc, acc * 0.7, tinted), line);
+                    float speedLine = step(0.5, w) * step(abs(band - 0.5), 0.05 + 0.15 * hash(cell + seed * 3.1)) * smoothstep(0.16 + 0.22 * w, 0.42 + 0.3 * w, r);
+                    comic = lerp(comic, lerp(inkc, acc * 0.7, tinted), speedLine);
                     neg = lerp(1.0 - c, lerp(float3(1.0, 0.98, 0.92), lerp(float3(1.0, 1.0, 1.0), acc, 0.5), tinted), smoothstep(0.22, 0.0, r));
                     outc = lerp(comic, neg, invert);
                 }
