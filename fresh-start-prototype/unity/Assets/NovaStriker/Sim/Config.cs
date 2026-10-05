@@ -43,6 +43,7 @@ namespace NovaStriker.Sim
         public string blastKind;
     }
 
+    [System.Serializable]
     public sealed class Settings
     {
         public string novaKit = "marksman";   // 'marksman' (projectile proposal) or 'sentinel' (Pass 1 kit)
