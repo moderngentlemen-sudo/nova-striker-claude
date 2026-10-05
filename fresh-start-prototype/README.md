@@ -33,6 +33,12 @@ A browser prototype of a 2.5D sci-fi action platformer for 1–4 player local co
 Both load three.js 0.170 and the fonts from public CDNs, so they need an internet connection. Use a normal
 browser tab for controllers and rumble, because embedded viewers may block gamepads and vibration.
 
+## Unity port
+
+`unity/` holds a port of Version 13 to Unity 6.3 (URP), with the simulation checked tick by tick against
+this JavaScript. See `unity/README.md` for how to open it, and for what has been verified and what has only
+been compiled.
+
 ## Controls
 
 | Action | Keyboard + mouse | Gamepad |
