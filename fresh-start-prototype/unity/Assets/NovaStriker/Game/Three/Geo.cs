@@ -39,6 +39,7 @@ namespace NovaStriker.Game.Three
         }
         static string K(params object[] a) => string.Join(",", a);
         const float PI = Mathf.PI;
+        static float Sign0(float v) => v > 0 ? 1 : v < 0 ? -1 : 0;
 
         // ---- Box ----
         public static Mesh Box(float w, float h, float d) => Cached(K("box", w, h, d), () =>

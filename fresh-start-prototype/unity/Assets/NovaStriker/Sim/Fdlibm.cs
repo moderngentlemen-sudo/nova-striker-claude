@@ -451,6 +451,32 @@ namespace NovaStriker.Sim
             else z = SetHigh(z, j);
             return s * z;
         }
-        static double ScaleB(double x, int n) => Math.ScaleB(x, n);
+        // fdlibm scalbn: x * 2^n, exactly (Math.ScaleB is not in .NET Standard 2.1)
+        internal static double ScaleB(double x, int n)
+        {
+            const double two54 = 1.80143985094819840000e+16, twom54 = 5.55111512312578270212e-17, huge = 1.0e+300, tiny = 1.0e-300;
+            long bits = BitConverter.DoubleToInt64Bits(x);
+            int hx = (int)(bits >> 32); uint lx = (uint)bits;
+            int k = (hx & 0x7ff00000) >> 20;
+            if (k == 0)
+            {
+                if ((lx | (uint)(hx & 0x7fffffff)) == 0) return x;   // +-0
+                x *= two54;
+                bits = BitConverter.DoubleToInt64Bits(x); hx = (int)(bits >> 32);
+                k = ((hx & 0x7ff00000) >> 20) - 54;
+                if (n < -50000) return tiny * x;
+            }
+            if (k == 0x7ff) return x + x;                            // NaN or Inf
+            k += n;
+            if (k > 0x7fe) return huge * CopySign(huge, x);         // overflow
+            if (k > 0) return WithHigh(x, (hx & unchecked((int)0x800fffff)) | (k << 20));
+            if (k <= -54)
+                return n > 50000 ? huge * CopySign(huge, x) : tiny * CopySign(tiny, x);
+            k += 54;
+            return WithHigh(x, (hx & unchecked((int)0x800fffff)) | (k << 20)) * twom54;
+        }
+        static double WithHigh(double x, int hi) =>
+            BitConverter.Int64BitsToDouble(((long)hi << 32) | (BitConverter.DoubleToInt64Bits(x) & 0xffffffffL));
+        static double CopySign(double a, double b) => (BitConverter.DoubleToInt64Bits(b) < 0) == (BitConverter.DoubleToInt64Bits(a) < 0) ? a : -a;
     }
 }

@@ -77,7 +77,7 @@ namespace NovaStriker.Game.Three
         public TObj parent;
         public readonly List<TObj> children = new List<TObj>();
         public object userData;
-        public bool outline, noOutline, castShadow = true;
+        public bool outline, noOutline, castShadow;   // (three.js meshes cast no shadow unless asked)
         int renderOrder;
 
         public TObj(string name = "o")
@@ -108,7 +108,8 @@ namespace NovaStriker.Game.Three
             fn(this);
             for (int i = 0; i < children.Count; i++) children[i].traverse(fn);
         }
-        public void destroy() { removeFromParent(); Object.Destroy(go); }
+        public void destroy() { traverse(o => o.OnDestroy()); removeFromParent(); Object.Destroy(go); }
+        public virtual void OnDestroy() { }
         // World position in three.js space
         public Vector3 worldPos { get { var p = tr.position; return new Vector3(p.x, p.y, -p.z); } }
         public virtual int RenderOrder { get => renderOrder; set => renderOrder = value; }
@@ -122,7 +123,7 @@ namespace NovaStriker.Game.Three
         }
     }
 
-    // A mesh: geometry and one material (plus, for characters, a rim pass and an outline shell)
+    // A mesh: geometry and one material (plus the material's rim pass, and any extra passes)
     public sealed class TMesh : TObj
     {
         public readonly MeshFilter mf;
@@ -135,22 +136,39 @@ namespace NovaStriker.Game.Three
             mf.sharedMesh = geo;
             position.set(x, y, z);
             material = mat;
-            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = true;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.BlendProbes;
         }
-        public Mesh geometry => mf.sharedMesh;
+        public Mesh geometry { get => mf.sharedMesh; set => mf.sharedMesh = value; }
         public TMat material
         {
             get => _mat;
-            set { _mat = value; Apply(); }
+            set
+            {
+                if (_mat == value) return;
+                if (_mat != null) _mat.owners.Remove(this);
+                _mat = value;
+                if (_mat != null) _mat.owners.Add(this);
+                Refresh();
+            }
         }
-        // Extra passes drawn over the whole mesh (the rim light; outlines use their own shell)
-        public void AddPass(Material m) { extra.Add(m); Apply(); }
-        void Apply()
+        // Extra passes drawn over the whole mesh
+        public void AddPass(Material m) { extra.Add(m); Refresh(); }
+        internal void Refresh()
         {
             if (_mat == null) return;
-            if (extra.Count == 0) mr.sharedMaterial = _mat.m;
-            else { var a = new Material[1 + extra.Count]; a[0] = _mat.m; for (int i = 0; i < extra.Count; i++) a[i + 1] = extra[i]; mr.sharedMaterials = a; }
+            int n = 1 + (_mat.rim != null ? 1 : 0) + extra.Count;
+            if (n == 1) mr.sharedMaterial = _mat.m;
+            else
+            {
+                var a = new Material[n]; int k = 0;
+                a[k++] = _mat.m;
+                if (_mat.rim != null) a[k++] = _mat.rim;
+                foreach (var e in extra) a[k++] = e;
+                mr.sharedMaterials = a;
+            }
+            mr.enabled = _mat.visible;
         }
         public bool cast
         {
@@ -159,5 +177,17 @@ namespace NovaStriker.Game.Three
         }
         public bool receive { get => mr.receiveShadows; set => mr.receiveShadows = value; }
         public override int RenderOrder { get => mr.sortingOrder; set => mr.sortingOrder = value; }
+        public override void OnDestroy() { if (_mat != null) _mat.owners.Remove(this); }
+    }
+
+    // THREE.Sprite: a unit quad that faces the camera (NovaStriker/Unlit with _Billboard), scaled by scale.x/y
+    public static class Sprite
+    {
+        public static TMesh Make(TMat mat)
+        {
+            var s = new TMesh(Geo.Plane(1, 1), mat) { };
+            s.go.name = "sprite"; s.cast = false; s.receive = false; s.noOutline = true;
+            return s;
+        }
     }
 }
