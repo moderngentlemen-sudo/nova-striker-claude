@@ -1,0 +1,21 @@
+# Unity
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+*.csproj
+!SimTests/SimTests.csproj
+*.sln
+*.pidb
+*.suo
+*.user
+*.userprefs
+.vs/
+.idea/
+# The parity harness's build output
+SimTests/bin/
+SimTests/obj/
