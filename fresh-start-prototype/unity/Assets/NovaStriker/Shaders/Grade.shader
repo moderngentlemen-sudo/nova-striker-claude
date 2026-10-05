@@ -176,7 +176,7 @@ Shader "NovaStriker/Grade"
                 else if (st == 3)   // Shatter
                 {
                     float2 p = (vUv - _Center) * asp * 7.0;
-                    float2 ip = floor(p), fp = frac(p); float md = 8.0, md2 = 8.0; float2 id = 0.0, mo = 0.0;
+                    float2 ip = floor(p), fp = frac(p); float md = 8.0, md2 = 8.0; float2 id = float2(0.0, 0.0), mo = float2(0.0, 0.0);
                     [unroll] for (int j = -1; j <= 1; j++)
                     [unroll] for (int i = -1; i <= 1; i++)
                     {
