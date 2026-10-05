@@ -79,6 +79,27 @@ jobs:
           key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('fresh-start-prototype/unity/Packages/manifest.json', 'fresh-start-prototype/unity/ProjectSettings/ProjectVersion.txt') }}
           restore-keys: Library-${{ matrix.targetPlatform }}-
 
+      # First Unity run: set the project up (materials, pipeline, scene, the Input System backend) and quit. The
+      # input backend only takes effect when Unity starts, so the build has to be a second run.
+      - name: Prepare the project with Unity
+        if: steps.secrets.outputs.ok == 'true'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: ${{ env.PROJECT }}
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildName: NovaStriker
+          buildsPath: prepare
+          buildMethod: NovaStriker.EditorTools.NovaSetup.PrepareForBuild
+          manualExit: true
+          versioning: None
+          allowDirtyBuild: true
+          chownFilesTo: '1001:1001'
+
       - name: Build with Unity
         if: steps.secrets.outputs.ok == 'true'
         uses: game-ci/unity-builder@v4

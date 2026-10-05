@@ -150,7 +150,23 @@ namespace NovaStriker.EditorTools
             if (ps.Length == 0) return;
             var so = new SerializedObject(ps[0]);
             var p = so.FindProperty("activeInputHandler");
-            if (p != null && p.intValue != 2) { p.intValue = 2; so.ApplyModifiedPropertiesWithoutUndo(); }
+            if (p != null && p.intValue != 2) { p.intValue = 2; so.ApplyModifiedPropertiesWithoutUndo(); EditorUtility.SetDirty(ps[0]); }
+        }
+        // Whether the input backends are already set (the editor reads them at startup only)
+        public static bool InputBackendsReady()
+        {
+            var ps = Resources.FindObjectsOfTypeAll<PlayerSettings>();
+            var p = ps.Length > 0 ? new SerializedObject(ps[0]).FindProperty("activeInputHandler") : null;
+            return p == null || p.intValue == 2;
+        }
+
+        // Command-line entry for the first of two runs on a fresh checkout (the GitHub workflow): set up the
+        // project and save it, then quit. The input backend setting only takes effect when Unity starts, so the
+        // build has to be a second run, or the editor and the player disagree about the Input System's classes.
+        public static void PrepareForBuild()
+        {
+            try { SetUp(); AssetDatabase.SaveAssets(); EditorApplication.Exit(0); }
+            catch (System.Exception e) { Debug.LogException(e); EditorApplication.Exit(1); }
         }
 
         // ---- The scene ----

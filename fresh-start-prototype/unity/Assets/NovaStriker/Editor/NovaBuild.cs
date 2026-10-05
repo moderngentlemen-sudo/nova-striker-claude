@@ -26,6 +26,9 @@ namespace NovaStriker.EditorTools
         {
             try
             {
+                // (the input backends must have been set when this editor started: see NovaSetup.PrepareForBuild)
+                if (!NovaSetup.InputBackendsReady())
+                    throw new Exception("Run NovaStriker.EditorTools.NovaSetup.PrepareForBuild first (or Nova Striker > Set Up Project and restart Unity): the Input System backend is not on yet");
                 NovaSetup.SetUp();
                 PlayerSettings.productName = "Nova Striker";
                 PlayerSettings.companyName = "Nova Striker prototype";
