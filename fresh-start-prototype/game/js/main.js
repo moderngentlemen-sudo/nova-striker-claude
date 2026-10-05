@@ -8,6 +8,7 @@ import { Sound } from './audio.js';
 import { Music } from './music.js';
 import { Haptics } from './haptics.js';
 import { Bots, isBot, ORDERS } from './bot.js';
+import { ZONES } from './level.js';
 
 loadSettings();
 const app = document.getElementById('app');
@@ -42,11 +43,66 @@ resize();
 
 function setPaused(on) { paused = on; ui.setPaused(on, world); if (!on) { canvas.focus(); input.swallowAll(); } }
 
+// ---- Autoplay demo (?autoplay in the address, or the autoplay standalone file) ----
+// Four AI players play the game on their own: they tour every zone and both boss fights, the first of them taking
+// the lead (bot.js explore). A stop ends when the team has made no headway for 25 s with nothing left to fight, or
+// after 6 minutes; zones the team already ran through on the way, and bosses it already beat, are skipped. A key
+// press or a gamepad button takes over: that player replaces an AI player and the rest stay on as teammates. A
+// click only turns the sound on.
+const AUTOPLAY = !!(window.NS_AUTOPLAY || new URLSearchParams(location.search).has('autoplay'));
+const TOUR = [['zone', 'arena'], ['zone', 'tower'], ['zone', 'skyline'], ['zone', 'foundry'], ['zone', 'undercity'], ['boss', 'warden'], ['boss', 'stormcaller']];
+const STOP_NAMES = { warden: 'Boss: Lockwarden', stormcaller: 'Boss: Stormcaller' };
+let auto = null;
+function startAutoplay() {
+  auto = { i: -1, t: 0, best: -1e9, gain: 0, reached: -1e9, beaten: new Set(), hint: document.createElement('div') };
+  input.keysOnly = true; bots.explore = true;
+  ROSTER.forEach((c, i) => world.addPlayer('cpu' + (i + 1), c));
+  started = true; ui.hideStart();
+  const h = auto.hint;
+  h.style.cssText = 'position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:6px 14px;border-radius:6px;background:rgba(10,18,34,0.78);' +
+    'color:#f3f7fc;font:600 13px/1.3 var(--font-body);letter-spacing:0.02em;white-space:nowrap;pointer-events:none;z-index:5';
+  document.getElementById('overlay').appendChild(h);
+  nextStop();
+}
+function nextStop() {
+  for (let k = 0; k < TOUR.length; k++) {
+    auto.i = (auto.i + 1) % TOUR.length;
+    if (auto.i === 0) { auto.reached = -1e9; auto.beaten.clear(); }   // a new lap of the tour
+    const [kind, id] = TOUR[auto.i];
+    const z = ZONES.find(q => q.id === id);
+    if (kind === 'zone' && z && z.x1 <= auto.reached) continue;      // already ran through it on the way
+    if (kind === 'boss' && auto.beaten.has(id)) continue;
+    break;
+  }
+  const [kind, id] = TOUR[auto.i];
+  if (kind === 'zone') world.teleport(id); else world.bossRush(id);
+  for (const p of world.players) { p.hp = p.maxHp; if (p.state === 'dead' || p.state === 'downed') world.recall(p, false); }
+  auto.t = 0; auto.best = -1e9; auto.gain = 0;
+  const name = kind === 'zone' ? ZONES.find(q => q.id === id).name : STOP_NAMES[id];
+  auto.hint.innerHTML = `<b style="color:#ffb547">AUTOPLAY</b> · ${name} · press any key or a gamepad button to take over · click for sound`;
+}
+function autoplayTick() {
+  if (!auto) return;
+  for (const ev of world.events) if (ev.type === 'bossDown' && ev.e) auto.beaten.add(ev.e.type);
+  auto.t++;
+  const x = Math.max(...world.players.map(p => p.x));
+  if (x > auto.best + 1) { auto.best = x; auto.gain = auto.t; }
+  auto.reached = Math.max(auto.reached, auto.best);
+  const C = world.cam, fighting = world.enemies.some(e => !e.dead && e.hp !== Infinity && Math.abs(e.x - C.x) < C.halfW + 8);
+  if ((auto.t - auto.gain > 25 * 60 && !fighting) || auto.t > 6 * 60 * 60) nextStop();
+}
+function endAutoplay() {
+  auto.hint.remove(); auto = null;
+  input.keysOnly = false; bots.explore = false;
+  SETTINGS.aiTeammates = Math.max(Number(SETTINGS.aiTeammates) || 0, 3);   // (the AI players stay on as teammates; not saved)
+}
+
 function tryJoin() {
   const devices = input.pollJoins(new Set(world.players.map(p => p.device)));
   for (const dev of devices) {
     if (paused) break;
     if (world.players.length >= 4 && !bots.makeRoom(world)) break;   // a person joining a full team takes an AI teammate's place
+    if (auto) { endAutoplay(); ui.toast('You have the controls. The AI players stay on as your team'); }
     // Each new player takes the next character no one is playing yet (Nova, Echo, RAM, Fix)
     const used = new Set(world.players.map(p => p.char)), char = ROSTER.find(c => !used.has(c)) || ROSTER[world.players.length % ROSTER.length];
     world.addPlayer(dev, char);
@@ -87,7 +143,7 @@ function handleMenuEvents() {
 }
 
 function stepSim() {
-  bots.sync(world, Number(SETTINGS.aiTeammates) || 0);
+  if (!auto) bots.sync(world, Number(SETTINGS.aiTeammates) || 0);   // (the autoplay demo keeps its four AI players)
   let cmds = {};
   for (const p of world.players) {
     if (isBot(p)) continue;
@@ -101,6 +157,7 @@ function stepSim() {
   if (bots.done === world.tick) { const b = world.players.find(isBot); if (b) ui.bark(b, ORDERS.lines[b.char].done); }
   if (window.__NS.inject) cmds = window.__NS.inject(world.tick, cmds) || cmds;
   world.step(cmds);
+  autoplayTick();
   for (const ev of world.events) { view.onEvent(ev); sound.play(ev); ui.onEvent(ev, world); haptics.onEvent(ev); }
   world.events.length = 0;
 }
@@ -137,13 +194,14 @@ function frame(now) {
   } catch (err) {
     console.error(err);
   }
-  requestAnimationFrame(frame);
+  if (AUTOPLAY) startAutoplay();
+requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
 // Test hooks (used by automated checks; harmless otherwise)
 window.__NS = {
-  world, view, ui, input, music, sound, haptics, bots, SETTINGS, manual: false, inject: null,
+  world, view, ui, input, music, sound, haptics, bots, SETTINGS, manual: false, inject: null, get autoplay() { return auto && { stop: TOUR[auto.i], t: auto.t, best: auto.best }; },
   order(type, slot = 0) { const p = world.players.find(q => q.slot === slot); if (p) giveOrder(p, type); },
   start(char = 'nova') { if (!started) { world.addPlayer('kbm', char); started = true; ui.hideStart(); } },
   step(n = 1) { for (let i = 0; i < n; i++) stepSim(); },

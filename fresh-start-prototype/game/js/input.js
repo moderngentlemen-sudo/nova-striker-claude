@@ -36,13 +36,15 @@ export class Input {
     this.menuOpen = false;         // a menu is up: the stick navigates it, and held directions repeat
     this.repeat = {};              // per pad: when each held direction fires again
     this.anyKbm = false;           // any keyboard/mouse input since last join poll
+    this.anyKey = false;           // any key since last join poll (the autoplay demo joins on keys, not clicks)
+    this.keysOnly = false;         // (set by main in the autoplay demo: a click only turns the sound on)
 
     window.addEventListener('keydown', e => {
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
       this.keys.add(e.code);
       this.kbPressed.add(e.code);
-      this.anyKbm = true;
+      this.anyKbm = true; this.anyKey = true;
       if (e.code === 'Escape' || e.code === 'KeyP') this.menuEvents.push({ dev: 'kbm', type: 'pause' });
       if (e.code === 'KeyH') this.menuEvents.push({ dev: 'kbm', type: 'help' });
       if (e.code === 'Backquote') this.menuEvents.push({ dev: 'kbm', type: 'debug' });
@@ -93,8 +95,8 @@ export class Input {
   // Devices that pressed something this frame and are not yet assigned.
   pollJoins(assigned) {
     const out = [];
-    if (this.anyKbm && !assigned.has('kbm')) out.push('kbm');
-    this.anyKbm = false;
+    if ((this.keysOnly ? this.anyKey : this.anyKbm) && !assigned.has('kbm')) out.push('kbm');
+    this.anyKbm = false; this.anyKey = false;
     for (const p of this.pads()) {
       const id = 'pad' + p.index;
       if (assigned.has(id)) continue;

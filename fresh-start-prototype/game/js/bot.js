@@ -148,11 +148,16 @@ export class Bots {
 
     const team = world.players.filter(q => q !== p);
     const O = this.activeOrder(world);
-    const leader = (O && O.by !== p && up(O.by) ? O.by : null) || team.find(q => !isBot(q) && up(q)) || team.find(up) || null;
+    // Autoplay (explore): with no person playing, the first AI player up takes the lead and pushes on through the
+    // level, and the others follow it
+    const point = this.explore && !world.players.some(q => !isBot(q) && up(q)) ? world.players.find(q => isBot(q) && up(q)) : null;
+    const leader = (O && O.by !== p && up(O.by) ? O.by : null) || team.find(q => !isBot(q) && up(q)) || (point ? (point !== p ? point : null) : team.find(up)) || null;
     const bots = world.players.filter(isBot), order = bots.indexOf(p);
     const cx = p.x, cy = p.y + p.h / 2;
     const dist = e => Math.hypot(e.x - cx, e.y + e.h / 2 - cy);
     let foes = world.enemies.filter(e => alive(e) && e.state !== 'plowed' && dist(e) < BOT.sight + 4);
+    // (in autoplay the training props of the Movement Gym, which can't be destroyed, are left alone)
+    if (this.explore) foes = foes.filter(e => e.hp !== Infinity);
     // Commands narrow what it fights: a regroup only what is on top of it; a hold only what comes near the spot
     if (O && O.type === 'regroup') foes = foes.filter(e => dist(e) < 3.5);
     if (O && O.type === 'hold') foes = foes.filter(e => Math.abs(e.x - O.x) < ORDERS.holdRange || ((p.char === 'nova' || p.char === 'fix') && dist(e) < BOT.sight && Math.abs(e.x - O.x) < BOT.sight));
@@ -188,7 +193,7 @@ export class Bots {
       goal = leader.x - (leader.facing || 1) * BOT.follow * (1 + order * 0.7); goalY = leader.y; stopAt = 0.8;
       // Climbing after them (a stair of platforms): aim for the platform they are on, not the gap behind it
       if (leader.y > p.y + 1.5 && leader.onGround) { goal = leader.x - (leader.facing || 1) * 0.4 * order; stopAt = 0.3; }
-    }
+    } else if (point === p) { goal = p.x + 6; goalY = p.y; stopAt = 0.3; }   // (the routes all run toward +x)
     // Commands move where it stands
     if (O && !downed) {
       const near = foes.reduce((a, e) => (!a || dist(e) < dist(a) ? e : a), null);
