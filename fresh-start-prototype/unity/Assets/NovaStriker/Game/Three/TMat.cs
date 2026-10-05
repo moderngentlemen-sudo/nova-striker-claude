@@ -27,7 +27,7 @@ namespace NovaStriker.Game.Three
         bool _transparent, _depthWrite = true, _depthTest = true, _vertexColors, _fog = true, _visible = true;
         Side _side = Side.Front;
         Blending _blending = Blending.Normal;
-        Texture _map, _normalMap, _roughnessMap;
+        Texture _map, _normalMap, _roughnessMap, _emissiveMap;
         Vector2 _repeat = Vector2.one, _offset = Vector2.zero;
 
         public TMat(Kind kind = Kind.Standard)
@@ -50,7 +50,7 @@ namespace NovaStriker.Game.Three
                 _colorLin = _colorLin, _emissiveLin = _emissiveLin, _emissiveIntensity = _emissiveIntensity, _roughness = _roughness, _metalness = _metalness,
                 _opacity = _opacity, _clearcoat = _clearcoat, _clearcoatRoughness = _clearcoatRoughness, _rotation = _rotation, _normalScale = _normalScale,
                 _transparent = _transparent, _depthWrite = _depthWrite, _depthTest = _depthTest, _vertexColors = _vertexColors, _fog = _fog,
-                _side = _side, _blending = _blending, _map = _map, _normalMap = _normalMap, _roughnessMap = _roughnessMap, _repeat = _repeat, _offset = _offset,
+                _side = _side, _blending = _blending, _map = _map, _normalMap = _normalMap, _emissiveMap = _emissiveMap, _roughnessMap = _roughnessMap, _repeat = _repeat, _offset = _offset,
             };
             c.Build();
             foreach (var kv in userData) c.userData[kv.Key] = kv.Value;
@@ -86,6 +86,7 @@ namespace NovaStriker.Game.Three
         public float rotation { get => _rotation; set { _rotation = value; if (IsUnlit) m.SetFloat("_Rotation", value); } }
         public Texture map { get => _map; set { _map = value; ApplyMaps(); } }
         public Texture normalMap { get => _normalMap; set { _normalMap = value; ApplyMaps(); } }
+        public Texture emissiveMap { get => _emissiveMap; set { _emissiveMap = value; ApplyMaps(); } }
         public Texture roughnessMap { get => _roughnessMap; set { _roughnessMap = value; ApplyMaps(); } }
         public float normalScale { get => _normalScale; set { _normalScale = value; ApplyMaps(); } }
         public Vector2 repeat { get => _repeat; set { _repeat = value; ApplyMaps(); } }
@@ -167,6 +168,8 @@ namespace NovaStriker.Game.Three
             bool surf = _normalMap != null || _roughnessMap != null;
             bool tplSurf = m.IsKeywordEnabled("_NORMALMAP");
             if (surf != tplSurf && kind == Kind.Standard) { Build(); return; }
+            m.SetTexture("_EmissionMap", _emissiveMap != null ? _emissiveMap : Texture2D.whiteTexture);
+            m.SetTextureScale("_EmissionMap", _repeat);
             if (_normalMap != null) { m.SetTexture("_BumpMap", _normalMap); m.SetFloat("_BumpScale", _normalScale); }
             // (the roughness map is packed as Unity's metallic/smoothness map: smoothness in alpha)
             if (_roughnessMap != null) { m.SetTexture("_MetallicGlossMap", _roughnessMap); m.SetFloat("_Smoothness", 1); }
@@ -199,7 +202,7 @@ namespace NovaStriker.Game.Three
     // template is made on the spot from its shader.
     public static class Templates
     {
-        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade;
+        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade, aegis;
         public static Material Lit => lit ??= Load("Lit", "Universal Render Pipeline/Lit", false, false);
         public static Material LitT => litT ??= Load("LitTransparent", "Universal Render Pipeline/Lit", true, false);
         public static Material Surf => surf ??= Load("LitSurface", "Universal Render Pipeline/Lit", false, true);
@@ -211,6 +214,7 @@ namespace NovaStriker.Game.Three
         public static Material Rim => rim ??= Load("Rim", "NovaStriker/Rim", false, false);
         public static Material Sky => sky ??= Load("Sky", "NovaStriker/Sky", false, false);
         public static Material Grade => grade ??= Load("Grade", "NovaStriker/Grade", false, false);
+        public static Material Aegis => aegis ??= Load("Aegis", "NovaStriker/Aegis", false, false);
 
         static Material Load(string name, string shader, bool transparent, bool surface, bool coat = false)
         {

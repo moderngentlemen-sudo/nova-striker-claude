@@ -258,7 +258,9 @@ namespace NovaStriker.Game.Three
         public static Mesh Icosahedron(float radius, int detail = 0) => Cached(K("ico", radius, detail), () => Poly(ICO_V, ICO_I, radius, detail, "ico"));
         public static Mesh Octahedron(float radius, int detail = 0) => Cached(K("oct", radius, detail), () => Poly(OCT_V, OCT_I, radius, detail, "oct"));
         public static Mesh Tetrahedron(float radius, int detail = 0) => Cached(K("tet", radius, detail), () => Poly(TET_V, TET_I, radius, detail, "tet"));
-        static Mesh Poly(float[] verts, int[] ind, float radius, int detail, string name)
+        // The subdivided faces of a polyhedron in three.js space, three points a face (radius 1, not normalised)
+        public static List<Vector3> IcosahedronFaces(int detail) => PolyFaces(ICO_V, ICO_I, detail);
+        static List<Vector3> PolyFaces(float[] verts, int[] ind, int detail)
         {
             var tris = new List<Vector3>();
             Vector3 VV(int i) => new Vector3(verts[i * 3], verts[i * 3 + 1], verts[i * 3 + 2]);
@@ -282,6 +284,11 @@ namespace NovaStriker.Game.Three
                         else { tris.Add(v[i][k + 1]); tris.Add(v[i + 1][k + 1]); tris.Add(v[i + 1][k]); }
                     }
             }
+            return tris;
+        }
+        static Mesh Poly(float[] verts, int[] ind, float radius, int detail, string name)
+        {
+            var tris = PolyFaces(verts, ind, detail);
             var b = new GeoBuilder();
             for (int i = 0; i < tris.Count; i += 3)
             {
@@ -295,6 +302,18 @@ namespace NovaStriker.Game.Three
             }
             return b.ToMesh(name);
         }
+
+        // geometry.translate(x, y, z) on a copy (three.js space)
+        public static Mesh Translated(Mesh m, float x, float y, float z)
+        {
+            var c = Object.Instantiate(m); c.name = m.name + "+t";
+            var v = c.vertices; var d = new Vector3(x, y, -z);
+            for (int i = 0; i < v.Length; i++) v[i] += d;
+            c.vertices = v; c.RecalculateBounds();
+            return c;
+        }
+        // A private copy (for geometry edited in place, like a box's UVs)
+        public static Mesh Copy(Mesh m) { var c = Object.Instantiate(m); c.name = m.name + "*"; return c; }
 
         // ---- Flat shapes (facing +z) ----
         public static Mesh Circle(float radius, int segments = 32, float thetaStart = 0, float thetaLength = PI * 2) => Cached(K("circ", radius, segments, thetaStart, thetaLength), () =>
