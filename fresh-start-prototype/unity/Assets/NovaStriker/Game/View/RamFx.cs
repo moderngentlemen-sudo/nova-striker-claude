@@ -34,8 +34,8 @@ namespace NovaStriker.Game
         readonly Dictionary<Player, double> ghostTick = new Dictionary<Player, double>();
         sealed class Shard { public TMesh m; public float life, max = 1, size = 0.2f; public Vector3 v, spin; }
         readonly List<Shard> shards = new List<Shard>(); int si2;
-        sealed class Crater { public TMesh b, g; public float life, age, heat = 1; }
-        readonly List<Crater> craters = new List<Crater>();
+        sealed class CraterMark { public TMesh b, g; public float life, age, heat = 1; }
+        readonly List<CraterMark> craters = new List<CraterMark>();
         sealed class Spk { public float life, max, d; public double x, y, vx, vy; public Color c; }
         readonly Spk[] spk = new Spk[160]; int si;
         readonly DynMesh spkMesh;
@@ -164,7 +164,7 @@ namespace NovaStriker.Game
                 var b = new TMesh(g, new TMat(TMat.Kind.Basic) { transparent = true, opacity = 0, depthWrite = false, side = Side.Double });
                 var gl = new TMesh(g, new TMat(TMat.Kind.Basic) { colorCss = BLUE, transparent = true, opacity = 0, blending = Blending.Additive, depthWrite = false, side = Side.Double, fog = false });
                 b.visible = gl.visible = false; b.RenderOrder = 1; gl.RenderOrder = 2; scene.add(b); scene.add(gl);
-                craters.Add(new Crater { b = b, g = gl });
+                craters.Add(new CraterMark { b = b, g = gl });
             }
             // Sparks: thin streaks stretched along their flight (one mesh, ordinary blending); they fall, bounce off
             // the floor and cool from white-hot to red
@@ -592,7 +592,7 @@ namespace NovaStriker.Game
             C.b.SetQuaternion(q); C.g.SetQuaternion(q);
             C.heat = 1.4f;
         }
-        Crater NextCrater(float size)
+        CraterMark NextCrater(float size)
         {
             var C = craters.Find(q => q.life <= 0);
             if (C == null) { C = craters[0]; foreach (var q in craters) if (q.age > C.age) C = q; }
