@@ -14,6 +14,8 @@ Shader "NovaStriker/Grade"
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment Frag
+            // (for Vulkan, compile with DXC: the default cross-compiler mistranslates this shader for glslang)
+            #pragma use_dxc vulkan
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
