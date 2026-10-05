@@ -22,8 +22,8 @@ easy to find (see *Where things are*).
 
 ## Open it
 
-1. Install **Unity 6.3** (6000.3.x) with the Hub. Add the `unity/` folder as a project and open it. If the Hub
-   asks to change the editor version, pick any 6000.3 release.
+1. Install **Unity 6.3** with the Hub (the project is pinned to 6000.3.25f1, but any 6000.3 release opens it). Add
+   the `unity/` folder as a project and open it.
 2. The packages install from `Packages/manifest.json`: URP 17.3.0, Input System 1.17.0 and uGUI 2.0.0.
 3. Run the menu **Nova Striker › Set Up Project**. It makes the assets the code needs:
    - the template materials (`Resources/NovaStriker/*.mat`)
@@ -103,8 +103,39 @@ sh parity.sh 1500 "1 2"    # every zone × every character × alone and with thr
 
 It needs .NET 8 and Node 18 or later. It last reported every scenario matching.
 
-## Building
+## Building a game you can run (zip or executable)
 
-Use a normal Unity build of `Scenes/NovaStriker.unity`. The template materials keep the shaders and their
-keyword variants in the build. If a material looks wrong only in a build, a keyword was probably stripped.
-Add a template with that keyword to `NovaSetup.TEMPLATES`.
+**On GitHub, no Unity install needed.** `.github/workflows/unity-build.yml` (at the repository root) builds
+Windows, macOS and Linux versions with [GameCI](https://game.ci) on every push that changes this project, or on
+demand (Actions › Unity build › Run workflow). Each finished run lists `NovaStriker-Windows`,
+`NovaStriker-macOS` and `NovaStriker-Linux` under *Artifacts*. GitHub wraps each download in its own zip, so
+unzip twice. Then:
+
+- **Windows:** run `NovaStriker.exe`.
+- **macOS:** open `NovaStriker.app`. It isn't signed, so the first time, right-click it and choose *Open*.
+- **Linux:** run `NovaStriker.x86_64`.
+
+It needs your Unity licence once, as three repository secrets (Settings › Secrets and variables › Actions):
+
+| Secret | Value |
+|---|---|
+| `UNITY_EMAIL` | your Unity account's email |
+| `UNITY_PASSWORD` | its password |
+| `UNITY_LICENSE` | the whole contents of `Unity_lic.ulf`, which Unity Hub writes once you sign in and activate a licence (the free Personal one is fine). Windows: `C:\ProgramData\Unity\Unity_lic.ulf`; macOS: `/Library/Application Support/Unity/Unity_lic.ulf`; Linux: `~/.local/share/unity3d/Unity/Unity_lic.ulf` |
+
+With a Pro or Plus licence, set `UNITY_SERIAL` instead of `UNITY_LICENSE`. Until the secrets are set, the
+workflow skips the build with a warning.
+
+**On your own machine.** Use the menu **Nova Striker › Build for This Platform**. It runs the setup, then builds
+to `Builds/<platform>/`. You can also build from a terminal:
+
+```
+Unity -batchmode -projectPath fresh-start-prototype/unity -buildTarget StandaloneWindows64 \
+      -executeMethod NovaStriker.EditorTools.NovaBuild.Build
+```
+
+The project is pinned to Unity 6000.3.25f1, the newest 6.3 release GameCI has build images for. Any 6000.3
+editor opens it.
+
+The template materials keep the shaders and their keyword variants in the build. If a material looks wrong only
+in a build, a keyword was probably stripped. Add a template with that keyword to `NovaSetup.TEMPLATES`.

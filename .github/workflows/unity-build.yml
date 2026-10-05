@@ -1,0 +1,117 @@
+# Builds the Unity port of Nova Striker (fresh-start-prototype/unity) for Windows, macOS and Linux with GameCI,
+# and uploads each as a zip you can download from the run's page (Summary > Artifacts).
+#
+# One-time setup: add three repository secrets (Settings > Secrets and variables > Actions):
+#   UNITY_EMAIL     the email address of your Unity account
+#   UNITY_PASSWORD  its password
+#   UNITY_LICENSE   the whole contents of your Unity licence file (Unity_lic.ulf). Unity Hub writes it once you
+#                   sign in and activate a licence (the free Personal one is fine):
+#                     Windows  C:\ProgramData\Unity\Unity_lic.ulf
+#                     macOS    /Library/Application Support/Unity/Unity_lic.ulf
+#                     Linux    ~/.local/share/unity3d/Unity/Unity_lic.ulf
+#   (With a Pro or Plus licence, add UNITY_SERIAL instead of UNITY_LICENSE.)
+#
+# It runs on every push that changes the Unity project, and on demand (Actions > Unity build > Run workflow).
+name: Unity build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'fresh-start-prototype/unity/**'
+      - '.github/workflows/unity-build.yml'
+
+concurrency:
+  group: unity-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, targetPlatform: StandaloneWindows64 }
+          - { name: macOS, targetPlatform: StandaloneOSX }
+          - { name: Linux, targetPlatform: StandaloneLinux64 }
+    env:
+      PROJECT: fresh-start-prototype/unity
+    steps:
+      - name: Check the Unity licence secrets
+        id: secrets
+        env:
+          EMAIL: ${{ secrets.UNITY_EMAIL }}
+          LICENSE: ${{ secrets.UNITY_LICENSE }}
+          SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$EMAIL" ] || { [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; }; then
+            echo "::warning::The Unity licence secrets are not set (UNITY_EMAIL, UNITY_PASSWORD and UNITY_LICENSE or UNITY_SERIAL), so the build is skipped. See the comment at the top of .github/workflows/unity-build.yml."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The Unity images are large: make room on the runner first
+      - name: Free disk space
+        if: steps.secrets.outputs.ok == 'true'
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ok == 'true'
+        with:
+          lfs: false
+
+      - name: Cache the Library folder
+        if: steps.secrets.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PROJECT }}/Library
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('fresh-start-prototype/unity/Packages/manifest.json', 'fresh-start-prototype/unity/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-${{ matrix.targetPlatform }}-
+
+      - name: Build with Unity
+        if: steps.secrets.outputs.ok == 'true'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: ${{ env.PROJECT }}
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildName: NovaStriker
+          buildsPath: build
+          buildMethod: NovaStriker.EditorTools.NovaBuild.Build
+          manualExit: true
+          versioning: None
+          allowDirtyBuild: true
+          chownFilesTo: '1001:1001'
+
+      # Zipped here rather than by the artifact upload, so the macOS app and the Linux binary keep their
+      # executable permissions
+      - name: Zip the build
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          cd build/${{ matrix.targetPlatform }}
+          zip -q -r -y "$GITHUB_WORKSPACE/NovaStriker-${{ matrix.name }}.zip" .
+          ls -la "$GITHUB_WORKSPACE/NovaStriker-${{ matrix.name }}.zip"
+
+      - name: Upload
+        if: steps.secrets.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaStriker-${{ matrix.name }}
+          path: NovaStriker-${{ matrix.name }}.zip
+          retention-days: 30
+          compression-level: 0
