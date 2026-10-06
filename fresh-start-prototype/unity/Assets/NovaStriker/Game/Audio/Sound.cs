@@ -584,6 +584,7 @@ namespace NovaStriker.Game.Audio
                 tone(ev.heavy ? 160 : 240, ev.heavy ? 90 : 170, 0.1 + (ev.heavy ? 0.08 : 0), W.Triangle, 0.05 + (ev.heavy ? 0.04 : 0)); noise(0.08, 3000, 0.06, F.Bandpass, 1400);
                 tone(f, f * 2, 0.22, W.Sine, 0.04 + 0.02 * k); tone(f * 1.5, 0, 0.18, W.Sine, 0.02 + 0.015 * k, 0.04);
                 if (ev.perfect) { tone(1320, 2640, 0.2, W.Sine, 0.07); noise(0.12, 4500, 0.06, F.Highpass); }
+                if (ev.full && !ev.max) { tone(660, 1320, 0.25, W.Sine, 0.045, 0.06); }
                 if (ev.max) { tone(660, 1320, 0.35, W.Sine, 0.06, 0.06); tone(990, 1980, 0.35, W.Triangle, 0.04, 0.1); }
                 break;
               }

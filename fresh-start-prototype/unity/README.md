@@ -112,10 +112,11 @@ These are in the Unity build only, not in the browser prototype. Each one is off
 default settings the simulation is still the prototype's (the parity tests run with the defaults).
 
 - **Nova's absorbing shield** (Settings › *Nova's LT move, Marksman kit* › *Absorbing shield*). It replaces
-  his dodge on LT (Q or L). While held, a hard-light shield stands where he aims and blocks strikes, shots and
+  his dodge on LT (Q or L). While held, a blue hard-light shield stands where he aims and blocks strikes, shots and
   blasts from in front.
-  - **Energy.** Every hit it blocks is absorbed as energy. At full energy his attacks deal up to 60% more
-    damage and poise damage.
+  - **Energy.** Every hit it blocks is absorbed as charge, which makes his attacks hit harder. A full 100%
+    charge gives +100% damage. It keeps filling past full up to 150%, which gives +150% (2.5× damage); poise
+    damage rises too. The HUD shows the charge and the bonus.
   - **Glow.** As the energy builds, his energy lines burn brighter, his armour picks up a warm rim of light
     and a soft aura grows around him. Each block makes this flare, and each quarter of the gauge sends out a
     pulse.
@@ -124,6 +125,7 @@ default settings the simulation is still the prototype's (the parity tests run w
     If it breaks, he reels.
   - **Losing energy.** The energy holds for 6 seconds after the last block, then fades. An unguarded hit
     spills half of it.
+  - **Firing.** He can fire, tap or charged, from behind it. Melee, a dash or a Level 4 beam lowers it.
   - The tuning is `NOVA_SHIELD` in `Sim/Config.cs`, the sim is `Sim/PlayerSim.Nova.cs` and the look is
     `Game/View/NovaShieldFx.cs`.
 - **Perfect parries stun** (Settings › *Nova's perfect parry or shield block stuns the attacker*). A perfect

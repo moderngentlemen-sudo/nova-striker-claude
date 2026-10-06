@@ -43,7 +43,7 @@ namespace NovaStriker.Sim
         public static bool CanFire(Player p)
         {
             var s = p.state;
-            return s == "normal" || s == "dash" || s == "slide" || s == "lash" || s == "dodge" || (s == "attack" && p.hitConfirm);
+            return s == "normal" || s == "dash" || s == "slide" || s == "lash" || s == "dodge" || s == "nshield" || (s == "attack" && p.hitConfirm);
         }
 
         static readonly double[] NOVA_SENTINEL_CHARGE = { NOVA.charge1, NOVA.charge2 };
@@ -227,6 +227,7 @@ namespace NovaStriker.Sim
         public static BeamDef BeamSpec(Player p) => p.@char == "ram" ? RAM.beam : MARKSMAN.beam;
         static void StartBeam(Player p, World world)
         {
+            if (p.state == "nshield") EndNovaShield(p, world);   // (the sustained beam takes both hands: the shield comes down)
             var B = BeamSpec(p); bool ram = p.@char == "ram";
             p.beam = new BeamState
             {

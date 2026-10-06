@@ -467,19 +467,19 @@ namespace NovaStriker.Sim
             }
         }
 
-        // Nova's dodge
         // Nova's absorbing shield (Settings: Nova's defence = shield; replaces the dodge on the parry button). It blocks what
-        // comes from in front; each blocked hit is absorbed as energy (0-100) that makes his attacks hit harder, up to
-        // +bonus at full. Blocks wear down its stability, which grows back while it is lowered; broken, he reels. A block
+        // comes from in front; each blocked hit is absorbed as energy that makes his attacks hit harder: +bonus per 100
+        // (full), and it overfills up to `max` (+150% damage at 150). Blocks wear down its stability, which grows back while it is lowered; broken, he reels. A block
         // in the first `perfect` ticks costs nothing and absorbs a set amount. Energy holds for `hold` ticks after the
         // last absorb, then drains; an unguarded hit spills `spill` of it.
         public static class NOVA_SHIELD
         {
-            public const double perfect = 6, walk = 0.45, reach = 0.9, half = 1.0, gainPerDmg = 2.2, perfectGain = 14, bonus = 0.6, poiseBonus = 0.3,
+            public const double perfect = 6, walk = 0.45, reach = 0.9, half = 1.0, gainPerDmg = 2.2, perfectGain = 14, bonus = 1.0, max = 150, poiseBonus = 0.3,
                 hold = 360, drain = 0.12, spill = 0.5, stability = 100, cost = 1.1, regen = 30, delay = 45, recover = 40, brokenStun = 40;
             // a perfect parry or perfect block with Settings: Nova's perfect parry stuns: how long the attacker is stunned
             public const double stunLight = 80, stunHeavy = 45;
         }
+        // Nova's dodge
         public static class DODGE { public const double ticks = 16, speed = 13, airSpeed = 11, keep = 0.86, iframes = 11, perfect = 7, cd = 28, slowTicks = 100, slowRange = 7, over = 20; }
 
         // ---- RAM (Vanguard) ----

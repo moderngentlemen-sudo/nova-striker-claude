@@ -1,7 +1,7 @@
 // Nova's absorbing shield (Unity build option; Settings: Nova's defence = shield). On the parry button, in place of
 // the Marksman kit's dodge: held, a hard-light shield faces where he aims and blocks what comes from in front. Every
 // blocked hit is absorbed as energy that makes his attacks hit harder (NOVA_SHIELD), and he glows brighter the more
-// he holds. The shield's stability wears down with each block and grows back while it is lowered.
+// he holds. He can fire from behind it. The shield's stability wears down with each block and grows back while it is lowered.
 using static NovaStriker.Sim.Cfg;
 using static NovaStriker.Sim.U;
 
@@ -11,8 +11,8 @@ namespace NovaStriker.Sim
     {
         public static bool NovaShieldOn => SETTINGS.novaDefense == "shield" && SETTINGS.novaKit == "marksman";
 
-        // The damage multiplier the absorbed energy gives his attacks
-        public static double AbsorbMult(Player p) => p.@char == "nova" && p.absorb > 0 ? 1 + NOVA_SHIELD.bonus * JMath.Min(100, p.absorb) / 100 : 1;
+        // The damage multiplier the absorbed energy gives his attacks: +100% at a full 100, +150% overfilled to 150
+        public static double AbsorbMult(Player p) => p.@char == "nova" && p.absorb > 0 ? 1 + NOVA_SHIELD.bonus * JMath.Min(NOVA_SHIELD.max, p.absorb) / 100 : 1;
 
         static bool StartNovaShield(Player p, World world)
         {
@@ -48,8 +48,9 @@ namespace NovaStriker.Sim
             if (p.onGround) p.vx = approach(p.vx, cmd.mx * c.run * NOVA_SHIELD.walk, c.accelG * DT);
             else p.vx = approach(p.vx, cmd.mx * c.run * 0.6, c.accelA * DT);
             ApplyGravity(p, cmd);
-            // Out of the shield: fire (he shoots on the same tick), melee, or a dash. A jump keeps the shield up.
-            if (cmd.pressed.fire || p.buf.melee <= ACTION_BUFFER) { EndNovaShield(p, world); return; }
+            // He fires from behind it as usual (CanFire; a Level 4 beam lowers it). Out of the shield: melee, or a dash.
+            // A jump keeps it up.
+            if (p.buf.melee <= ACTION_BUFFER) { EndNovaShield(p, world); return; }
             if (TryDash(p, cmd, world)) { p.nshieldOffT = 0; world.Emit("nshieldOff", new Ev { p = p }); return; }
             if (TryJump(p, cmd, world)) p.state = "nshield";
         }
@@ -75,7 +76,7 @@ namespace NovaStriker.Sim
         {
             p.nshieldBlockT = 0; p.absorbIdle = 0;
             double was = p.absorb;
-            p.absorb = JMath.Min(100, p.absorb + (perfect ? NOVA_SHIELD.perfectGain : dmg * NOVA_SHIELD.gainPerDmg) * BoostRate(p));
+            p.absorb = JMath.Min(NOVA_SHIELD.max, p.absorb + (perfect ? NOVA_SHIELD.perfectGain : dmg * NOVA_SHIELD.gainPerDmg) * BoostRate(p));
             if (perfect) GainUlt(p, ULT.gain.perfect, world);
             else
             {
@@ -84,7 +85,7 @@ namespace NovaStriker.Sim
                 if (heavy && p.onGround) p.vx = -p.facing * 3;
             }
             world.Emit("nshieldBlock", new Ev { p = p, x = x, y = y, dmg = dmg, perfect = perfect, heavy = heavy, k = p.absorb / 100, level = JMath.Floor(p.absorb / 25),
-                max = was < 100 && p.absorb >= 100, frac = JMath.Max(0, p.nshieldStab / NOVA_SHIELD.stability) });
+                full = was < 100 && p.absorb >= 100, max = was < NOVA_SHIELD.max && p.absorb >= NOVA_SHIELD.max, frac = JMath.Max(0, p.nshieldStab / NOVA_SHIELD.stability) });
             if (perfect) world.Bark(p, "perfect", 0.3);
             if (p.nshieldStab <= 0)
             {

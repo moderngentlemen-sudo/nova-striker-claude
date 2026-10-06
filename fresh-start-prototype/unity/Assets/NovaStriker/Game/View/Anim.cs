@@ -594,11 +594,11 @@ namespace NovaStriker.Game
         }
     
         // The energy Nova's shield has absorbed (Settings: Nova's LT move): his energy lines burn brighter and his
-        // armour takes on a warm rim of light, rising with each hit it takes and breathing slowly; a block makes it
+        // armour takes on a blue rim of light (the shield's colour), rising with each hit it takes and breathing slowly; a block makes it
         // flare for a moment. Returns the energy lines' extra emission.
         static float AbsorbGlow(Rig rig, Player p, float t, float dt)
         {
-            float k = Mathf.Clamp01((float)p.absorb / 100);
+            float k = Mathf.Clamp((float)p.absorb / 100, 0, 1.5f);   // (past full, as it overfills to 150%, it keeps growing)
             rig.absorbGlow += (k - rig.absorbGlow) * (1 - Mathf.Exp(-dt * 6));
             rig.absorbFlash = Mathf.Max(0, rig.absorbFlash - dt * 3);
             float g = rig.absorbGlow, breathe = 1 + 0.18f * Mathf.Sin(t * (2.2f + 2.5f * g)) * g;
@@ -612,6 +612,6 @@ namespace NovaStriker.Game
                 }
             return (2.6f * g + 2 * rig.absorbFlash) * breathe;
         }
-        static readonly Color ABSORB_RIM = new Color(1f, 0.82f, 0.45f);
+        static readonly Color ABSORB_RIM = new Color(0.55f, 0.88f, 1f);   // (the shield's blue)
 }
 }

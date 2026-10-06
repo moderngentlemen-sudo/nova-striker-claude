@@ -61,7 +61,7 @@ namespace NovaStriker.Game.UI
             if (p.absorb > 0.5)
             {
                 int pct = (int)System.Math.Round((PlayerSim.AbsorbMult(p) - 1) * 100);
-                o.Add(Chip.Of($"Power +{pct}%", p.absorb >= 100 ? "perfect" : "over"));
+                o.Add(Chip.Of($"Charge {(int)System.Math.Floor(p.absorb)}% · Power +{pct}%", p.absorb >= NOVA_SHIELD.max ? "perfect" : p.absorb >= 100 ? "over" : "ready"));
             }
         }
         // The hard-light Aegis: its strength while up, else its cooldown; Overcharge from the damage it soaked
