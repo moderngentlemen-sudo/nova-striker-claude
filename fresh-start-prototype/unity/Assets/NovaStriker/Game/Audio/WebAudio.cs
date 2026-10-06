@@ -370,7 +370,7 @@ namespace NovaStriker.Game.Audio
     // Feeds the context to Unity's mixer: sits on the object with the AudioListener
     public sealed class AudioOut : MonoBehaviour
     {
-        public Ctx ctx;
+        [System.NonSerialized] public Ctx ctx;
         void OnAudioFilterRead(float[] data, int channels) { ctx?.Fill(data, channels); }
     }
 }

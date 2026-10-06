@@ -258,8 +258,16 @@ namespace NovaStriker.Game.UI
     {
         public float spacing = 8;
         float h;
-        public override void CalculateLayoutInputVertical() { Lay(false); SetLayoutInputForAxis(h, h, -1, 1); }
-        public override void CalculateLayoutInputHorizontal() { base.CalculateLayoutInputHorizontal(); SetLayoutInputForAxis(0, 0, 1, 0); }
+        public override void CalculateLayoutInputVertical() { Lay(false); }
+        public override void CalculateLayoutInputHorizontal() { base.CalculateLayoutInputHorizontal(); }
+        // Its size for the layout around it: as wide as it is given, as tall as its rows
+        // (overridden directly, as SetLayoutInputForAxis differs between Unity versions)
+        public override float minWidth => 0;
+        public override float preferredWidth => 0;
+        public override float flexibleWidth => 1;
+        public override float minHeight => h;
+        public override float preferredHeight => h;
+        public override float flexibleHeight => -1;
         public override void SetLayoutHorizontal() { Lay(true); }
         public override void SetLayoutVertical() { Lay(true); }
         void Lay(bool apply)
