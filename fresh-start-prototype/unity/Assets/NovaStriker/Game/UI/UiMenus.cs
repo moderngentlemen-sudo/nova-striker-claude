@@ -22,6 +22,8 @@ namespace NovaStriker.Game.UI
         static readonly SettingDef[] SETTING_DEFS =
         {
             new SettingDef { key = "novaKit", label = "Nova's kit", opts = O("marksman", "Marksman: attachments, secondary weapons, dodge, skates", "sentinel", "Sentinel: Pass 1 kit") },
+            new SettingDef { key = "novaDefense", label = "Nova's LT move, Marksman kit", opts = O("dodge", "Dodge", "shield", "Absorbing shield: blocks from in front; what it takes powers up his attacks") },
+            new SettingDef { key = "novaParryStun", label = "Nova's perfect parry or shield block stuns the attacker", @bool = true },
             new SettingDef { key = "echoHead", label = "Echo's head (look only)", opts = O("helmet", "Full helmet, amber visor", "mask", "Survival mask", "bare", "Bare face") },
             new SettingDef { key = "echoKit", label = "Echo's kit", opts = O("hunter", "Hunter: blades, glaive, snares, reel", "pursuit", "Pursuit: Pass 1 kit") },
             new SettingDef { key = "echoBelt", label = "Echo's utility belt (snares), Hunter kit", opts = O("fire", "Tap fire (crouch + tap plants)", "lb", "LB / T (crouch + LB plants); tap fire is a quick shot") },
@@ -50,6 +52,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "shake", label = "Screen shake", @bool = true },
             new SettingDef { key = "charModels", label = "Character models", opts = O("builtin", "Built-in rigs", "models", "3D models where available (Resources/NovaStriker/Models)") },
             new SettingDef { key = "quality", label = "Graphics quality", opts = O("ultra", "Ultra (adds ambient occlusion)", "high", "High (bloom, shadows, grading)", "low", "Low") },
+            new SettingDef { key = "hdr", label = "HDR output (needs an HDR display with HDR on in the system)", @bool = true },
             new SettingDef { key = "volume", label = "Sound effects volume", range = new[] { 0f, 1, 0.05f } },
             new SettingDef { key = "music", label = "Music volume", range = new[] { 0f, 1, 0.05f } },
         };
@@ -71,6 +74,8 @@ namespace NovaStriker.Game.UI
             ("R", "Aim", "Right stick (free) or left stick (8-way)", "Mouse"),
             ("R", "Parry, Echo and Nova's Sentinel kit (first 4 frames are perfect)", "LT", "Q or L"),
             ("R", "Nova, Marksman kit: dodge. A quick hop the way you push the stick (a backstep with it centred), untouchable at the start; one in the air per jump. Dodge an attack at the last moment for a perfect dodge: enemies close by slow down, and you gain Overcharge and ultimate charge. You keep charging through it", "LT", "Q or L"),
+            ("R", "Nova, Marksman kit, absorbing shield (Settings: Nova's LT move): hold to raise a hard-light shield where you aim. It blocks strikes, shots and blasts from in front, and every hit it takes is absorbed: his attacks hit harder (up to +60%) and he glows brighter the more he holds. Raise it just before a hit for a perfect block (no cost, more energy). Each block wears its stability down (it grows back once lowered; broken, he reels). The energy holds for 6 s after the last block, then fades; an unguarded hit spills half of it. Walk, jump and dash with it up; fire or melee lowers it", "Hold LT", "Hold Q or L"),
+            ("S2", "Nova's perfect parry stuns (Settings): a perfect parry (Sentinel kit) or perfect shield block (Marksman kit) leaves the attacker stunned for a moment (heavy enemies more briefly; bosses only reel)", "Settings", ""),
             ("R", "Suit ability: Nova (Marksman kit) raises the hard-light Aegis for 5 s: it blocks every attack, and the damage it takes Overcharges his weapons (faster charging, harder hits). Press again to detonate it. Nova (Sentinel kit): Bulwark Pulse. Echo: his scarf ability for the current mode", "Y", "E, I, or middle click"),
             ("R", "Switch mode: Nova's bracer attachment (Lance, Volley, Arc, Prism) · Echo's scarf mode (Tether, Veil, Flare)", "RB", "R, U, or mouse back button"),
             ("R", "Nova, Marksman kit: fire · hold to charge the loaded attachment through three levels · let go on the flash after level 3 for a Perfect Release · keep holding to the Level 4 flash and let go for a sustained beam (steer it with your aim; dash or parry cuts it short)", "RT · hold RT", "Left click or K · hold"),
@@ -157,6 +162,8 @@ namespace NovaStriker.Game.UI
             Col("Gamepad", new[] { "Left stick move · Right stick aim · R3 switch target", "A jump · B dash · X melee · Y suit ability · RB mode", "RT fire · LT parry / dodge / guard / beam · LB character action", "LT + RT ultimate · D-pad swap character · Start pause" });
             foreach (var f in START_NOTES) start.Para(f, 13, Pal.muted);
             notice = start.Para("", 13, Pal.warm); notice.gameObject.SetActive(false);
+            var qrow = start.Row();
+            Btn.Make(qrow, "Quit game", QuitGame, 13, true);
         }
         static readonly string[] START_NOTES =
         {
@@ -185,6 +192,12 @@ namespace NovaStriker.Game.UI
             Btn.Make(row, "Boss: Lockwarden", () => H.boss("warden"));
             Btn.Make(row, "Boss: Stormcaller", () => H.boss("stormcaller"));
             Btn.Make(row, "Controls", () => ToggleHelp(true));
+            // Quit asks for a second press, so a stray A or click doesn't end the session
+            quitBtn = Btn.Make(row, "Quit game", () =>
+            {
+                if (quitArmed > 0) { QuitGame(); return; }
+                quitArmed = 3; quitBtn.GetComponentInChildren<Text>().text = "PRESS AGAIN TO QUIT"; Btn.SetOn(quitBtn, true);
+            });
             pause.Para("<b>Controller:</b> D-pad or left stick to move · left/right changes a list or slider · A to select · B to resume · LB top · RB settings", 13, Pal.muted);
             playerList = W.Rect(pause.content, "players");
             var pl = playerList.gameObject.AddComponent<VerticalLayoutGroup>(); pl.spacing = 6; pl.childControlWidth = pl.childControlHeight = true; pl.childForceExpandHeight = false;
@@ -237,9 +250,21 @@ namespace NovaStriker.Game.UI
             }
         }
 
+        Button quitBtn; float quitArmed;
+        void DisarmQuit() { quitArmed = 0; quitBtn.GetComponentInChildren<Text>().text = "QUIT GAME"; Btn.SetOn(quitBtn, false); }
+        public static void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
         public void SetPaused(bool on, World world)
         {
             paused = on; pause.visible = on; pauseWorld = world;
+            DisarmQuit();
             if (on) { RenderPlayerList(world); Collect(); focusIdx = 0; focusEl = focusables.FirstOrDefault(); pause.scroll.verticalNormalizedPosition = 1; padnav = true; }
         }
         void Collect() { focusables.Clear(); focusables.AddRange(pause.content.GetComponentsInChildren<Selectable>().Where(s => s.gameObject.activeInHierarchy && s.interactable)); }
@@ -323,6 +348,7 @@ namespace NovaStriker.Game.UI
         void UpdateMenus(float dt)
         {
             pulse.color = new Color(Pal.warm.r, Pal.warm.g, Pal.warm.b, 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime / 0.7f, 1));
+            if (quitArmed > 0) { quitArmed -= dt; if (quitArmed <= 0) DisarmQuit(); }
             // The mouse takes over: no controller focus ring; a click focuses what it clicked
             var ms = UnityEngine.InputSystem.Mouse.current;
             if (ms != null && ms.delta.ReadValue().sqrMagnitude > 4) padnav = false;

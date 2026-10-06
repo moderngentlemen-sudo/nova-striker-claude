@@ -574,6 +574,23 @@ namespace NovaStriker.Game.Audio
                 for (var i = 0; i < 6; i++) noise(0.06, 3000 + i * 500, 0.06, F.Bandpass, 7000, 0.05 + i * 0.03);
                 break;
               case "ultEnd": tone(880, 1320, 0.2, W.Sine, 0.04); break;
+              // ---- Nova's absorbing shield: each block rings a little higher as he stores more ----
+              case "nshieldOn": tone(520, 780, 0.1, W.Sine, 0.05); noise(0.06, 3200, 0.03, F.Highpass); break;
+              case "nshieldOff": tone(620, 420, 0.06, W.Sine, 0.02); break;
+              case "nshieldBlock":
+              {
+                if (!limit("nblock", 0.03)) break;
+                var k = ev.k; double f = 440 * System.Math.Pow(2, k * 1.0);
+                tone(ev.heavy ? 160 : 240, ev.heavy ? 90 : 170, 0.1 + (ev.heavy ? 0.08 : 0), W.Triangle, 0.05 + (ev.heavy ? 0.04 : 0)); noise(0.08, 3000, 0.06, F.Bandpass, 1400);
+                tone(f, f * 2, 0.22, W.Sine, 0.04 + 0.02 * k); tone(f * 1.5, 0, 0.18, W.Sine, 0.02 + 0.015 * k, 0.04);
+                if (ev.perfect) { tone(1320, 2640, 0.2, W.Sine, 0.07); noise(0.12, 4500, 0.06, F.Highpass); }
+                if (ev.max) { tone(660, 1320, 0.35, W.Sine, 0.06, 0.06); tone(990, 1980, 0.35, W.Triangle, 0.04, 0.1); }
+                break;
+              }
+              case "nshieldBreak": noise(0.35, 2800, 0.2, F.Highpass, 800); for (var i = 0; i < 5; i++) tone(1900 + R() * 1500, 700, 0.12, W.Triangle, 0.03, i * 0.03); tone(220, 70, 0.35, W.Sawtooth, 0.08); break;
+              case "nshieldReady": tone(780, 1170, 0.12, W.Sine, 0.04); tone(1170, 0, 0.1, W.Triangle, 0.025, 0.07); break;
+              case "absorbSpill": tone(700, 220, 0.3, W.Sine, 0.05); noise(0.2, 1800, 0.05, F.Bandpass, 400); break;
+              case "parryStun": tone(1760, 1320, 0.12, W.Triangle, 0.04); tone(2350, 1760, 0.12, W.Triangle, 0.03, 0.07); tone(2960, 2200, 0.14, W.Sine, 0.025, 0.14); break;
               // ---- RAM ----
               case "guardOn": tone(180, 140, 0.12, W.Triangle, 0.06); noise(0.08, 900, 0.06, F.Lowpass); tone(1100, 0, 0.05, W.Sine, 0.025); break;
               case "guardOff": tone(160, 120, 0.06, W.Triangle, 0.025); break;

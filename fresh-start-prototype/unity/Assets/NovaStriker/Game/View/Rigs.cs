@@ -42,6 +42,7 @@ namespace NovaStriker.Game
     {
         public TObj root, size, flip, body, hips, spine, head, collar;
         public Limb armN, armF, legN, legF;
+        public float absorbGlow, absorbFlash;   // (Nova's absorbed energy, shown on the rig: Anim.AbsorbGlow)
         public RigExtra extra;
         public RigMats mats;
         public string @char;

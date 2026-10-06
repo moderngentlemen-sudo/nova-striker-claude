@@ -185,6 +185,9 @@ namespace NovaStriker.Sim
         public double plate, overclockT, tuneT, ampK = 1;
         public bool fixRevive;
         public double padCd, furyT;
+        // Nova's absorbing shield (NOVA_SHIELD)
+        public double nshieldT, nshieldOffT = 99, absorb, absorbIdle = 999, nshieldStab = 100, nshieldBlockT = 999;
+        public bool nshieldBroken;
         public double aimX = 1, aimY;
         public bool aimFree;
         public double wallT, wallStick, wallCoyote, lastWallDir, dashChargeT, rifleT, rifleCd;

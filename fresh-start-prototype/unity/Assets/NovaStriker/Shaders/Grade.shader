@@ -2,6 +2,10 @@
 //   three.js's ACES Filmic tone mapping (with the route's exposure), then up to four screen-space shockwaves,
 //   the colour grade and vignette (in display space, as in the prototype), then the impact frame in one of its
 //   seven looks, or the dimming while an ultimate is called. URP's own tone mapping is off (GameLook.cs).
+// HDR output (Settings: HDR output, on an HDR display): URP hands this pass the frame in the display's gamut,
+// scaled to its paper white in nits, and only encodes it afterwards. The pass undoes that, makes the same picture
+// as in SDR, then lets the highlights above a knee rise toward the display's peak (energy, bloom, blasts), and
+// hands it back in the display's gamut and nits. Below the knee the picture matches SDR.
 Shader "NovaStriker/Grade"
 {
     SubShader
@@ -28,6 +32,27 @@ Shader "NovaStriker/Grade"
             float _Amount, _Invert, _Zoom, _Split, _Seed, _InkTime, _Ring, _Glitch, _Dim, _Style, _Tinted, _Phase;
             float2 _Center;
             float3 _Accent;
+            float _Hdr, _HdrPaperWhite, _HdrPeak, _HdrGamut;   // (_HdrGamut 1: Rec. 2020 primaries; 0: Rec. 709)
+
+            static const float3x3 TO2020 = float3x3(0.627402, 0.329292, 0.043306, 0.069095, 0.919544, 0.011360, 0.016394, 0.088028, 0.895578);
+            static const float3x3 FROM2020 = float3x3(1.660496, -0.587656, -0.072840, -0.124547, 1.132895, -0.008348, -0.018154, -0.100597, 1.118751);
+            // The frame as rendered (linear, Rec. 709, 1 = paper white), whichever way URP is outputting
+            float3 Scene(float3 c)
+            {
+                if (_Hdr < 0.5) return c;
+                c /= max(_HdrPaperWhite, 1.0);
+                return _HdrGamut > 0.5 ? mul(FROM2020, c) : c;
+            }
+            // The finished picture (display values, 0..1) for an HDR display: the highlights extended toward its peak
+            float3 HdrOut(float3 c)
+            {
+                float3 lin = SRGBToLinear(saturate(c));
+                float peak = clamp(_HdrPeak / max(_HdrPaperWhite, 1.0), 1.0, 6.0);
+                float m = max(max(lin.r, lin.g), lin.b), e = smoothstep(0.55, 1.0, m);
+                lin *= 1.0 + (peak - 1.0) * e * e;
+                if (_HdrGamut > 0.5) lin = mul(TO2020, lin);
+                return lin * max(_HdrPaperWhite, 1.0);
+            }
 
             // GLSL's mod (HLSL's fmod truncates toward zero)
             float  gmod(float x, float y)   { return x - y * floor(x / y); }
@@ -53,7 +78,7 @@ Shader "NovaStriker/Grade"
             // The rendered frame at uv, tone mapped and in display (sRGB) values, as three's OutputPass leaves it
             float3 Display(float2 uv)
             {
-                float3 c = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv, 0).rgb;
+                float3 c = Scene(SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv, 0).rgb);
                 return LinearToSRGB(ACESFilmic(max(c, 0.0)));
             }
             // look.js GradeShader at uv: the shockwaves bend the picture, then the grade
@@ -266,6 +291,7 @@ Shader "NovaStriker/Grade"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 c = Ink(input.texcoord.xy);
                 // back to linear: URP writes the display encoding on its final blit
+                if (_Hdr > 0.5) return half4(HdrOut(c), 1.0);
                 return half4(SRGBToLinear(saturate(c)), 1.0);
             }
             ENDHLSL

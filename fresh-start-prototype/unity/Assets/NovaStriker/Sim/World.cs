@@ -95,6 +95,18 @@ namespace NovaStriker.Sim
         };
 
         static readonly HashSet<string> SPIN_SPARED = new HashSet<string> { "stagger", "snared", "dazed", "attack", "charge", "dive" };
+        // Settings: Nova's perfect parry stuns the attacker: dizzy, out of its attack, for a while (a boss only reels)
+        public void ParryStun(Player p, Enemy e)
+        {
+            if (e == null || e.dead || e.type == "post" || e.type == "turret") return;
+            if (e.boss) { e.parried = 2; return; }
+            double ticks = e.light ? NOVA_SHIELD.stunLight : NOVA_SHIELD.stunHeavy;
+            director.Release(e);
+            e.stun = e.state == "hitstun" ? JMath.Max(e.stun, e.st + ticks) : ticks;
+            if (e.state != "hitstun") { e.state = "hitstun"; e.st = 0; }
+            e.atk = null; e.dizzy = true; e.flash = JMath.Max(e.flash, 4);
+            Emit("parryStun", new Ev { p = p, e = e, x = e.x, y = e.y + e.h * 0.6 });
+        }
         // Ticks Echo's deflect spin stuns an enemy for: the setting (seconds) for a light one, DEFLECT.heavyMult of it for a heavy one
         public static double SpinStunTicks(Enemy e)
         {

@@ -41,6 +41,7 @@ namespace NovaStriker.Game
         public readonly UltFX ult;
         public readonly RamFX ram;
         public readonly FixFX fixfx;
+        public readonly NovaShieldFX nshield;
         public readonly FxText texts;
 
         public Fx(TObj scene, Dictionary<Player, Rig> rigs)
@@ -85,7 +86,7 @@ namespace NovaStriker.Game
             ghosts = new Ghosts(scene);
             charge = new ChargeFX(this);
             trails = new SweepTrails(scene); aegis = new AegisFX(this); beam = new BeamFX(this);
-            sub = new SubFX(this); ult = new UltFX(this); ram = new RamFX(this); fixfx = new FixFX(this);
+            sub = new SubFX(this); ult = new UltFX(this); ram = new RamFX(this); fixfx = new FixFX(this); nshield = new NovaShieldFX(this);
             for (int i = 0; i < 10; i++)
             {
                 var m = new TMesh(Geo.Plane(2, 2), new TMat(TMat.Kind.Basic) { map = tex.ring, transparent = true, opacity = 0, blending = Blending.Additive, depthWrite = false, side = Side.Double });
@@ -314,7 +315,7 @@ namespace NovaStriker.Game
             trails.Update(dt, world, view.rigs);
             aegis.Update(dt, world);
             beam.Update(dt, world, view);
-            sub.Update(dt, world, view); ult.Update(dt, world, view); ram.Update(dt, world, view); fixfx.Update(dt, world, view);
+            sub.Update(dt, world, view); ult.Update(dt, world, view); ram.Update(dt, world, view); fixfx.Update(dt, world, view); nshield.Update(dt, world, view);
             UpdateSlashes(world);
             SlideFx(world, view);
             PoundFx(world, view, dt);

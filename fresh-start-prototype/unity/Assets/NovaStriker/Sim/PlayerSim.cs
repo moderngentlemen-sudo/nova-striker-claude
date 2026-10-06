@@ -146,7 +146,7 @@ namespace NovaStriker.Sim
             if (p.@char == "echo") TickEcho(p, world, cmd);
             else if (p.@char == "ram") TickRam(p, world);
             else if (p.@char == "fix") TickFix(p, world);
-            else TickFocus(p, world);
+            else { TickFocus(p, world); TickNovaShield(p, world); }
 
             if (p.state == "downed") { UpdateDowned(p, cmd, world); return; }
             UpdateLock(p, cmd, world);
@@ -177,6 +177,7 @@ namespace NovaStriker.Sim
                 case "pound": StatePound(p, cmd, world); break;
                 case "dodge": StateDodge(p, cmd, world); break;
                 case "guard": StateGuard(p, cmd, world); break;
+                case "nshield": StateNovaShield(p, cmd, world); break;
                 case "rush": StateRush(p, cmd, world); break;
                 case "leap": StateLeap(p, cmd, world); break;
                 case "patch": StatePatch(p, cmd, world); break;
@@ -323,6 +324,7 @@ namespace NovaStriker.Sim
         static bool TryParry(Player p, World world)
         {
             if (p.buf.parry > PARRY_BUFFER) return false;
+            if (marksman(p) && NovaShieldOn) return StartNovaShield(p, world);   // ...or raises the absorbing shield (option)
             if (marksman(p)) return TryDodge(p, world);        // Nova's Marksman kit dodges instead
             if (p.@char == "ram") return StartGuard(p, world);   // RAM raises the Rampart
             if (p.@char == "fix") return StartPatch(p, world);   // Fix runs the Patch Beam

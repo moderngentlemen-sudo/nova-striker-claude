@@ -72,6 +72,12 @@ namespace NovaStriker.Game
                 case "riseBlast": return new E(0.3f, 0.6f, 90, 2);
                 case "ultReady": return new E(0.2f, 0.7f, 150, 2);
                 case "ultCut": return new E(0.15f, 0.5f, 40, 2);
+                // Nova's absorbing shield: blocks in his bracer arm, stronger as he stores more
+                case "nshieldOn": return new E(0, 0.2f, 35, 1);
+                case "nshieldBlock": { float d = (float)ev.dmg, q = (float)ev.k; return ev.perfect ? new E(0.3f, 0.9f, 120, 3) : new E(Mathf.Min(0.7f, 0.15f + d * 0.025f), 0.4f + 0.3f * q, 60 + Mathf.Min(70, d * 3), 2); }
+                case "nshieldBreak": return new E(0.8f, 0.8f, 220, 4);
+                case "absorbSpill": return new E(0.2f, 0.3f, 90, 2);
+                case "parryStun": return new E(0.1f, 0.5f, 70, 2);
                 // Version 10: RAM's blocks land in the hands that hold the shield; Fix feels her tools
                 case "guardOn": return new E(0, 0.25f, 40, 1);
                 case "guardBlock": { float d = (float)ev.dmg; return new E(Mathf.Min(0.8f, 0.2f + d * 0.03f), 0.5f, 70 + Mathf.Min(80, d * 3), 2); }

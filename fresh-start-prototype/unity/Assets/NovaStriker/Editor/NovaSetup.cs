@@ -4,7 +4,7 @@
 //     their shaders and keyword variants in builds)
 //   - the URP pipeline asset with two renderers (0: High and Low; 1: Ultra, adding Screen Space Ambient
 //     Occlusion), each with the Grade pass as a Full Screen Pass feature after post-processing
-//   - player settings: linear colour space, both input backends (the Input System drives the game)
+//   - player settings: linear colour space, HDR output allowed, both input backends (the Input System drives the game)
 //   - the scene (Scenes/NovaStriker.unity) with the GameMain object, added to the build
 // Running it again rebuilds the generated assets in place.
 using System.IO;
@@ -32,6 +32,9 @@ namespace NovaStriker.EditorTools
             GraphicsSettings.defaultRenderPipeline = asset;
             for (int i = 0; i < QualitySettings.names.Length; i++) { QualitySettings.SetQualityLevel(i, false); QualitySettings.renderPipeline = null; }
             PlayerSettings.colorSpace = ColorSpace.Linear;
+            // HDR output: allowed, but off at launch; the game turns it on when its HDR setting asks (View.UpdateHdr)
+            PlayerSettings.allowHDRDisplaySupport = true;
+            PlayerSettings.useHDRDisplay = false;
             SetInputBackends();
             MakeScene();
             AssetDatabase.SaveAssets();

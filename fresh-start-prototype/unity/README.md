@@ -76,6 +76,42 @@ SimTests/       the parity harness (dotnet + node)
   noise, biquads, gains, delay, compressor and parameter automation. It renders in `OnAudioFilterRead` on the
   camera, so `Sound` and `Music` port almost call for call.
 
+## Unity-only additions
+
+These are in the Unity build only, not in the browser prototype. Each one is off by default, so with its
+default settings the simulation is still the prototype's (the parity tests run with the defaults).
+
+- **Nova's absorbing shield** (Settings › *Nova's LT move, Marksman kit* › *Absorbing shield*). It replaces
+  his dodge on LT (Q or L). While held, a hard-light shield stands where he aims and blocks strikes, shots and
+  blasts from in front.
+  - **Energy.** Every hit it blocks is absorbed as energy. At full energy his attacks deal up to 60% more
+    damage and poise damage.
+  - **Glow.** As the energy builds, his energy lines burn brighter, his armour picks up a warm rim of light
+    and a soft aura grows around him. Each block makes this flare, and each quarter of the gauge sends out a
+    pulse.
+  - **Perfect block.** Raising it within 6 ticks of a hit costs no stability and gives more energy.
+  - **Stability.** Each ordinary block wears down its stability, which grows back once the shield is lowered.
+    If it breaks, he reels.
+  - **Losing energy.** The energy holds for 6 seconds after the last block, then fades. An unguarded hit
+    spills half of it.
+  - The tuning is `NOVA_SHIELD` in `Sim/Config.cs`, the sim is `Sim/PlayerSim.Nova.cs` and the look is
+    `Game/View/NovaShieldFx.cs`.
+- **Perfect parries stun** (Settings › *Nova's perfect parry or shield block stuns the attacker*). A perfect
+  parry (Sentinel kit) or a perfect shield block leaves the attacker dizzy:
+  - light enemies for 80 ticks;
+  - heavy enemies for 45 ticks;
+  - bosses only reel.
+- **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
+  press.
+- **HDR output** (Settings › *HDR output*). On an HDR display with HDR turned on in the system, the game
+  switches the display into HDR mode.
+  - **How it works.** The Grade pass makes the same picture as in SDR. Highlights above a knee (energy, bloom,
+    blasts) then rise toward the display's peak, up to 6× paper white.
+  - **Build settings.** `allowHDRDisplaySupport` is on and `useHDRDisplay` is off, so the game starts in SDR
+    until the setting is turned on.
+  - **Not yet tested on an HDR display.** If highlights look wrong, the code to adjust is `HdrOut` in
+    `Shaders/Grade.shader`.
+
 ## Differences from the browser prototype
 
 - **Fonts.** The UI uses Unity's built-in font. To use the prototype's fonts, put `SairaCondensed-Bold`,

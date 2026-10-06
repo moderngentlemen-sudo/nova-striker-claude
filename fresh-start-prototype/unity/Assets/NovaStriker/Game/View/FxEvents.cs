@@ -281,6 +281,7 @@ namespace NovaStriker.Game
                 case "focusUp": Sprite(ev.p.x, ev.p.y + ev.p.h + 0.35, "star", NOVA_GOLD, 0.45f + F(ev.level) * 0.08f, 0.3f, 1.3f); break;
                 case "focusLost": Burst(ev.p.x, ev.p.y + 1.2, "#9aa6b8", 8, 3, 0.25f, 0.3f); break;
                 case "aegisOn": case "aegisHit": case "aegisOff": aegis.OnEvent(ev); break;
+                case "nshieldOn": case "nshieldBlock": case "nshieldBreak": case "nshieldReady": case "absorbSpill": case "parryStun": nshield.OnEvent(ev); break;
                 case "beamStart":
                 {
                     beam.OnEvent(ev);

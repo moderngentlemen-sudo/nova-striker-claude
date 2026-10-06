@@ -372,6 +372,16 @@ namespace NovaStriker.Game
             {
                 P.Set(spine: -0.5f, head: 0.35f, shN: 1.0f, shF: 1.4f, elN: 0.7f, elF: 0.4f, hipN: 0.35f, knN: -0.55f, hipF: -0.1f, twist: -0.3f); rate = 30;
             }
+            else if (st == "nshield")
+            {
+                // Nova's absorbing shield: the bracer arm thrust out where he aims (the shield stands off it), braced low
+                float ga = Mathf.Atan2((float)p.guardDir.y, Mathf.Abs((float)p.guardDir.x));
+                bool walk = Mathf.Abs(pvx) > 0.3f; if (walk) rig.phase += dt * Mathf.Abs(pvx) * 2.4f;
+                float s2 = walk ? Mathf.Sin(rig.phase) * 0.22f : 0;
+                P.Set(spine: 0.18f, shN: ga + PI / 2 + 0.05f, elN: 0.12f, shF: 0.9f, elF: 1.3f, hipN: 0.55f + s2, knN: -0.8f, hipF: -0.45f - s2, knF: -0.4f, hipY: 0.86f, head: -0.08f + 0.2f * ga);
+                if (!p.onGround) P.Set(hipN: 0.6f, knN: -0.9f, hipF: -0.2f, knF: -0.7f, hipY: 0.95f);
+                rate = 36;
+            }
             else if (st == "bulwark")
             {
                 P.Set(spine: 0.15f, shN: aimAng + PI / 2 + 0.15f, elN: 0.02f, shF: 0.7f, elF: 1.1f, hipN: 0.5f, knN: -0.4f, hipF: -0.4f); rate = 40;
@@ -500,7 +510,8 @@ namespace NovaStriker.Game
                 float charge = Mathf.Max(Mathf.Max(Lv(stage), Lv(bstage)), Mathf.Max(DashLevelOf(p), Mathf.Max(st == "beam" ? 4 : 0, st == "pound" && p.pound != null ? (float)p.pound.level : 0)));
                 bool flash = stage == "perfect" || bstage == "perfect";
                 rig.mats.energy.emissiveIntensity = 2.2f + charge * 1.2f + (p.chargeT > 0 || p.burstT > 0 || p.dashChargeT > 0 || st == "beam" ? Mathf.Sin(t * 30) * 0.4f : 0) + (flash ? 2.5f : 0)
-                    + (p.overcharge > 0 ? 1.2f + Mathf.Sin(t * 12) * 0.5f : 0) + (st == "ult" ? 4 + Mathf.Sin(t * 36) * 0.8f : 0);
+                    + (p.overcharge > 0 ? 1.2f + Mathf.Sin(t * 12) * 0.5f : 0) + (st == "ult" ? 4 + Mathf.Sin(t * 36) * 0.8f : 0)
+                    + AbsorbGlow(rig, p, t, dt);
                 foreach (var j in ex.jets) { j.visible = p.thrusting; j.scale.set(1, 0.8f + R() * 0.5f, 1); }
                 ex.module.visible = mk; foreach (var b in ex.blades) b.visible = mk;
                 if (mk && ex.moduleTint != p.attachment)
@@ -581,5 +592,26 @@ namespace NovaStriker.Game
             rig.mats.energy.emissiveIntensity = 2.0f + charge * 1.1f + (p.chargeT > 0 ? Mathf.Sin(t * 30) * 0.35f : 0) + (st == "patch" ? 1 : 0) + (st == "ult" ? 4 + Mathf.Sin(t * 36) * 0.8f : 0)
                 + (p.overclockT > 0 ? 0.8f + Mathf.Sin(t * 14) * 0.4f : 0);
         }
-    }
+    
+        // The energy Nova's shield has absorbed (Settings: Nova's LT move): his energy lines burn brighter and his
+        // armour takes on a warm rim of light, rising with each hit it takes and breathing slowly; a block makes it
+        // flare for a moment. Returns the energy lines' extra emission.
+        static float AbsorbGlow(Rig rig, Player p, float t, float dt)
+        {
+            float k = Mathf.Clamp01((float)p.absorb / 100);
+            rig.absorbGlow += (k - rig.absorbGlow) * (1 - Mathf.Exp(-dt * 6));
+            rig.absorbFlash = Mathf.Max(0, rig.absorbFlash - dt * 3);
+            float g = rig.absorbGlow, breathe = 1 + 0.18f * Mathf.Sin(t * (2.2f + 2.5f * g)) * g;
+            if (rig.cloak < 0.001f)
+                foreach (var m in new[] { rig.mats.@base, rig.mats.trim })
+                {
+                    if (m.rim == null) continue;
+                    float rb = (float)m.userData["rimBase"]; var rc = (Color)m.userData["rimCol"];
+                    float w = Mathf.Min(1, g * 0.9f + rig.absorbFlash * 0.5f);
+                    m.SetRim(rb + (1.1f * g + 0.8f * rig.absorbFlash) * breathe, 0, w > 0.001f ? Color.Lerp(rc.linear, ABSORB_RIM.linear, w).gamma : rc);
+                }
+            return (2.6f * g + 2 * rig.absorbFlash) * breathe;
+        }
+        static readonly Color ABSORB_RIM = new Color(1f, 0.82f, 0.45f);
+}
 }

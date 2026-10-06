@@ -45,7 +45,24 @@ namespace NovaStriker.Game.UI
             if (Stage(bstage) != null) o.Add(Chip.Of($"{S.name} {Stage(bstage)}", bstage == "perfect" ? "perfect" : "ready"));
             o.Add(Chip.Of("Focus " + Rep("◆", f) + Rep("◇", MARKSMAN.focus.max - f), f > 0 ? "focuson" : ""));
             o.Add(Chip.Bar(44, fuel, Pal.C("#ffd88a")));
+            NovaShield(o, p);
             Aegis(o, p);
+        }
+        // His absorbing shield (Settings: Nova's LT move): its stability, and the power the energy it took gives him
+        static void NovaShield(List<Chip> o, Player p)
+        {
+            if (PlayerSim.NovaShieldOn)
+            {
+                float frac = (float)System.Math.Max(0, p.nshieldStab / NOVA_SHIELD.stability);
+                if (p.nshieldBroken) o.Add(Chip.Of("Shield broken", "red"));
+                else o.Add(Chip.Of("Shield", p.state == "nshield" ? "perfect" : ""));
+                o.Add(Chip.Bar(44, frac, p.nshieldBroken ? Pal.C("#ff5a6e") : Pal.C("#9fe8ff")));
+            }
+            if (p.absorb > 0.5)
+            {
+                int pct = (int)System.Math.Round((PlayerSim.AbsorbMult(p) - 1) * 100);
+                o.Add(Chip.Of($"Power +{pct}%", p.absorb >= 100 ? "perfect" : "over"));
+            }
         }
         // The hard-light Aegis: its strength while up, else its cooldown; Overcharge from the damage it soaked
         static void Aegis(List<Chip> o, Player p)

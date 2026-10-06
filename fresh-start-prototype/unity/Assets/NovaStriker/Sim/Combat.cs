@@ -115,6 +115,8 @@ namespace NovaStriker.Sim
             bool fury = op != null && op.furyT > 0;
             if (fury && hit.kb != null && !hit.furied) { hit = hit.Clone(); hit.furied = true; hit.kb = new[] { hit.kb[0] * POWERUPS.fury.kb, hit.kb[1] }; }
             double dmg = hit.dmg * (ambush ? SCARF.ambushDmg : 1) * (fury ? POWERUPS.fury.dmg : 1), poise = hit.poise;
+            // Nova's absorbed energy (the absorbing shield option) makes everything he lands hit harder
+            if (op != null && op.absorb > 0) { double am = PlayerSim.AbsorbMult(op); dmg *= am; poise *= 1 + (am - 1) / NOVA_SHIELD.bonus * NOVA_SHIELD.poiseBonus; }
             bool armored = e.armor > 0;
             if (armored)
             {
@@ -251,6 +253,28 @@ namespace NovaStriker.Sim
             var attacker = hit.owner; var ae = attacker as Enemy;
             bool unblockable = hit.cat == "unblockable" || hit.unblockable;
             double posx = p.x, posy = p.y + p.h * 0.6;
+            // Nova's absorbing shield (option): like the Rampart, what comes from in front is blocked, and absorbed as energy
+            if (p.@char == "nova" && p.state == "nshield" && !p.nshieldBroken && !hit.ground)
+            {
+                V2? src = hit.proj != null ? new V2(hit.proj.x, hit.proj.y) : hit.at != null ? hit.at : attacker != null ? new V2(attacker.x, attacker.y + or(attacker.h, 1) * 0.5) : (V2?)null;
+                if (src != null && world.GuardFaces(p, src.Value.x, src.Value.y))
+                {
+                    bool perfect = p.nshieldT <= NOVA_SHIELD.perfect;
+                    if (ae != null && hit.proj == null)
+                    {
+                        if (perfect)
+                        {
+                            if (ae.boss) ae.parried = 2;
+                            ae.poise += 40; ae.hitstop = 6;
+                            if (!SETTINGS.novaParryStun && ae.state == "attack") { ae.state = "recover"; ae.st = 0; }
+                        }
+                        if (ae.state == "charge") { ae.state = "dazed"; ae.st = 0; ae.vx = -ae.facing * 4; world.Emit("chargeCrash", new Ev { e = ae }); }
+                    }
+                    if (perfect && SETTINGS.novaParryStun && ae != null) world.ParryStun(p, ae);
+                    PlayerSim.NovaShieldBlock(p, world, perfect ? 0 : hit.dmg * Diff.dmg, perfect, src.Value.x, src.Value.y, hit.heavy || unblockable);
+                    return "guarded";
+                }
+            }
             // RAM's Rampart: a strike, a blast or a shot from in front of it is blocked (shockwaves along the floor go under it)
             if (p.@char == "ram" && p.state == "guard" && !p.guardBroken && !hit.ground)
             {
@@ -320,6 +344,7 @@ namespace NovaStriker.Sim
                     }
                     else PlayerSim.AddResolve(p, 10);
                     if (perfect) PlayerSim.GainUlt(p, ULT.gain.perfect, world);
+                    if (perfect && p.@char == "nova" && SETTINGS.novaParryStun && ae != null) world.ParryStun(p, ae);
                     world.Emit("parry", new Ev { x = posx, y = posy, p = p, perfect = perfect, heavy = hit.heavy });
                     if (perfect) world.Bark(p, "perfect", 0.35);
                     return "parried";
@@ -341,6 +366,7 @@ namespace NovaStriker.Sim
             bool stalwart = p.@char == "ram" && (p.state == "rush" || p.state == "leap" || (!hit.heavy && !unblockable));
             p.hp -= dmg;
             PlayerSim.GainUlt(p, dmg * ULT.gain.taken, world);
+            if (p.@char == "nova") PlayerSim.NovaSpill(p, world);
             PlayerSim.BreakVeil(p, world, "hit");
             if (p.@char == "echo")
             {

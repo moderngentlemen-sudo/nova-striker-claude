@@ -40,7 +40,7 @@ namespace NovaStriker.Game
         readonly Spk[] spk = new Spk[160]; int si;
         readonly DynMesh spkMesh;
 
-        static Texture2D HexTex(bool cracks) => Fx.CanvasTex(256, (g, s) =>
+        internal static Texture2D HexTex(bool cracks) => Fx.CanvasTex(256, (g, s) =>
         {
             var grad = g.createLinearGradient(0, 0, s, 0);
             grad.addColorStop(0, "rgba(255,255,255,0.95)"); grad.addColorStop(0.18f, "rgba(255,255,255,0.28)"); grad.addColorStop(0.82f, "rgba(255,255,255,0.28)"); grad.addColorStop(1, "rgba(255,255,255,0.95)");

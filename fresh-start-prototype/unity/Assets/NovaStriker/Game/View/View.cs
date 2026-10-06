@@ -578,6 +578,7 @@ namespace NovaStriker.Game
             else if (T == "ramSplat" && ev.n >= 2) StartImpact(ev.x, ev.y, 0.9f);
             else if (T == "kineticRelease" && ev.k >= 0.8) StartImpact(ev.x, ev.y, 0.9f);
             else if (T == "perfectGuard" && ev.heavy) StartImpact(ev.x, ev.y, 0.7f);
+            else if (T == "nshieldBlock" && ev.perfect && ev.heavy) StartImpact(ev.x, ev.y, 0.7f);
             else if (T == "ramSlam") StartImpact(ev.x, ev.y, 1.4f, true);
             else if (T == "podLand") StartImpact(ev.x, ev.y + 1, 1.1f, true);
             if (T == "ultNova") punch = Mathf.Min(punch, -0.6f);
@@ -623,6 +624,8 @@ namespace NovaStriker.Game
                 case "quake": return 0.4f; case "upliftBlast": return 0.2f; case "linkHit": return 0.05f; case "ramSlam": return 1; case "fortify": return 0.2f;
                 case "padBounce": return 0.05f; case "rivetBlast": return 0.12f; case "sparkRing": return 0.2f; case "podLand": return 0.7f; case "overhaulPulse": return 0.3f;
                 case "gadgetEnd": return ev.why == "broken" ? 0.1f : 0;
+                // Nova's absorbing shield
+                case "nshieldBlock": return ev.perfect ? 0.16f : ev.heavy ? 0.18f : 0.06f; case "nshieldBreak": return 0.4f; case "parryStun": return 0.1f;
             }
             return 0;
         }
@@ -642,6 +645,7 @@ namespace NovaStriker.Game
                 case "upliftBlast": return 0.25f; case "ramSlam": return 1.3f; case "podLand": return 0.8f; case "overhaulPulse": return 0.7f; case "overhaulDone": return 0.6f;
                 case "fortify": return 0.4f; case "wallUp": return 0.25f; case "leapLand": return 0.3f; case "provoke": return 0.35f; case "sparkRing": return 0.3f;
                 case "gadgetUp": return 0.15f; case "powerUp": return 0.15f;
+                case "nshieldBlock": return (ev.perfect ? 0.25f : 0.06f) + 0.12f * (float)ev.k + (ev.max ? 0.4f : 0); case "nshieldBreak": return 0.25f;
             }
             return 0;
         }
@@ -716,6 +720,28 @@ namespace NovaStriker.Game
             // editor setup makes both)
             int renderer = SETTINGS.quality == "ultra" ? 1 : 0;
             if (renderer != rendererIndex) { rendererIndex = renderer; camera.GetUniversalAdditionalCameraData().SetRenderer(renderer); }
+            UpdateHdr();
+        }
+
+        // HDR output (Settings): switch the display's HDR mode to match the setting (where the display offers it),
+        // and tell the Grade pass how URP is handing it the frame (its paper white, peak and colour gamut)
+        bool? hdrAsked;
+        void UpdateHdr()
+        {
+            var H = HDROutputSettings.main;
+            bool avail = H != null && H.available, want = SETTINGS.hdr && avail;
+            if (avail && hdrAsked != want && !H.HDRModeChangeRequested)
+            {
+                hdrAsked = want;
+                if (H.active != want) H.RequestHDRModeChange(want);
+            }
+            bool on = avail && H.active;
+            grade.SetFloat("_Hdr", on ? 1 : 0);
+            if (!on) return;
+            float paper = Mathf.Max(80, H.paperWhiteNits), peak = H.maxToneMapLuminance > 0 ? H.maxToneMapLuminance : 1000;
+            var g = H.displayColorGamut;
+            grade.SetFloat("_HdrPaperWhite", paper); grade.SetFloat("_HdrPeak", Mathf.Max(paper, peak));
+            grade.SetFloat("_HdrGamut", g == ColorGamut.Rec2020 || g == ColorGamut.HDR10 || g == ColorGamut.DolbyHDR ? 1 : 0);
         }
 
         // Sim point -> pixel position on the screen, from the top left (as the prototype's CSS pixels)
