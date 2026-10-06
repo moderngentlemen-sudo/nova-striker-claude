@@ -22,7 +22,8 @@ easy to find (see *Where things are*).
 
 ## Open it
 
-1. Install **Unity 6.3** with the Hub (the project is pinned to 6000.3.25f1, but any 6000.3 release opens it). Add
+1. Install **Unity 6000.3.25f1** with the Hub. Another 6000.3 release opens it, but use this exact version to
+   avoid upgrade prompts and changed project files. Add
    the `unity/` folder as a project and open it.
 2. The packages install from `Packages/manifest.json`: URP 17.3.0, Input System 1.17.0 and uGUI 2.0.0.
 3. Run the menu **Nova Striker › Set Up Project**. It makes the assets the code needs:
@@ -37,6 +38,35 @@ easy to find (see *Where things are*).
 4. Open `Scenes/NovaStriker.unity` and press Play. Click, press a key, or press a gamepad button to join.
 
 The controls are the prototype's. See `../README.md`, or press H or View in game.
+
+## Testing on your own computer
+
+This is the quickest way to try a change: there's no build to wait for.
+
+1. **Get the code.** In GitHub Desktop, clone the repository and switch to the branch you're testing (for
+   example `nova-striker-unity-claude`). Open `fresh-start-prototype/unity` in Unity and follow *Open it*
+   above. The first import takes a while; later opens are quick.
+2. **Pick up new changes.** Click *Fetch origin*, then *Pull origin*, in GitHub Desktop. Switch back to Unity:
+   it recompiles on its own in a few seconds. Press Play.
+3. **Run Set Up Project again** when a change touches `Editor/NovaSetup.cs` or adds a shader. It is always safe
+   to run again: it rebuilds the generated assets in place.
+4. **If something goes wrong,** open *Window › General › Console*. Copy the red errors into the chat: they say
+   exactly where the problem is.
+5. **Before sharing a version,** make one real build. Use *Nova Striker › Build for This Platform*, or the GitHub
+   workflow (see *Building a game you can run*). The workflow builds from a clean copy of the repository, so it
+   also catches anything that only works on your computer by accident. Play mode is very close to a built game,
+   but speed, fullscreen and some shader details can differ.
+
+**What stays on your computer.** The files *Set Up Project* and Unity make are listed in `.gitignore`, so git
+leaves them out:
+
+- the materials, pipeline, scene and settings;
+- `ProjectSettings/`;
+- every `.meta` file.
+
+Committing from your computer only picks up real changes. Because `.meta` files are ignored, anything you add
+to `Resources/NovaStriker/Models` (character models) stays on your computer too. That is fine for testing. To
+keep models in the repository, the ignore rules for them need changing first.
 
 ## Where things are
 

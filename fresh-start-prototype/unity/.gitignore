@@ -19,3 +19,13 @@
 # The parity harness's build output
 SimTests/bin/
 SimTests/obj/
+
+# Made on each computer by Nova Striker > Set Up Project (or by Unity itself), so they stay out of the repository:
+# the templates, pipeline and scene are rebuilt from code, and Unity writes its own settings and .meta files
+*.meta
+/Assets/NovaStriker/Resources/NovaStriker/*.mat
+/Assets/NovaStriker/Settings/
+/Assets/NovaStriker/Scenes/
+/Packages/packages-lock.json
+/ProjectSettings/*
+!/ProjectSettings/ProjectVersion.txt
