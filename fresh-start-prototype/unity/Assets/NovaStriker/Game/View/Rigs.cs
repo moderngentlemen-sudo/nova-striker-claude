@@ -114,21 +114,29 @@ namespace NovaStriker.Game
         {
             if (charId == "nova") return BuildNovaRig();
             if (charId == "ram" || charId == "fix") return BuildNewRig(charId);
-            var c = CHARS[charId]; var M = RimAll(Mats(c));
+            // Echo, as in his concept art: cream-white armour with bronze-gold trim over a dark charcoal undersuit, orange
+            // energy, a bare face with spiky blond hair (the helmet and mask are the other looks: Settings, Echo's head)
+            var c = CHARS[charId]; var D = Mats(c);
+            var M = RimAll(new RigMats { @base = Armour("#efe7d6", 0.4f, 0.1f), trim = Armour("#c8964a", 0.34f, 0.6f), under = Std("#25242b", 0.62f, 0.15f), energy = D.energy, visor = D.visor, amber = D.amber });
+            TMat steel = Std("#3a3d45", 0.35f, 0.7f), cloth = Std("#efe6d3", 0.85f, 0);
             TObj root = G(), size = G(), flip = G(), body = G();
             root.add(size); size.add(flip); flip.add(body);
             var hips = G(0, 0.95f, 0); body.add(hips);
-            hips.add(MeshAt(RBox(0.34f, 0.2f, 0.38f, 0.07f), M.trim, 0, 0.02f));
+            hips.add(MeshAt(RBox(0.34f, 0.2f, 0.38f, 0.07f), M.under, 0, 0.02f));
             var spine = G(0, 0.08f, 0); hips.add(spine);
             spine.add(MeshAt(RBox(0.3f, 0.3f, 0.34f, 0.08f), M.under, 0, 0.18f));
             const float chestW = 0.44f;
             spine.add(MeshAt(RBox(0.34f, 0.34f, chestW, 0.1f), M.@base, 0.02f, 0.42f));
             spine.add(MeshAt(RBox(0.05f, 0.05f, chestW * 0.7f, 0.02f), M.energy, 0.18f, 0.44f));
-            foreach (var z in new[] { 0.28f, -0.28f }) spine.add(MeshAt(RBox(0.26f, 0.16f, 0.2f, 0.07f), M.trim, 0, 0.55f, z * 0.95f));
+            foreach (var z in new[] { 0.28f, -0.28f })
+            {
+                spine.add(MeshAt(RBox(0.26f, 0.16f, 0.2f, 0.07f), M.@base, 0, 0.55f, z * 0.95f));
+                spine.add(MeshAt(RBox(0.25f, 0.03f, 0.19f, 0.012f), M.trim, 0, 0.475f, z * 0.95f));
+            }
             var head = G(0, 0.66f, 0); spine.add(head);
             var heads = new Dictionary<string, TObj>();
             {
-                var faceMat = new TMat { colorHex = 0xc9bdb1, roughness = 0.85f };
+                var faceMat = new TMat { colorHex = 0xe2b597, roughness = 0.85f };
                 head.add(MeshAt(Geo.Sphere(0.14f, 24, 18), faceMat, 0, 0.1f));
                 var eyeMat = new TMat { colorHex = 0x1a1a20, roughness = 0.4f };
                 foreach (var z in new[] { 0.045f, -0.045f }) head.add(MeshAt(Geo.Sphere(0.018f, 8, 6), eyeMat, 0.128f, 0.125f, z));
@@ -136,9 +144,10 @@ namespace NovaStriker.Game
                 var hair = G(0, 0.1f, 0); head.add(hair);
                 var hairCap = MeshAt(Geo.Sphere(0.15f, 24, 12, 0, Mathf.PI * 2, 0, Mathf.PI * 0.42f), hairMat);
                 hairCap.rotation.z = 0.35f; hair.add(hairCap);
-                foreach (var (x, y, z, rz) in new[] { (0.09f, 0.1f, 0.05f, -0.9f), (0.1f, 0.09f, -0.04f, -1.05f), (0.05f, 0.13f, 0.0f, -0.6f), (0.0f, 0.14f, -0.06f, -0.3f) })
+                foreach (var (x, y, z, rz) in new[] { (0.09f, 0.1f, 0.05f, -0.9f), (0.1f, 0.09f, -0.04f, -1.05f), (0.05f, 0.13f, 0.0f, -0.6f), (0.0f, 0.14f, -0.06f, -0.3f),
+                    (0.02f, 0.14f, 0.06f, 0.2f), (-0.05f, 0.13f, 0.0f, 0.7f), (-0.08f, 0.1f, 0.07f, 1.2f), (-0.08f, 0.1f, -0.07f, 1.3f), (0.06f, 0.12f, -0.08f, -0.4f) })
                 {
-                    var tuft = MeshAt(Geo.Cone(0.035f, 0.09f, 5), hairMat, x, y, z); tuft.rotation.z = rz; hair.add(tuft);
+                    var tuft = MeshAt(Geo.Cone(0.045f, 0.12f, 5), hairMat, x, y, z); tuft.rotation.z = rz; hair.add(tuft);
                 }
                 var helmet = G(); head.add(helmet);
                 helmet.add(MeshAt(Geo.Sphere(0.165f, 28, 18, Mathf.PI + 0.95f, Mathf.PI * 2 - 1.9f, 0, Mathf.PI * 0.78f), M.@base, 0, 0.1f));
@@ -153,7 +162,7 @@ namespace NovaStriker.Game
                 }
                 foreach (var z in new[] { 0.03f, -0.03f }) mask.add(MeshAt(RBox(0.02f, 0.018f, 0.03f, 0.006f), M.energy, 0.148f, 0.03f, z));
                 heads["helmet"] = helmet; heads["mask"] = mask; heads["hair"] = hair;
-                var ring = MeshAt(Geo.Torus(0.17f, 0.06f, 10, 20), M.trim, 0.0f, 0.62f);
+                var ring = MeshAt(Geo.Torus(0.17f, 0.06f, 10, 20), cloth, 0.0f, 0.62f);
                 ring.rotation.x = Mathf.PI / 2; spine.add(ring);
             }
             var collar = G(-0.2f, 0.58f, 0.16f); spine.add(collar);
@@ -167,13 +176,16 @@ namespace NovaStriker.Game
             foreach (var l in new[] { legN, legF })
             {
                 l.top.add(MeshAt(RBox(0.2f, 0.26f, 0.2f, 0.07f), M.@base, 0.02f, -0.18f));
-                l.joint.add(MeshAt(RBox(0.19f, 0.3f, 0.18f, 0.06f), M.trim, 0.03f, -0.24f));
-                l.end.add(MeshAt(RBox(0.26f, 0.1f, 0.16f, 0.04f), M.trim, 0.06f, -0.02f));
+                l.joint.add(MeshAt(RBox(0.19f, 0.3f, 0.18f, 0.06f), M.@base, 0.03f, -0.24f));
+                l.joint.add(MeshAt(Geo.Sphere(0.058f, 14, 10), M.trim, 0.07f, 0.0f));
+                l.end.add(MeshAt(RBox(0.26f, 0.1f, 0.16f, 0.04f), M.@base, 0.06f, -0.02f));
+                l.end.add(MeshAt(RBox(0.28f, 0.022f, 0.165f, 0.008f), M.under, 0.06f, -0.07f));
             }
             var ex = new RigExtra();
             foreach (var a in new[] { armN, armF })
             {
-                a.joint.add(MeshAt(RBox(0.15f, 0.24f, 0.16f, 0.04f), M.trim, 0.01f, -0.15f));
+                a.joint.add(MeshAt(RBox(0.15f, 0.24f, 0.16f, 0.04f), M.@base, 0.01f, -0.15f));
+                a.joint.add(MeshAt(RBox(0.155f, 0.03f, 0.165f, 0.01f), M.trim, 0.01f, -0.04f));
                 a.joint.add(MeshAt(RBox(0.03f, 0.2f, 0.03f, 0.01f), M.energy, 0.09f, -0.15f));
             }
             var bladeGeo = Geo.Box(0.035f, 0.62f, 0.11f);
@@ -181,11 +193,11 @@ namespace NovaStriker.Game
             armN.end.add(bladeN); armF.end.add(bladeF); bladeN.visible = bladeF.visible = false;
             ex.blade = bladeN; ex.bladeF = bladeF;
             var staffGeo = Geo.Cylinder(0.035f, 0.035f, 1.5f, 10);
-            var back = MeshAt(staffGeo, M.trim, -0.24f, 0.42f, 0); back.rotation.z = 0.9f; spine.add(back);
+            var back = MeshAt(staffGeo, steel, -0.24f, 0.42f, 0); back.rotation.z = 0.9f; spine.add(back);
             TMesh bt1 = MeshAt(Geo.Cone(0.06f, 0.4f, 4), M.energy, 0, 0.95f, 0), bt2 = MeshAt(Geo.Cone(0.06f, 0.4f, 4), M.energy, 0, -0.95f, 0);
             bt2.rotation.z = Mathf.PI; bt1.scale.z = bt2.scale.z = 0.35f; back.add(bt1); back.add(bt2); ex.backTips = new[] { bt1, bt2 };
             var hand = G(0, -0.02f, 0); armN.end.add(hand);
-            var hs = MeshAt(staffGeo, M.trim, 0, 0, 0); hs.rotation.z = Mathf.PI / 2; hand.add(hs);
+            var hs = MeshAt(staffGeo, steel, 0, 0, 0); hs.rotation.z = Mathf.PI / 2; hand.add(hs);
             foreach (var s in new[] { -0.75f, 0.75f }) hand.add(MeshAt(Geo.Sphere(0.05f, 10, 8), M.energy, s, 0, 0));
             var tipGeo = Geo.Cone(0.07f, 0.5f, 4);
             TMesh tipA = MeshAt(tipGeo, M.energy, 1.0f, 0, 0), tipB = MeshAt(tipGeo, M.energy, -1.0f, 0, 0);
@@ -219,7 +231,7 @@ namespace NovaStriker.Game
                 if (rig.headMode == mode) return;
                 rig.headMode = mode; heads["helmet"].visible = mode == "helmet"; heads["mask"].visible = mode == "mask"; heads["hair"].visible = mode != "helmet";
             };
-            rig.setHead("helmet");
+            rig.setHead(SETTINGS.echoHead ?? "bare");
             return rig;
         }
 

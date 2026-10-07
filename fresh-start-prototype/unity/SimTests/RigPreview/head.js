@@ -8,7 +8,7 @@ const Geo = {
   Sphere: (r, w = 32, h = 16, ps = 0, pl = Math.PI * 2, ts = 0, tl = Math.PI) => new THREE.SphereGeometry(r, w, h, ps, pl, ts, tl),
   Octahedron: (r, d = 0) => new THREE.OctahedronGeometry(r, d), Cone: (r, h, rs = 32) => new THREE.ConeGeometry(r, h, rs),
   Torus: (r, t, rs = 12, ts = 48) => new THREE.TorusGeometry(r, t, rs, ts),
-  Circle: (r, s) => new THREE.CircleGeometry(r, s), Icosahedron: (r, d) => new THREE.IcosahedronGeometry(r, d),
+  Box: (w, h, d) => new THREE.BoxGeometry(w, h, d), Circle: (r, s) => new THREE.CircleGeometry(r, s), Icosahedron: (r, d) => new THREE.IcosahedronGeometry(r, d),
   Capsule: (r, l, c, rs) => new THREE.CapsuleGeometry(r, l, c, rs),
 };
 const mkMat = (o) => {
@@ -23,8 +23,9 @@ const GlowMat = (c, k = 2.4) => mkMat({ colorCss: c, emissiveCss: c, emissiveInt
 const MeshAt = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
 const G = (x = 0, y = 0, z = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); return g; };
 const ATTACH_LOOK = { lance: { tint: '#ffb547' } };
-const CHARS = { nova: { energy: '#ffb547' } }; const RimAll = (M) => M;
-const SETTINGS = { novaHead: 'bare' };
+const CHARS = { nova: { energy: '#ffb547', trim: '#2f5f9e', base: '#eef2f7', under: '#1c2c48' }, echo: { energy: '#ff9a1f', trim: '#15151b', base: '#f4f4f2', under: '#1b1b22' } };
+const RimAll = (M) => M; const charId = 'echo';
+const SETTINGS = { novaHead: 'bare', echoHead: 'bare' };
 function MakeLimb(parent, M, upperLen, lowerLen, r, z) {
   const top = G(0, 0, z); parent.add(top);
   top.add(MeshAt(Geo.Capsule(r, upperLen - r, 4, 12), M.under, 0, -upperLen / 2));
@@ -43,9 +44,10 @@ function Skeleton(id, M, arm, leg, shoulderZ, hipZ, upperArm = 0.3, foreArm = 0.
   return { root, body, hips, spine, head, armN, armF, legN, legF };
 }
 const Std = (c, r, m = 0.08) => mkMat({ colorCss: c, roughness: r, metalness: m });
+const Armour = (c, r, m) => mkMat({ colorCss: c, roughness: r, metalness: m, clearcoat: 0.65, clearcoatRoughness: 0.18 });
 const Mats = (c) => ({
-  base: mkMat({ colorCss: '#eef2f7', roughness: 0.4, metalness: 0.1, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
-  trim: mkMat({ colorCss: '#2f5f9e', roughness: 0.36, metalness: 0.3, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
-  under: Std('#1c2c48', 0.62, 0.15), energy: GlowMat(c.energy),
+  base: Armour(c.base, 0.4, 0.1), trim: Armour(c.trim, 0.36, 0.3), under: Std(c.under, 0.62, 0.15), energy: GlowMat(c.energy),
+  visor: mkMat({ colorHex: 0x0b1018, roughness: 0.12, metalness: 0.7 }),
+  amber: mkMat({ colorHex: 0xffa53a, emissiveHex: 0xff8a1a, emissiveIntensity: 0.6, roughness: 0.1, transparent: true, opacity: 0.72 }),
 });
 function build() {

@@ -226,6 +226,8 @@ namespace NovaStriker.Game
                 if (!(saved.settingsVersion >= 8)) { saved.impactFrames = true; saved.settingsVersion = 8; }
                 // Version 9 introduces automatic lock-on as the default
                 if (!(saved.settingsVersion >= 9)) { saved.lockMode = "auto"; saved.settingsVersion = 9; }
+                // Version 10 (Unity): Echo shows his face by default, as in his concept art
+                if (!(saved.settingsVersion >= 10)) { saved.echoHead = "bare"; saved.settingsVersion = 10; }
                 SETTINGS = saved;
             }
             catch (System.Exception) { /* unreadable: keep defaults */ }

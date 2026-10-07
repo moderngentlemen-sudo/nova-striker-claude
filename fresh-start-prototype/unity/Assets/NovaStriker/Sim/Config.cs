@@ -48,7 +48,7 @@ namespace NovaStriker.Sim
     {
         public string novaKit = "marksman";   // 'marksman' (projectile proposal) or 'sentinel' (Pass 1 kit)
         public string echoKit = "hunter";     // 'hunter' (close-range proposal) or 'pursuit' (Pass 1 kit)
-        public string echoHead = "helmet";    // presentation only: 'helmet', 'mask' or 'bare'
+        public string echoHead = "bare";      // presentation only: 'helmet', 'mask' or 'bare' (Unity: bare, as in his concept art)
         public string novaHead = "bare";      // presentation only (Unity only): 'bare' (his face, as in his concept art) or 'helmet'
         public string echoRanged = "B";       // Pursuit kit only. A: Tracer only · B: Bolts + Tracer · C: no ranged
         public bool dashIframes = false;
@@ -83,7 +83,7 @@ namespace NovaStriker.Sim
         public string novaDefense = "dodge";  // Nova's Marksman kit on the parry button: 'dodge', or 'shield' (absorbs hits into damage)
         public bool novaParryStun = false;    // Nova's perfect parry (or perfect shield block) stuns the attacker
         public bool hdr = false;              // HDR output on displays that support it
-        public double settingsVersion = 9;
+        public double settingsVersion = 10;
 
         public Settings Clone() => (Settings)MemberwiseClone();
     }

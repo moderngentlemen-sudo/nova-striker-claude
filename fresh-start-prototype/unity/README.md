@@ -157,6 +157,10 @@ default settings the simulation is still the prototype's (the parity tests run w
   His face shows, with swept-back dark hair. *Settings › Nova's head* switches to the full white helmet with its
   gold visor (a Unity-only setting, presentation only). The rig is `Rigs.BuildNovaRig`. It is still a procedural
   stand-in, until a real model goes in through *Character models*.
+- **Echo's look.** His rig follows his concept art:
+  - **Armour:** cream-white armour with bronze-gold trim over a dark charcoal undersuit, and orange energy.
+  - **Head:** his bare face with spiky blond hair is the default (settings saved earlier switch to it once). The
+    helmet and the mask are still in *Settings › Echo's head*.
 - **Fonts.** The UI uses Unity's built-in font. To use the prototype's fonts, put `SairaCondensed-Bold`,
   `Barlow-Medium` and `IBMPlexMono-Regular` in `Resources/NovaStriker/Fonts`.
 - **Panels and text.** The HUD panels are not skewed. TextMeshPro is not used.

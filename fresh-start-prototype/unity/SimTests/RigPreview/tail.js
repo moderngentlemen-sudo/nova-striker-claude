@@ -18,7 +18,7 @@ views.forEach(([name, ry, pose], i) => {
   const S = build(); S.root.rotation.y = ry;
   if (pose === 'aim') { S.armN.top.rotation.z = 1.45; S.armN.joint.rotation.z = 0.1; S.armF.top.rotation.z = 0.5; S.armF.joint.rotation.z = 1.2; S.legN.top.rotation.z = 0.25; S.legN.joint.rotation.z = -0.3; S.legF.top.rotation.z = -0.2; }
   if (pose === 'aim') S.root.position.x = -0.22;
-  for (const [k, h] of Object.entries(S.heads)) h.visible = k === (pose === 'helmet' ? 'helmet' : 'bare');
+  for (const [k, h] of Object.entries(S.heads)) h.visible = pose === 'helmet' ? k === 'helmet' : k !== 'helmet' && k !== 'mask';
   scene.add(S.root);
   const cam = new THREE.PerspectiveCamera(22, vw / H, 0.1, 50); cam.position.set(0, 1.05, 5.6); cam.lookAt(0, 1.0, 0);
   renderer.setViewport(i * vw, 0, vw, H); renderer.setScissor(i * vw, 0, vw, H); renderer.render(scene, cam);

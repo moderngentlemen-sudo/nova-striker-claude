@@ -545,7 +545,7 @@ namespace NovaStriker.Game
                 ex.glaive[0].visible = hunter;
                 foreach (var g in ex.backTips) g.visible = hunter;
                 for (int i = 0; i < ex.beltSnares.Count; i++) ex.beltSnares[i].visible = hunter && i < p.snares;
-                rig.setHead(SETTINGS.echoHead ?? "helmet");
+                rig.setHead(SETTINGS.echoHead ?? "bare");
                 bool flare = p.scarfMode == "flare" && p.state != "downed";
                 bool focus = p.rifleT >= HUNTER.rifle.raise + HUNTER.rifle.focus;
                 rig.mats.energy.emissiveIntensity = 2.0f + (float)p.resolve / 50 + (flare ? 1.1f + Mathf.Sin(t * 9) * 0.45f : 0) + DashLevelOf(p) * 1.1f + (st == "pound" && p.pound != null ? (float)p.pound.level * 1.1f : 0)

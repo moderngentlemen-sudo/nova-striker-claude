@@ -34,8 +34,7 @@ All run without Unity, from `SimTests/`:
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
-- `RigPreview/`: `sh preview.sh out.png` renders Nova's rig (`Rigs.BuildNovaRig`) from five angles without
-  Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
+- `RigPreview/`: `sh preview.sh nova|echo out.png` renders Nova's or Echo's rig from six angles without Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
   rig, and send the picture to the owner. Set `CHROMIUM=/opt/pw-browsers/chromium` in the cloud container.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
@@ -69,8 +68,9 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
-- **Echo's look.** The owner's concept art shows Echo too: a bare face with spiky blond hair, cream-white armour
-  with gold and orange accents, a flowing cream scarf, and orange blades. Compare the rig against it.
+- **Echo's look.** His rig was restyled from the same concept art: cream-white armour, bronze-gold trim, a
+  charcoal undersuit, and his bare face with spiky blond hair as the default. The concept also shows his flowing
+  cream scarf (drawn by the effects code) and his orange blades.
 - **Nova's shield colour.** The concept art shows a gold hexagonal (honeycomb) hard-light shield, but the absorbing
   shield is blue, which the owner asked for earlier. Ask before changing it.
 
