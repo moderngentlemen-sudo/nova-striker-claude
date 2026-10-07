@@ -1,8 +1,9 @@
-# Writes RAM's Rampart (build_ram_shield.py, built without NS_TEX) for the game as JSON, the way export_kit.py writes
-# the gym's kit: one part per material, triangles in three.js space (the rig's shield group: x across, y up, z toward
-# the camera), with box-projected UVs (one tile every UV_TILE) for the battle-worn texture. Models.cs reads it from
-# Resources/NovaStriker/Models/ram_shield.json and hangs it on the rig's shield.
-# Run: blender -b <out>/ram_shield.blend -P export_ram_shield.py -- <path/to/ram_shield.json>
+# Writes a piece of RAM's gear for the game as JSON, the way export_kit.py writes the gym's kit: the Rampart
+# (build_ram_shield.py) or the Breach Cannon (build_ram_cannon.py), each built without NS_TEX. One part per
+# material, triangles in three.js space (the rig's shield or cannon group: x across or along the barrel, y up, z
+# toward the camera), with box-projected UVs (one tile every UV_TILE) for the battle-worn texture. Models.cs reads
+# Resources/NovaStriker/Models/ram_<gear>.json and hangs it on the rig's own group.
+# Run: blender -b <out>/ram_shield.blend -P export_ram_gear.py -- <path/to/ram_shield.json>   (likewise ram_cannon)
 import json, os, sys, bpy, bmesh
 OUT = sys.argv[sys.argv.index('--') + 1]
 UV_TILE = 0.9

@@ -1,9 +1,10 @@
 # RAM, built from his concept art: a towering armoured frame in battle-worn gunmetal over dark joints and undersuit,
 # electric-blue light in the abdomen's bands, the joint discs, the boots and the T visor; a rounded helm with its
-# horns made into armoured sensor fins, huge rounded pauldrons, a layered chest with a glowing core, a back pack with exhaust stacks, big
-# blocky fists and segmented legs on round joint discs; under the helmet (knocked off at critical health), his
-# face. His proportions follow his in-game skeleton (Rigs.Skeleton for "ram", drawn 1.34 times life size), so the model lines up with the rig that drives it. The Rampart and the
-# Breach Cannon stay the game's own (it poses them separately), so they are not modelled here.
+# horns made into armoured sensor fins, huge rounded pauldrons, a layered chest with a glowing core, a back pack
+# with exhaust stacks, big blocky fists and segmented legs on round joint discs; under the helmet (knocked off at
+# critical health), his face. His proportions follow his in-game skeleton (Rigs.Skeleton for "ram", drawn 1.34
+# times life size), so the model lines up with the rig that drives it. The Rampart and the Breach Cannon are
+# modelled on their own (build_ram_shield.py, build_ram_cannon.py): the game poses them apart.
 # Run: blender -b -P build_ram.py -- <out-dir>   (writes ram.blend)
 import math, os, sys, bpy
 from mathutils import Vector, Matrix

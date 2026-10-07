@@ -49,7 +49,9 @@ def spow(x, e): return math.copysign(abs(x) ** e, x)
 
 def frame(origin, axis, side=Vector((1, 0, 0))):
     """A matrix whose local Z runs along `axis` (for patches built around a limb)."""
-    z = Vector(axis).normalized(); x = (side - z * side.dot(z)).normalized(); y = z.cross(x)
+    z = Vector(axis).normalized()
+    if abs(Vector(side).normalized().dot(z)) > 0.999: side = Vector((0, 1, 0))   # (an axis along `side` has no frame of its own)
+    x = (side - z * side.dot(z)).normalized(); y = z.cross(x)
     return Matrix.Translation(Vector(origin)) @ Matrix((x, y, z)).transposed().to_4x4()
 
 def patch(name, material, center, radii, u=(-180, 180), v=(-90, 90), e=1.0, thick=0.012, res=(32, 16), M=None,

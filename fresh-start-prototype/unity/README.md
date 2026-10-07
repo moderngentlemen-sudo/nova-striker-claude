@@ -214,9 +214,11 @@ default settings the simulation is still the prototype's (the parity tests run w
 - **RAM's 3D model** (the same *Character models* setting). The model is
   `Resources/NovaStriker/Models/ram_model.fbx` (`Art/Blender/build_ram.py`, then `rig_export_ram.py`). Like
   Nova's, it copies the rig's pose every frame and wears the rig's materials.
-  - **Rampart:** modelled too (`build_ram_shield.py`, exported by `export_ram_shield.py` as `ram_shield.json`).
+  - **Rampart:** modelled too (`build_ram_shield.py`, exported by `export_ram_gear.py` as `ram_shield.json`).
     It hangs on the rig's shield, so it is posed as before; the rig's glowing hex panel stays inside its frame.
-  - **Breach Cannon:** not modelled; the rig's own stays visible over the model.
+  - **Breach Cannon:** modelled too (`build_ram_cannon.py`, exported as `ram_cannon.json`): an armoured breech
+    on a pivot yoke, a power cell and cable, a shrouded barrel with heat-sink fins, a muzzle brake, a blue ring
+    and a targeting scope. It hangs on the rig's cannon, so it turns to the aim as before.
 - **RAM's helmet comes off at critical health** (Settings › *RAM's head* › *Full helmet*, the default), as
   Nova's does (`Anim.Helmet`, `HelmetFx`). Under it is his face, designed for the game (the concept art shows none):
   a weathered veteran with a grey buzz cut and short grey beard, a scar through his left brow, and a cybernetic

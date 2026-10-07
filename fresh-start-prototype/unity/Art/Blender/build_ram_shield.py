@@ -4,7 +4,7 @@
 # great curled horns and glowing eyes. Built in the shield's own space in the rig's units (Rigs.BuildRamRig's
 # `shield` group: x across, z up, facing -Y here, which is +z, toward the camera, in the game), so it lands where
 # the rig's shield is and moves as the game poses it. Run: blender -b -P build_ram_shield.py -- <out-dir>
-# (writes ram_shield.blend; export_ram_shield.py writes it for the game). NS_TEX adds the battle wear for renders.
+# (writes ram_shield.blend; export_ram_gear.py writes it for the game). NS_TEX adds the battle wear for renders.
 import math, os, sys, bpy
 from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

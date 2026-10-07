@@ -4,8 +4,8 @@
 # The bones carry the names Models.cs drives (root, hips, spine, head, upperarm/forearm/hand, thigh/shin/foot with
 # .L/.R), placed on build_ram.py's landmarks. The undersuit is skinned to them; every armour piece follows one bone
 # rigidly. Everything is joined into three meshes the game shows or hides: Ram_Body and Ram_FaceAndHair are skinned,
-# and Ram_Helmet is a rigid piece hung on the head bone, so the game can knock it off whole. The Rampart is
-# exported separately (export_ram_shield.py); the Breach Cannon stays the game's own.
+# and Ram_Helmet is a rigid piece hung on the head bone, so the game can knock it off whole. The Rampart and the
+# Breach Cannon are exported separately (export_ram_gear.py).
 # The mesh gets box-projected UVs (one tile every UV_TILE m) for the game's battle-worn texture ("worn").
 import math, os, sys, bpy, bmesh
 from mathutils import Vector

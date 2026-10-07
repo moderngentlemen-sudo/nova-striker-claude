@@ -51,7 +51,12 @@ All run without Unity, from `SimTests/`:
     renders, and leave it unset for the export), then `rig_export_ram.py` writes `ram_model.fbx` the same way.
     His rigid pieces follow bones by name prefix (`RULES`); keep a new piece's name matching one. His face and
     helmet go in the `Ram_FaceAndHair` and `Ram_Helmet` collections (`render.sh ... helmet` renders the helmet).
-    `build_ram_shield.py` models the Rampart and `export_ram_shield.py` writes `Models/ram_shield.json`.
+    `build_ram_shield.py` and `build_ram_cannon.py` model the Rampart and the Breach Cannon, and
+    `export_ram_gear.py` writes each as `Models/ram_shield.json` or `ram_cannon.json`.
+  - **Exports land in `Resources`:** write only the `.fbx` or `.json` there. `rig_export_*.py` also saves a
+    `*_rigged.blend` beside its output, so export to a scratch folder and copy the file, or delete the `.blend`.
+  - **`nova_lib.cyl` along the x axis:** until a fix to `frame`, such cylinders came out empty. RAM's joint
+    discs and the gym's rails and edge pipes were missing until they were re-exported.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
   the shader check.
@@ -88,8 +93,8 @@ The README's *Unity-only additions* has the full description.
   T visor, and the hex-panel Rampart with a ram's-head emblem. The owner asked for futuristic horns with a use:
   they are now armoured sensor fins, with a sensor pod at each tip and an actuator disc at the temple. His charge shows the shield as a blue holographic
   ram's head: an idea for Siege Breaker's look. `Rigs.BuildRamRig` follows the art, and `RigPreview` draws him
-  (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`) and modelled Rampart (`ram_shield.json`) are
-  in the game, driven by the rig like Nova's; the rig's Breach Cannon stays visible over the model. His helmet
+  (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`), modelled Rampart (`ram_shield.json`) and
+  Breach Cannon (`ram_cannon.json`) are in the game, driven by the rig like Nova's. His helmet
   is knocked off at critical health (`ramHead` setting). His face is our design (the concept shows none): a grey
   buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. None of this has been seen
   in Unity yet.

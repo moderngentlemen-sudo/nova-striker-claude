@@ -85,7 +85,7 @@ namespace NovaStriker.Game
         readonly List<Renderer> renderers = new List<Renderer>();
         readonly List<(Material m, float w)> outlineMats = new List<(Material, float)>();
         List<TMesh> body; bool rigHidden;
-        TObj shieldModel;   // (RAM's modelled Rampart, hung on the rig's shield: BuildShield)
+        readonly List<(TObj model, TObj on)> gearModels = new List<(TObj, TObj)>();   // (RAM's modelled Rampart and Breach Cannon: BuildGear)
 
         public ModelSkin(Rig rig, string charId)
         {
@@ -166,7 +166,7 @@ namespace NovaStriker.Game
         {
             if (!ready) return;
             holder.visible = on;
-            if (shieldModel != null) shieldModel.visible = on;
+            foreach (var (g, _) in gearModels) g.visible = on;
             SetRigHidden(on);
             if (!on) return;
             if (D.driveFromRig) { Drive(); return; }
@@ -266,25 +266,25 @@ namespace NovaStriker.Game
             helmet = B(@char[0].ToString().ToUpper() + @char.Substring(1) + "_Helmet");
             face = B(@char[0].ToString().ToUpper() + @char.Substring(1) + "_FaceAndHair");
             SkinMaterials();
-            BuildShield();
+            BuildGear("shield", rig.extra.shield); BuildGear("cannon", rig.extra.cannon);
             rig.flip.add(holder);
             ready = true;
         }
-        // RAM's Rampart as modelled in Blender (build_ram_shield.py; export_ram_shield.py writes
-        // Resources/NovaStriker/Models/<id>_shield.json in the shield group's own three.js space): it hangs on the
-        // rig's shield, so the game poses it as before, in place of the rig's frame and emblem. The rig's glowing
-        // hard-light panel stays, inside the modelled frame.
+        // RAM's Rampart and Breach Cannon as modelled in Blender (build_ram_shield.py, build_ram_cannon.py;
+        // export_ram_gear.py writes Resources/NovaStriker/Models/<id>_<gear>.json in the group's own three.js space):
+        // each hangs on the rig's own group, so the game poses and aims it as before, in its place. The shield's
+        // glowing hard-light panel stays the rig's, inside the modelled frame.
         [System.Serializable] sealed class GearPart { public string mat; public float[] p, n, uv; public int[] i; }
         [System.Serializable] sealed class Gear { public GearPart[] parts; }
-        void BuildShield()
+        void BuildGear(string name, TObj on)
         {
-            var src = Resources.Load<TextAsset>("NovaStriker/Models/" + @char + "_shield");
-            if (src == null || rig.extra.shield == null) return;
+            var src = Resources.Load<TextAsset>("NovaStriker/Models/" + @char + "_" + name);
+            if (src == null || on == null) return;
             Gear gear;
             try { gear = JsonUtility.FromJson<Gear>(src.text); }
-            catch (System.Exception e) { Debug.LogWarning("Shield model unreadable; the built-in one is drawn: " + e.Message); return; }
+            catch (System.Exception e) { Debug.LogWarning("Model of RAM's " + name + " unreadable; the built-in one is drawn: " + e.Message); return; }
             if (gear?.parts == null) return;
-            shieldModel = Group.Make(0, 0, 0, "shield-model");
+            var model = Group.Make(0, 0, 0, name + "-model");
             foreach (var P in gear.parts)
             {
                 var g = new GeoBuilder();
@@ -292,10 +292,10 @@ namespace NovaStriker.Game
                     g.V(new Vector3(P.p[3 * k], P.p[3 * k + 1], P.p[3 * k + 2]), new Vector3(P.n[3 * k], P.n[3 * k + 1], P.n[3 * k + 2]), new Vector2(P.uv[2 * k], P.uv[2 * k + 1]));
                 for (int k = 0; k < P.i.Length; k += 3) g.T(P.i[k], P.i[k + 1], P.i[k + 2]);
                 var tm = MatFor(P.mat) ?? TMat.Std(0x7b838d, 0.65f, 0.35f);
-                shieldModel.add(new TMesh(g.ToMesh("shield-" + P.mat), tm) { cast = true });
+                model.add(new TMesh(g.ToMesh(name + "-" + P.mat), tm) { cast = true });
             }
-            Look.AddOutlines(shieldModel, 0x0b0f18, 0.016f);
-            rig.extra.shield.add(shieldModel);
+            Look.AddOutlines(model, 0x0b0f18, 0.016f);
+            on.add(model); gearModels.Add((model, on));
         }
         // where a bone's first child sits (its tail), or a step along it when it has none
         Vector3 Child(Transform b) => b.childCount > 0 ? HolderPos(b.GetChild(0)) : HolderPos(b) + (Vector3)(InHolder(b).GetColumn(1)) * 0.1f;
@@ -404,8 +404,8 @@ namespace NovaStriker.Game
                 var gear = new HashSet<TObj>();
                 var ex = rig.extra;
                 foreach (var g in new TObj[] { ex.shield, ex.greave, ex.module, ex.cannon }) g?.traverse(o => gear.Add(o));
-                // (a modelled shield takes the place of the rig's: only the rig's see-through hard-light panel stays)
-                if (shieldModel != null) { ex.shield.traverse(o => gear.Remove(o)); shieldModel.traverse(o => gear.Add(o)); }
+                // (modelled gear takes the place of the rig's: only the shield's see-through hard-light panel stays)
+                foreach (var (g, on) in gearModels) { on.traverse(o => gear.Remove(o)); g.traverse(o => gear.Add(o)); }
                 foreach (var l in new[] { ex.jets, ex.blades, ex.gauntlets }) if (l != null) foreach (var g in l) gear.Add(g);
                 rig.root.traverse(o =>
                 {
@@ -426,7 +426,7 @@ namespace NovaStriker.Game
         {
             if (graph.IsValid()) graph.Destroy();
             if (holder != null) holder.destroy();
-            if (shieldModel != null) shieldModel.destroy();
+            foreach (var (g, _) in gearModels) g.destroy();
             if (body != null) foreach (var o in body) o.visible = true;
             ready = false;
         }
