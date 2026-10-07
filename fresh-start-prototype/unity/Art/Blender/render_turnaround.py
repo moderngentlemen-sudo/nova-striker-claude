@@ -1,10 +1,13 @@
 # Renders a review sheet of a character .blend: front, three-quarter, side, back and a face close-up (Cycles, CPU).
-# Run: blender -b <file.blend> -P render_turnaround.py -- <out.png> [samples]
+# Run: blender -b <file.blend> -P render_turnaround.py -- <out.png> [samples] [helmet]
 import math, os, sys, bpy
 from mathutils import Vector
 args = sys.argv[sys.argv.index('--') + 1:]
-OUT = args[0]; SAMPLES = int(args[1]) if len(args) > 1 else 48
+OUT = args[0]; SAMPLES = int(args[1]) if len(args) > 1 else 48; HELMET = len(args) > 2 and args[2] == 'helmet'
 sc = bpy.context.scene
+for col in bpy.data.collections:                  # one look at a time: the face and hair, or the helmet
+    hide = col.name.endswith('_Helmet') != HELMET if col.name.endswith(('_Helmet', '_FaceAndHair')) else False
+    for o in col.objects: o.hide_render = hide
 sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = True
 sc.render.resolution_x, sc.render.resolution_y = 560, 1000
 sc.view_settings.view_transform = 'AgX'; sc.view_settings.look = 'AgX - Medium High Contrast'

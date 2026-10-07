@@ -197,5 +197,35 @@ for s in (1, -1):
     patch(f'Nova_Sole{s}', SOLE, (s * 0.1, -0.045, 0.012), (0.06, 0.128, 0.013), e=0.5, thick=0, res=(24, 6))
     patch(f'Nova_BootCuff{s}', NAVY2, (s * 0.1, 0.0, 0.125), (0.054, 0.058, 0.02), v=(-60, 60), thick=0.006, res=(24, 4))
 
+# ---- The helmet (the other look): a white shell, the gold visor with its point over the nose, a chin guard,
+# a crest and gold comms discs. It goes in its own collection with the face and hair in another, so the game can
+# show one or the other ----
+VISOR = mat('Nova_Visor', srgb('#ffc867'), metal=0.85, rough=0.12, coat=1.0, emit=srgb('#ff9d1a'), strength=0.6)
+def helm_shape(p, s, t):
+    q = head_shape(p, s, t)
+    if q.y > 0: q.y *= 1.03
+    return q
+patch('Nova_HelmShell', PEARL, HC + Vector((0, 0.004, 0.012)), (0.108, 0.122, 0.138), v=(-72, 90), e=0.92, thick=0.006, res=(40, 26), shape=helm_shape)
+def visor_shape(p, s, t):
+    q = p.copy(); c = max(0.0, 1 - abs(s - 0.5) * 7)                  # the point over the nose
+    if t < 0.6: q.z -= 0.045 * (1 - t / 0.6) * c
+    return q
+patch('Nova_HelmVisor', VISOR, HC + Vector((0, 0.0, 0.012)), (0.113, 0.128, 0.142), u=(-78, 78), v=(-6, 24), e=0.85, thick=0.004, res=(32, 12), shape=visor_shape)
+patch('Nova_HelmChin', PEARL, HC + Vector((0, 0.002, 0.012)), (0.11, 0.125, 0.14), u=(-60, 60), v=(-66, -22), e=0.88, thick=0.004, res=(24, 10), shape=helm_shape)
+tube('Nova_HelmCrest', PEARL, [HC + Vector(v) for v in ((0, -0.125, 0.06), (0, -0.09, 0.13), (0, 0.0, 0.158), (0, 0.09, 0.12), (0, 0.125, 0.04))], 0.012, radii=[0.3, 0.9, 1, 0.9, 0.4])
+for s_ in (1, -1):
+    patch(f'Nova_HelmDisc{s_}', GOLDM, HC + Vector((s_ * 0.113, 0.01, 0.0)), (0.008, 0.03, 0.03), res=(16, 10), thick=0, subsurf=1)
+    patch(f'Nova_HelmDiscGlow{s_}', GOLD, HC + Vector((s_ * 0.12, 0.01, 0.0)), (0.004, 0.014, 0.014), res=(12, 8), thick=0, subsurf=1)
+    tube(f'Nova_HelmSeam{s_}', GOLD, [HC + Vector(v) for v in ((s_ * 0.09, -0.07, 0.065), (s_ * 0.11, -0.01, 0.05), (s_ * 0.112, 0.05, 0.03))], 0.0025)
+
+def group(name, prefixes):
+    col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
+    for o in list(bpy.context.scene.collection.objects):
+        if o.name.startswith(prefixes):
+            bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+group('Nova_FaceAndHair', ('Nova_Head', 'Nova_Hair', 'Nova_Lock', 'Nova_Side', 'Nova_Eye', 'Nova_Iris', 'Nova_Brow', 'Nova_Ear',
+                          'Nova_Nose', 'Nova_Mouth'))
+group('Nova_Helmet', ('Nova_Helm',))
+
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'nova.blend'))
 print('built', len(bpy.data.objects), 'objects')
