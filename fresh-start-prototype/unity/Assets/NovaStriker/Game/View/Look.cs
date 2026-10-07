@@ -430,6 +430,9 @@ namespace NovaStriker.Game
             mat.userData["worldUV"] = tile; mat.userData["surfaceKind"] = kind;
             return mat;
         }
+        // Battle-worn armour (RAM): the "worn" set's colour detail (scratches, chipped paint, grime) on lacquered
+        // armour. Only the colour: the clear-coat template takes no relief or roughness maps.
+        public static void Wear(TMat mat, float tile = 1) { mat.map = Surface("worn").map; mat.repeat = new Vector2(tile, tile); }
         // Box-projected UVs from world positions (for baked geometry, already in world space)
         public static void WorldUVs(Mesh geo, float tile)
         {

@@ -12,9 +12,10 @@
 // A model can instead copy the built-in rig's pose every frame (driveFromRig), so it moves exactly as the rig does
 // with no clips at all: every state, the aim, the turns. Its bones must carry the rig's joint names (root, hips,
 // spine, head, upperarm/forearm/hand and thigh/shin/foot, .L and .R), as the Art/Blender scripts make them. A model
-// file at Resources/NovaStriker/Models/<id>_model (Nova's, nova_model.fbx, comes with the project) is used this
-// way with no asset to set up. Its materials are swapped, by name, for the rig's own (so the gold seams pulse with
-// his charge), and his helmet and face come and go with the rig's head look.
+// file at Resources/NovaStriker/Models/<id>_model (Nova's nova_model.fbx and RAM's ram_model.fbx come with the
+// project) is used this way with no asset to set up. Its materials are swapped, by name, for the rig's own (so
+// Nova's gold seams pulse with his charge and RAM's armour wears the rig's battle-worn finish), and Nova's helmet
+// and face come and go with the rig's head look.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -305,12 +306,12 @@ namespace NovaStriker.Game
         TMat MatFor(string name)
         {
             var M = rig.mats;
-            switch (name)
+            switch (name.Substring(name.IndexOf('_') + 1))   // (Nova_Armour, Ram_Armour, ...)
             {
-                case "Nova_Armour": return M.@base;
-                case "Nova_Suit": return M.under;
-                case "Nova_SuitPanel": return M.trim;
-                case "Nova_GoldGlow": return M.energy;
+                case "Armour": return M.@base;
+                case "Suit": return M.under;
+                case "SuitPanel": case "Trim": return M.trim;
+                case "GoldGlow": case "Glow": return M.energy;
             }
             if (extraMats.TryGetValue(name, out var t)) return t;
             t = name switch
@@ -359,11 +360,12 @@ namespace NovaStriker.Game
             if (body == null)
             {
                 body = new List<TMesh>();
-                // (a driven model has its own glowing seams and emitter, so the rig's go too; its gear stays: the
-                // shield, the hard light, jets, skate blades and the attachment light)
+                // (a driven model has its own glowing seams and emitter, so the rig's go too, and RAM's model its own
+                // core, stack rims and piston lights; the gear stays: the shield, the hard light, jets, skate blades,
+                // the attachment light, and RAM's Rampart and Breach Cannon)
                 var gear = new HashSet<TObj>();
                 var ex = rig.extra;
-                foreach (var g in new TObj[] { ex.shield, ex.greave, ex.module }) g?.traverse(o => gear.Add(o));
+                foreach (var g in new TObj[] { ex.shield, ex.greave, ex.module, ex.cannon }) g?.traverse(o => gear.Add(o));
                 foreach (var l in new[] { ex.jets, ex.blades, ex.gauntlets }) if (l != null) foreach (var g in l) gear.Add(g);
                 rig.root.traverse(o =>
                 {
@@ -371,7 +373,7 @@ namespace NovaStriker.Game
                     var m = me.material;
                     if (m == null || m.kind == TMat.Kind.Basic || m.kind == TMat.Kind.Sprite) return;
                     bool glow = m.transparent || m.emissiveIntensity > 1;
-                    if (glow && !(D.driveFromRig && m == rig.mats.energy)) return;
+                    if (glow && !(D.driveFromRig && (m == rig.mats.energy || rig.@char == "ram"))) return;
                     body.Add(me);
                 });
             }

@@ -2,7 +2,7 @@
 #   blender -b -P build_nova.py -- <out-dir>).
 # Everything is built in world space at real scale (metres, Z up, the character faces -Y), with objects left at the
 # origin so rigging and export see the same coordinates the scripts use.
-import math, bpy, bmesh
+import math, os, bpy, bmesh
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 
@@ -156,3 +156,36 @@ def text(name, material, body, center, size, depth=0.02, align='CENTER'):
     cu = bpy.data.curves.new(name, 'FONT'); cu.body = body; cu.size = size; cu.extrude = depth; cu.align_x = align; cu.align_y = 'CENTER'
     o = bpy.data.objects.new(name, cu); o.location = Vector(center); o.rotation_euler = (math.pi / 2, 0, 0)
     link(o, material, smooth=False); return o
+
+def surface(m, texdir, kind, tile, bump=0.35):
+    """Preview only: a texture set from make_textures.py (<kind>_albedo/_rough/_height.png in texdir), box-projected
+    in world space every `tile` m: the albedo multiplies the colour, the roughness scales it, the height bumps it."""
+    nt = m.node_tree; bsdf = nt.nodes['Principled BSDF']
+    geo = nt.nodes.new('ShaderNodeNewGeometry'); sc = nt.nodes.new('ShaderNodeVectorMath'); sc.operation = 'SCALE'; sc.inputs[3].default_value = 1 / tile
+    nt.links.new(geo.outputs['Position'], sc.inputs[0])
+    def img(nm):
+        t = nt.nodes.new('ShaderNodeTexImage'); t.image = bpy.data.images.load(os.path.join(texdir, f'{kind}_{nm}.png'))
+        t.image.colorspace_settings.name = 'Non-Color'; t.projection = 'BOX'; t.projection_blend = 0.3
+        nt.links.new(sc.outputs[0], t.inputs['Vector']); return t
+    base = bsdf.inputs['Base Color'].default_value[:]
+    mul = nt.nodes.new('ShaderNodeMixRGB'); mul.blend_type = 'MULTIPLY'; mul.inputs[0].default_value = 1; mul.inputs[1].default_value = base
+    nt.links.new(img('albedo').outputs['Color'], mul.inputs[2]); nt.links.new(mul.outputs[0], bsdf.inputs['Base Color'])
+    rm = nt.nodes.new('ShaderNodeMath'); rm.operation = 'MULTIPLY'; rm.inputs[1].default_value = bsdf.inputs['Roughness'].default_value / 0.8
+    nt.links.new(img('rough').outputs['Color'], rm.inputs[0]); nt.links.new(rm.outputs[0], bsdf.inputs['Roughness'])
+    bp = nt.nodes.new('ShaderNodeBump'); bp.inputs['Strength'].default_value = bump; bp.inputs['Distance'].default_value = 0.003
+    nt.links.new(img('height').outputs['Color'], bp.inputs['Height']); nt.links.new(bp.outputs['Normal'], bsdf.inputs['Normal'])
+    return mul
+
+def edge_wear(m, colour_node=None, amount=0.6):
+    """Preview only: paint rubbed off the sharp edges (Cycles' pointiness), showing brighter bare metal."""
+    nt = m.node_tree; bsdf = nt.nodes['Principled BSDF']
+    geo = nt.nodes.new('ShaderNodeNewGeometry'); ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.53; ramp.color_ramp.elements[1].position = 0.6
+    nt.links.new(geo.outputs['Pointiness'], ramp.inputs['Fac'])
+    k = nt.nodes.new('ShaderNodeMath'); k.operation = 'MULTIPLY'; k.inputs[1].default_value = amount
+    nt.links.new(ramp.outputs['Color'], k.inputs[0])
+    mix = nt.nodes.new('ShaderNodeMixRGB'); mix.inputs[2].default_value = (0.75, 0.77, 0.8, 1)
+    src = colour_node.outputs[0] if colour_node else None
+    if src: nt.links.new(src, mix.inputs[1])
+    else: mix.inputs[1].default_value = bsdf.inputs['Base Color'].default_value[:]
+    nt.links.new(k.outputs[0], mix.inputs[0]); nt.links.new(mix.outputs[0], bsdf.inputs['Base Color'])

@@ -17,6 +17,11 @@ ARMOUR = mat('Ram_Armour', srgb('#5f6771'), metal=0.7, rough=0.4, coat=0.15)
 TRIM = mat('Ram_Trim', srgb('#2a2f37'), metal=0.5, rough=0.45)
 SUIT = mat('Ram_Suit', srgb('#15181d'), metal=0.3, rough=0.6)
 GLOW = mat('Ram_Glow', srgb('#58a6ff'), emit=srgb('#3f8cff'), strength=12)
+# Battle wear for the review renders (the game wears it through Look's "worn" texture set): scratches, chipped
+# paint, grime, and paint rubbed off the edges. NS_TEX names the folder make_textures.py wrote its PNGs to.
+TEX = os.environ.get('NS_TEX')
+if TEX and os.path.exists(os.path.join(TEX, 'worn_albedo.png')):
+    for m, tile in ((ARMOUR, 1.2), (TRIM, 1.2)): edge_wear(m, surface(m, TEX, 'worn', tile), 0.55 if m == ARMOUR else 0.35)
 
 # ---- Landmarks (m): the rig's joints times K ----
 HIP_Z, HIP_X = 0.95 * K, 0.16 * K

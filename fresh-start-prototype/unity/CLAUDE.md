@@ -42,11 +42,14 @@ All run without Unity, from `SimTests/`:
     Nova and renders a review sheet (front, three-quarter, side, back, face).
   - **Gym kit:** `build_gym_kit.py` models it and `gym_layout.py` places it (from the level's boxes).
     `render_gym.py` renders before/after review shots. `export_kit.py` writes
-    `Resources/NovaStriker/Env/gym_kit.json`. `make_textures.py` writes the paint, rubber, tread and shadow
+    `Resources/NovaStriker/Env/gym_kit.json`. `make_textures.py` writes the paint, worn (RAM), rubber, tread and shadow
     textures (`.bytes`) beside it.
   - **Export to the game:** `blender -b <out-dir>/nova.blend -P rig_export_nova.py --
     ../../Assets/NovaStriker/Resources/NovaStriker/Models/nova_model.fbx` rigs and exports it. Commit the FBX.
     Its bones must keep the rig's joint names, which `Models.cs` drives (`MAP`).
+  - **RAM:** `build_ram.py` (set `NS_TEX=<folder of make_textures.py's PNGs>` for the battle-worn review
+    renders, and leave it unset for the export), then `rig_export_ram.py` writes `ram_model.fbx` the same way.
+    His rigid pieces follow bones by name prefix (`RULES`); keep a new piece's name matching one.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
   the shader check.
@@ -83,7 +86,8 @@ The README's *Unity-only additions* has the full description.
   T visor, and the hex-panel Rampart with a ram's-head emblem. The owner asked for futuristic horns with a use:
   they are now armoured sensor fins, with a sensor pod at each tip and an actuator disc at the temple. His charge shows the shield as a blue holographic
   ram's head: an idea for Siege Breaker's look. `Rigs.BuildRamRig` follows the art, and `RigPreview` draws him
-  (`sh preview.sh ram`). A 3D model, as for Nova, is a possible next step.
+  (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`) is in the game, driven by the rig like
+  Nova's; the rig's Rampart and Breach Cannon stay visible over it. It has not yet been seen in Unity.
 - **Effects to add later** (the owner asked to keep these for later):
   - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
     Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with

@@ -338,6 +338,7 @@ namespace NovaStriker.Game
                 {
                     if (rig != null) { rig.skin?.Dispose(); DisposeRig(rig.root); }
                     rig = Rigs.BuildPlayerRig(p.@char);
+                    if (p.@char == "ram") { Look.Wear(rig.mats.@base); Look.Wear(rig.mats.trim); }   // (his battle-worn armour)
                     var ringMat = TMat.Basic(0xffffff); ringMat.colorCss = PLAYER_COLORS[p.slot]; ringMat.transparent = true; ringMat.opacity = 0.65f; ringMat.depthWrite = false;
                     var ring = new TMesh(Geo.Ring(0.42f, 0.55f, 32), ringMat) { noOutline = true }; ring.rotation.x = -Mathf.PI / 2; ring.position.y = 0.03f;
                     ring.scale.setScalar(Mathf.Max(1, (float)CHARS[p.@char].width / 0.72f));   // RAM stands in a wider ring
