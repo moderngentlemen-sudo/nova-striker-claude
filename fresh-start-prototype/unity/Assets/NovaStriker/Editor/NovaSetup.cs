@@ -56,6 +56,7 @@ namespace NovaStriker.EditorTools
             ("Sky", "NovaStriker/Sky", false, false, false),
             ("Grade", "NovaStriker/Grade", false, false, false),
             ("Aegis", "NovaStriker/Aegis", false, false, false),
+            ("Reflect", "NovaStriker/Reflect", false, false, false),
         };
         static void MakeTemplates()
         {

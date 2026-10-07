@@ -79,6 +79,23 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
+- **Effects to add later** (the owner asked to keep these for later):
+  - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
+    Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with
+    blinking lights).
+  - **Light:** deck lights that flicker when something heavy lands, sweeping floodlights, a subtle lens flare
+    toward the sun, and heat shimmer (furnaces, Nova's beam).
+  - **The world reacting:** scuff marks that fade, railings that rattle, crash mats that dent, flags that whip
+    when someone dashes past, chips and sparks off deck panels on big hits, and a dust or droplet overlay in mist
+    and smoke.
+  - **Living environment:** a scrolling stats ticker on the sign, distant trainees on far decks, and spinning
+    vent fans, steam puffs and maintenance drones.
+- **Reflections, sparks, birds and motes in Unity.** They have not yet been seen in Unity.
+  - **Shader:** `Reflect.shader` is new, so the owner must run *Set Up Project* once. The GitHub build is its
+    only compile check.
+  - **If the reflection is upside down or offset:** on some graphics APIs the texture comes out flipped. Look at
+    the uv in `Reflect.shader`, and the mirror matrix and oblique clip plane in `PlanarReflection.cs`.
+
 - **The gym's dressing in Unity.** It has not yet been seen in Unity. It only dresses the zone (the boxes are
   unchanged). The next zones can follow the same pattern: a kit, a layout from their boxes, and an export.
 

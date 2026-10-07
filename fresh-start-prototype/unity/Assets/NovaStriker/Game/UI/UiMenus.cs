@@ -51,6 +51,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "difficulty", label = "Difficulty", opts = O("easy", "Easy", "normal", "Normal", "hard", "Hard") },
             new SettingDef { key = "barks", label = "Character lines (CP-09 test)", @bool = true },
             new SettingDef { key = "shake", label = "Screen shake", @bool = true },
+            new SettingDef { key = "reflections", label = "Reflections on the deck (High and Ultra quality)", @bool = true },
             new SettingDef { key = "charModels", label = "Character models", opts = O("builtin", "Built-in rigs", "models", "3D models where available (Resources/NovaStriker/Models)") },
             new SettingDef { key = "quality", label = "Graphics quality", opts = O("ultra", "Ultra (adds ambient occlusion)", "high", "High (bloom, shadows, grading)", "low", "Low") },
             new SettingDef { key = "hdr", label = "HDR output (needs an HDR display with HDR on in the system)", @bool = true },

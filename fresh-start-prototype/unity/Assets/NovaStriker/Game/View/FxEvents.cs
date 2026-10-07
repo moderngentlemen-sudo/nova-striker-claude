@@ -85,13 +85,19 @@ namespace NovaStriker.Game
                         Dust(ev.p.x, ev.p.y, 0.45f + 0.45f * k, new[] { PI, 0 }, noRing: true);
                     }
                     else Dust(ev.p.x, ev.p.y, Mathf.Min(0.35f, 0.08f + F(-ev.vy) * 0.018f), new[] { PI, 0 }, noRing: true, op: 0.4f);
+                    // Marksman Nova's skate blades strike sparks off the deck on a hard landing, both ways
+                    if (ev.p.@char == "nova" && SETTINGS.novaKit == "marksman" && ev.vy < -12)
+                    {
+                        float k = Mathf.Min(1, F(-ev.vy - 12) / 14);
+                        foreach (var a in new[] { 0.3f, PI - 0.3f }) view.sparks.Emit(ev.p.slot, ev.p.x, ev.p.y + 0.05, 4 + 8 * k, a, 3 + 4 * k, 0.6f, light: 0.8f + k);
+                    }
                     break;
                 case "jump": case "djump": if (ev.p != null) Burst(ev.p.x, ev.p.y + 0.1, "#e8eef5", 5, 2.5f, 0.3f, 0.25f, dir: -PI / 2, spread: 2); break;
                 case "walljump":
                 {
                     double wx = ev.p.x - ev.dir * ev.p.w / 2;
                     Smoke(wx, ev.p.y + 0.3, "#a3abb5", ev.climb ? 4 : 6, 2.5f, 0.35f, 0.4f, dir: ev.dir > 0 ? 0 : PI, spread: 1.6f, op: 0.5f);
-                    if (ev.p.@char == "nova") Burst(wx, ev.p.y + 0.1, "#ffe2a8", 8, 5, 0.16f, 0.25f, dir: ev.dir > 0 ? -0.6f : PI + 0.6f, spread: 1, grav: 8);
+                    if (ev.p.@char == "nova") view.sparks.Emit(ev.p.slot, wx, ev.p.y + 0.1, 8, ev.dir > 0 ? 0.3f : PI - 0.3f, 5, 1.1f);
                     Sprite(wx, ev.p.y + 0.5, "ring", "#ffffff", 0.35f, 0.14f, 2.4f);
                     break;
                 }
@@ -589,6 +595,7 @@ namespace NovaStriker.Game
                     var hand = rig.armF.end.worldPos;
                     if (S.Rnd() < 0.7f) { var P = Particle(hand, S.Rnd() < 0.5f ? "#ffe2a8" : ECHO_ORANGE, 0.14f, 0.2f); P.v = S.Dir(p.x, Mathf.Cos(back) * 5 * sp, Mathf.Sin(back) * 5 * sp + 1.5f); P.grav = 10; P.drag = 0.9f; }
                 }
+                else if (p.@char == "nova") { if (S.Rnd() < 0.8f) view.sparks.Emit(p.slot, p.x + System.Math.Sign(p.vx) * 0.3, p.y + 0.05, 2.5f, back + (p.vx > 0 ? -0.25f : 0.25f), 4 * sp + 2, 0.6f); }   // (they bounce and light the deck: Sparks)
                 else if (S.Rnd() < 0.8f) Burst(p.x + System.Math.Sign(p.vx) * 0.3, p.y + 0.04, "#ffe2a8", 2, 4 * sp + 1, 0.15f, 0.22f, dir: back, spread: 0.5f, grav: 8);
                 if (S.Rnd() < 0.5f) Smoke(p.x - System.Math.Sign(p.vx) * 0.2, p.y + 0.1, "#a3abb5", 1, 1.2f, 0.35f, 0.45f, dir: back, spread: 0.6f, op: 0.4f);
             }
@@ -689,7 +696,7 @@ namespace NovaStriker.Game
                 if (S.Rnd() < 0.2f + speed * 0.4f) Smoke(wx, p.y + p.h * 0.85, "#aab2bc", 1, 1.0f, 0.22f, 0.35f, dir: PI / 2, spread: 1, op: 0.45f);
                 if (S.Rnd() < 0.3f + speed * 0.5f) Smoke(wx, p.y + 0.08, "#a3abb5", 1, 1.4f, 0.28f, 0.4f, dir: PI / 2 + F(p.wallDir) * 0.6f, spread: 0.8f, op: 0.5f);
                 if (p.@char == "nova" && SETTINGS.novaKit == "marksman" && S.Rnd() < 0.35f + speed * 0.5f)
-                    Burst(wx, p.y + 0.05, "#ffe2a8", 1, 3 + speed * 2, 0.15f, 0.22f, dir: p.wallDir > 0 ? PI - 0.5f : 0.5f, spread: 0.8f, grav: 10);
+                    view.sparks.Emit(p.slot, wx, p.y + 0.05, 1.2f, p.wallDir > 0 ? PI - 0.5f : 0.5f, 3 + speed * 2, 0.8f, light: 0.6f);
             }
         }
 
@@ -714,7 +721,7 @@ namespace NovaStriker.Game
             foreach (var p in world.players)
             {
                 if (p.@char != "nova" || !p.onGround || System.Math.Abs(p.vx) < 6 || S.Rnd() > 0.35f) continue;
-                Burst(p.x - System.Math.Sign(p.vx) * 0.15, p.y + 0.03, "#ffe2a8", 1, 1.5f, 0.16f, 0.2f, dir: p.vx > 0 ? PI - 0.3f : 0.3f, spread: 0.6f, grav: 4);
+                view.sparks.Emit(p.slot, p.x - System.Math.Sign(p.vx) * 0.15, p.y + 0.05, 1, p.vx > 0 ? PI - 0.15f : 0.15f, 2.5f, 0.5f, light: 0.4f);
             }
         }
     }

@@ -33,7 +33,7 @@ namespace NovaStriker.Game
         {
             ["skyport"] = new LookDef
             {
-                key = 2.3f, fill = 0.95f, rim = 1.6f, rimColor = 0xbfe6ff, env = 0.8f, exposure = 0.98f,
+                key = 2.3f, fill = 0.95f, rim = 1.6f, rimColor = 0xbfe6ff, env = 1.0f, exposure = 0.98f,   // (env: the sky city's sheen)
                 lift = new Vector3(0.0f, 0.01f, 0.025f), gamma = new Vector3(1.0f, 1.0f, 0.98f), gain = new Vector3(1.02f, 1.0f, 0.98f), sat = 1.08f, contrast = 1.06f, vignette = 0.28f,
                 neon = new uint[] { 0x5fd8ff, 0xffffff }, keyPanel = 0xfff1dc, fillPanel = 0x9fcfff,
             },

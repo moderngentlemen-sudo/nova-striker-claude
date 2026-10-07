@@ -1,7 +1,8 @@
 // A sense of movement in the open sky (the Skyport route): banners and flags that ripple in the breeze, clouds
 // that drift with the wind (high ones far off, low banks rolling past below the deck), and sunlight that comes and
 // goes through them: soft cloud shadows sweeping the deck (a scrolling cookie on the sun), the sun's light and glow
-// rising and falling with the cover, and faint sunbeams when it breaks through. Presentation only.
+// rising and falling with the cover, and faint sunbeams when it breaks through; flecks of light drifting in the
+// sun, and flocks of birds wheeling far off that scatter at an explosion. Presentation only.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -26,9 +27,37 @@ namespace NovaStriker.Game
         Vector2 cookieAt;
         UniversalAdditionalLightData sunData;
 
+        // light motes and birds
+        const int MOTES = 150, FLOCKS = 3, BIRDS = 9;
+        DynMesh motes, birds;
+        readonly Vector3[] mote = new Vector3[MOTES]; readonly float[] moteK = new float[MOTES];
+        sealed class Flock { public float a, speed, rx, rz, cy, cz, dx, startle; public Vector3[] off = new Vector3[BIRDS]; public float[] flap = new float[BIRDS]; }
+        readonly Flock[] flocks = new Flock[FLOCKS];
+        readonly Camera cam;
+
         public Ambience(View view, Light sun, TMesh sunGlow)
         {
-            this.view = view; this.sun = sun; this.sunGlow = sunGlow;
+            this.view = view; this.sun = sun; this.sunGlow = sunGlow; cam = view.camera;
+            // flecks of light in the air between the deck and the terrace, catching the sun
+            var quads = new int[MOTES * 6];
+            for (int i = 0; i < MOTES; i++) { int v = i * 4, k = i * 6; quads[k] = v; quads[k + 1] = v + 2; quads[k + 2] = v + 1; quads[k + 3] = v + 1; quads[k + 4] = v + 2; quads[k + 5] = v + 3; }
+            var mm = new TMat(TMat.Kind.Basic) { map = view.fx.tex.glow, vertexColors = true, transparent = true, depthWrite = false, blending = Blending.Additive, side = Side.Double };
+            motes = new DynMesh(MOTES * 4, quads, mm, true, true, "motes"); view.scene.add(motes.obj);
+            for (int i = 0; i < MOTES; i++)
+            {
+                mote[i] = new Vector3(-20 + S.Rnd() * 40, 0.4f + S.Rnd() * 8, -11 + S.Rnd() * 14); moteK[i] = S.Rnd() * 10;
+                int v = i * 4; motes.uv[v] = new Vector2(0, 0); motes.uv[v + 1] = new Vector2(1, 0); motes.uv[v + 2] = new Vector2(0, 1); motes.uv[v + 3] = new Vector2(1, 1);
+            }
+            // birds: small dark silhouettes, two wings each, in loose flocks circling far out over the city
+            var bt = new int[FLOCKS * BIRDS * 6];
+            for (int i = 0; i < FLOCKS * BIRDS; i++) { int v = i * 4, k = i * 6; bt[k] = v; bt[k + 1] = v + 1; bt[k + 2] = v + 2; bt[k + 3] = v; bt[k + 4] = v + 3; bt[k + 5] = v + 1; }
+            var bm = new TMat(TMat.Kind.Basic) { colorHex = 0x55657a, side = Side.Double };
+            birds = new DynMesh(FLOCKS * BIRDS * 4, bt, bm, false, false, "birds"); view.scene.add(birds.obj);
+            for (int f = 0; f < FLOCKS; f++)
+            {
+                var F = flocks[f] = new Flock { a = S.Rnd() * 6.3f, speed = 0.06f + S.Rnd() * 0.05f, rx = 30 + S.Rnd() * 25, rz = 12 + S.Rnd() * 10, cy = 18 + f * 7 + S.Rnd() * 6, cz = -55 - f * 22, dx = -30 + f * 30 };
+                for (int k = 0; k < BIRDS; k++) { F.off[k] = new Vector3((S.Rnd() - 0.5f) * 8, (S.Rnd() - 0.5f) * 2.5f, (S.Rnd() - 0.5f) * 6); F.flap[k] = S.Rnd() * 6.3f; }
+            }
             // cloud shadows on the deck: a soft tileable pattern the sun casts, scrolled by the wind
             sun.cookie = CloudCookie(256);
             sunData = sun.GetUniversalAdditionalLightData();
@@ -69,9 +98,13 @@ namespace NovaStriker.Game
             cloths.Add(c);
         }
 
+        // Something big went off: the nearest flocks scatter, climbing and beating their wings faster for a few seconds
+        public void Startle(float strength = 1) { foreach (var F in flocks) F.startle = Mathf.Min(1.5f, F.startle + strength); }
+
         public void Update(float dt, float camX)
         {
             t += dt;
+            UpdateMotes(dt, camX); UpdateBirds(dt, camX);
             // the open sky belongs to the Skyport route; elsewhere the effects fade away
             float want = Level.RouteAt(camX).id == "skyport" ? 1 : 0;
             sky += (want - sky) * (1 - Mathf.Exp(-dt * 1.5f));
@@ -109,6 +142,53 @@ namespace NovaStriker.Game
                 }
                 C.mesh.vertices = C.pos; C.mesh.RecalculateNormals(); C.mesh.RecalculateBounds();
             }
+        }
+
+        void UpdateMotes(float dt, float camX)
+        {
+            // they show in sunlight only: brightest as the sun breaks out
+            float glow = sky * (0.12f + 0.88f * cover);
+            motes.visible = glow > 0.01f;
+            if (!motes.visible) return;
+            Vector3 right = cam.transform.right, up = cam.transform.up; right.z = -right.z; up.z = -up.z;   // (into three.js space)
+            for (int i = 0; i < MOTES; i++)
+            {
+                var p = mote[i];
+                p.x += (WIND.x * 0.35f + Mathf.Sin(t * 0.7f + moteK[i]) * 0.15f) * dt; p.y += Mathf.Sin(t * 0.9f + moteK[i] * 1.3f) * 0.12f * dt;
+                if (p.x > camX + 22) p.x -= 44; if (p.x < camX - 22) p.x += 44;
+                mote[i] = p;
+                float tw = 0.5f + 0.5f * Mathf.Sin(t * (1.5f + moteK[i] % 1.7f) + moteK[i]), s = 0.035f + 0.03f * (moteK[i] % 1);
+                var c = new Color(1f, 0.93f, 0.78f) * (glow * tw * 0.9f);
+                int v = i * 4;
+                motes.Set(v, p - right * s - up * s); motes.Set(v + 1, p + right * s - up * s); motes.Set(v + 2, p - right * s + up * s); motes.Set(v + 3, p + right * s + up * s);
+                for (int k = 0; k < 4; k++) motes.col[v + k] = c;
+            }
+            motes.Upload();
+        }
+
+        void UpdateBirds(float dt, float camX)
+        {
+            birds.visible = sky > 0.05f;
+            if (!birds.visible) return;
+            for (int f = 0; f < FLOCKS; f++)
+            {
+                var F = flocks[f]; F.startle = Mathf.Max(0, F.startle - dt * 0.4f);
+                float st = F.startle;
+                F.a += F.speed * (1 + st * 1.5f) * dt;
+                var centre = new Vector3(camX + F.dx + Mathf.Cos(F.a) * F.rx, F.cy + Mathf.Sin(F.a * 2.3f) * 2 + st * 6, F.cz + Mathf.Sin(F.a) * F.rz);
+                var heading = new Vector3(-Mathf.Sin(F.a) * F.rx, 0, Mathf.Cos(F.a) * F.rz).normalized;
+                var wing = Vector3.Cross(Vector3.up, heading).normalized;
+                for (int k = 0; k < BIRDS; k++)
+                {
+                    F.flap[k] += dt * (9 + st * 10 + k % 3);
+                    var o = F.off[k] * (1 + st * 1.6f) + new Vector3(Mathf.Sin(t * 0.5f + k), Mathf.Sin(t * 0.7f + k * 1.7f) * 0.6f, Mathf.Cos(t * 0.4f + k)) * 0.8f;
+                    var c = centre + o; float span = 0.8f, lift = Mathf.Sin(F.flap[k]) * 0.35f;
+                    int v = (f * BIRDS + k) * 4;
+                    birds.Set(v, c + heading * 0.18f); birds.Set(v + 1, c - heading * 0.25f);
+                    birds.Set(v + 2, c + wing * span + Vector3.up * lift - heading * 0.12f); birds.Set(v + 3, c - wing * span + Vector3.up * lift - heading * 0.12f);
+                }
+            }
+            birds.Upload();
         }
 
         Texture2D cookieTex;

@@ -46,6 +46,18 @@ namespace NovaStriker.Game
             }
         }
 
+        // The holo displays and agility rings flicker and shimmer; the sign breathes
+        public static void Animate(float t)
+        {
+            if (mats.TryGetValue("Kit_Holo", out var h))
+            {
+                float flick = Mathf.PerlinNoise(t * 9, 0.3f) > 0.86f ? 0.45f : 1;
+                h.emissiveIntensity = (1.5f + 0.35f * Mathf.Sin(t * 2.2f) + 0.15f * Mathf.Sin(t * 13)) * flick;
+                h.opacity = 0.62f + 0.12f * Mathf.Sin(t * 3.1f + 1);
+            }
+            if (mats.TryGetValue("Kit_Sign", out var s)) s.emissiveIntensity = 1.35f + 0.45f * (0.5f + 0.5f * Mathf.Sin(t * 1.4f));
+        }
+
         static readonly Dictionary<string, TMat> mats = new Dictionary<string, TMat>();
         static TMat MatFor(string name)
         {
@@ -54,10 +66,10 @@ namespace NovaStriker.Game
             TMat Glow(string c, float k) => new TMat { colorCss = c, emissiveCss = c, emissiveIntensity = k, roughness = 0.3f };
             t = name switch
             {
-                "Kit_Hull" => Paint("#e9eef3", 0.42f, 0.1f),
-                "Kit_HullB" => Paint("#dce3eb", 0.46f, 0.1f),
-                "Kit_HullDark" => Paint("#3d4f66", 0.5f, 0.2f),
-                "Kit_Navy" => Paint("#2b4f7e", 0.45f, 0.15f),
+                "Kit_Hull" => Paint("#e9eef3", 0.3f, 0.1f),
+                "Kit_HullB" => Paint("#dce3eb", 0.34f, 0.1f),
+                "Kit_HullDark" => Paint("#3d4f66", 0.4f, 0.2f),
+                "Kit_Navy" => Paint("#2b4f7e", 0.32f, 0.15f),
                 "Kit_Metal" => Paint("#9aa6b2", 0.3f, 0.85f, 1.5f),
                 "Kit_Pad" => Look.ApplySurface(new TMat { colorCss = "#2fb5c9", roughness = 0.8f }, "rubber", 0.8f, 0.8f),
                 "Kit_PadOrange" => Look.ApplySurface(new TMat { colorCss = "#f08a3c", roughness = 0.8f }, "rubber", 0.8f, 0.8f),

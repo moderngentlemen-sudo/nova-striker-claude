@@ -160,7 +160,18 @@ default settings the simulation is still the prototype's (the parity tests run w
   - **Clouds:** far clouds drift with the wind, and low cloud banks roll past below the deck.
   - **Sunlight:** soft cloud shadows sweep across the deck (a scrolling cookie on the sun), and the sun's light
     and glow rise and fall with the cover. Faint sunbeams fade in when it breaks through.
+  - **Light motes:** flecks of light drift in the sun.
+  - **Birds:** flocks wheel far out over the city and scatter when something big goes off.
   - **Elsewhere:** away from the open sky, it all fades out.
+- **Sparks with weight and light** (`Sparks.cs`). Nova's skate blades throw sparks when he slides, skates fast,
+  wall-slides, wall-jumps or lands hard. The sparks bounce along the floor two or three times, and each shower
+  lights the deck with a flickering warm light.
+- **Living displays.** The gym's holo screens and agility rings flicker and shimmer, and its sign breathes
+  (`GymDressing.Animate`).
+- **Reflections and sheen** (Settings › *Reflections on the deck*; High and Ultra). A second camera mirrors the
+  scene in the floor, and thin sheets over the open sky's floors show it, strongest at grazing angles
+  (`PlanarReflection.cs`, `Shaders/Reflect.shader`). High renders it at half size and Ultra at full size. The
+  deck, hull paint and sky reflections are glossier too.
 - **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
   press.
 - **HDR output** (Settings › *HDR output*). On an HDR display with HDR turned on in the system, the game
