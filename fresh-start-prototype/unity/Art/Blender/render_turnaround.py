@@ -26,7 +26,12 @@ fo = bpy.data.objects.new('floor', floor); sc.collection.objects.link(fo)
 fm = bpy.data.materials.new('floor'); fm.use_nodes = True; fm.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.05, 0.06, 0.08, 1)
 fo.data.materials.append(fm)
 cam = bpy.data.cameras.new('cam'); cam.lens = 85; co = bpy.data.objects.new('cam', cam); sc.collection.objects.link(co); sc.camera = co
-views = [('front', 0, 0.95, 6.2), ('three_quarter', 40, 0.95, 6.2), ('side', 90, 0.95, 6.2), ('back', 180, 0.95, 6.2), ('face', 25, 1.7, 1.25)]
+# frame the character: its height sets the camera's distance and aim (RAM stands far taller than Nova)
+from mathutils import Vector as V3
+zs = [(o.matrix_world @ V3(c)).z for o in sc.objects if o.type == 'MESH' and not o.hide_render and o.name != 'floor' for c in o.bound_box]
+H = max(zs) if zs else 1.85; k = H / 1.85
+views = [('front', 0, 0.95 * k, 6.2 * k), ('three_quarter', 40, 0.95 * k, 6.2 * k), ('side', 90, 0.95 * k, 6.2 * k), ('back', 180, 0.95 * k, 6.2 * k),
+         ('face', 25, H - 0.22 * k * k, 1.25 * k * k)]
 files = []
 for name, ang, tz, dist in views:
     a = math.radians(ang)
