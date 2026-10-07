@@ -55,6 +55,7 @@ namespace NovaStriker.Game
         public bool curSet;
         public string headMode;
         public float cloak;
+        public bool helmetOff, helmetKnock;   // (Nova: his helmet knocked off at critical health: Anim, HelmetFx)
         // set by the view
         public TMesh ring;
         public List<TMesh> shells = new List<TMesh>();
@@ -375,7 +376,7 @@ namespace NovaStriker.Game
                 if (rig.headMode == mode) return;
                 rig.headMode = mode; helmet.visible = mode == "helmet"; bare.visible = mode != "helmet";
             };
-            rig.setHead(SETTINGS.novaHead ?? "bare");
+            rig.setHead(SETTINGS.novaHead ?? "helmet");
             return rig;
         }
 

@@ -512,7 +512,13 @@ namespace NovaStriker.Game
                 rig.mats.energy.emissiveIntensity = 2.2f + charge * 1.2f + (p.chargeT > 0 || p.burstT > 0 || p.dashChargeT > 0 || st == "beam" ? Mathf.Sin(t * 30) * 0.4f : 0) + (flash ? 2.5f : 0)
                     + (p.overcharge > 0 ? 1.2f + Mathf.Sin(t * 12) * 0.5f : 0) + (st == "ult" ? 4 + Mathf.Sin(t * 36) * 0.8f : 0)
                     + AbsorbGlow(rig, p, t, dt);
-                rig.setHead(SETTINGS.novaHead ?? "bare");
+                // His helmet is knocked off when his health turns critical (or he goes down), a warning to the player;
+                // it comes back once he is healed past HELMET_BACK or revived (View spawns the flying helmet: HelmetFx)
+                string look = SETTINGS.novaHead ?? "helmet";
+                bool down = st == "downed" || st == "dead";
+                if (!rig.helmetOff && look == "helmet" && st != "dead" && (st == "downed" || p.hp <= p.maxHp * HELMET_OFF)) { rig.helmetOff = true; rig.helmetKnock = true; }
+                else if (rig.helmetOff && !down && p.hp > p.maxHp * HELMET_BACK) rig.helmetOff = false;
+                rig.setHead(look == "helmet" && !rig.helmetOff ? "helmet" : "bare");
                 foreach (var j in ex.jets) { j.visible = p.thrusting; j.scale.set(1, 0.8f + R() * 0.5f, 1); }
                 ex.module.visible = mk; foreach (var b in ex.blades) b.visible = mk;
                 if (mk && ex.moduleTint != p.attachment)
@@ -613,6 +619,7 @@ namespace NovaStriker.Game
                 }
             return (2.6f * g + 2 * rig.absorbFlash) * breathe;
         }
+        public const float HELMET_OFF = 0.25f, HELMET_BACK = 0.4f;   // Nova's helmet: knocked off at or below 25% health, back above 40%
         static readonly Color ABSORB_RIM = new Color(0.55f, 0.88f, 1f);   // (the shield's blue)
 }
 }

@@ -346,6 +346,7 @@ namespace NovaStriker.Game
                 bool model = SETTINGS.charModels == "models" && ModelSkin.HasModel(p.@char);
                 if (model && rig.skin == null) rig.skin = new ModelSkin(rig, p.@char);
                 rig.skin?.Update(p, dt, model && !rig.skin.failed);
+                if (rig.helmetKnock) { rig.helmetKnock = false; HelmetFx.Knock(rig, p); }
                 // Echo is gone during Thousand Cuts until every cut lands at once; a dodging Nova flickers like a hologram
                 bool cutting = p.state == "ult" && p.ultRun != null && p.ultRun.kind == "echo" && p.ultRun.t < p.ultRun.fin;
                 bool phasing = p.state == "dodge" && p.dodge != null && p.dodge.t <= 11 && Mathf.FloorToInt(t * 30) % 3 == 0;
@@ -705,6 +706,7 @@ namespace NovaStriker.Game
             }
             if (Screen.width != w || Screen.height != h) Resize(Screen.width, Screen.height);
             SyncEntities(world, a, dt);
+            HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);

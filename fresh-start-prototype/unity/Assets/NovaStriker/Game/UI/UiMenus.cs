@@ -24,7 +24,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "novaKit", label = "Nova's kit", opts = O("marksman", "Marksman: attachments, secondary weapons, dodge, skates", "sentinel", "Sentinel: Pass 1 kit") },
             new SettingDef { key = "novaDefense", label = "Nova's LT move, Marksman kit", opts = O("dodge", "Dodge", "shield", "Absorbing shield: blocks from in front; what it takes powers up his attacks") },
             new SettingDef { key = "novaParryStun", label = "Nova's perfect parry or shield block stuns the attacker", @bool = true },
-            new SettingDef { key = "novaHead", label = "Nova's head (look only)", opts = O("bare", "Face, as in his concept art", "helmet", "Full helmet, gold visor") },
+            new SettingDef { key = "novaHead", label = "Nova's head (look only)", opts = O("helmet", "Full helmet, gold visor: knocked off at critical health", "bare", "Face, as in his concept art") },
             new SettingDef { key = "echoHead", label = "Echo's head (look only)", opts = O("helmet", "Full helmet, amber visor", "mask", "Survival mask", "bare", "Bare face") },
             new SettingDef { key = "echoKit", label = "Echo's kit", opts = O("hunter", "Hunter: blades, glaive, snares, reel", "pursuit", "Pursuit: Pass 1 kit") },
             new SettingDef { key = "echoBelt", label = "Echo's utility belt (snares), Hunter kit", opts = O("fire", "Tap fire (crouch + tap plants)", "lb", "LB / T (crouch + LB plants); tap fire is a quick shot") },

@@ -15,7 +15,8 @@ reset()
 PEARL = mat('Nova_Armour', srgb('#eceef0'), metal=0.05, rough=0.32, coat=0.6, sheen=0.15)
 NAVY = mat('Nova_Suit', srgb('#121a2e'), rough=0.55, sheen=0.12)
 NAVY2 = mat('Nova_SuitPanel', srgb('#1c2a4a'), rough=0.45, coat=0.2)
-GOLD = mat('Nova_GoldGlow', srgb('#ffbf5a'), metal=0.3, rough=0.25, emit=srgb('#ffad38'), strength=6)
+GOLD = mat('Nova_GoldGlow', srgb('#ffbf5a'), metal=0.3, rough=0.25, emit=srgb('#ffad38'), strength=12)
+GROOVE = mat('Nova_PanelLine', srgb('#9aa3ad'), metal=0.2, rough=0.5)
 GOLDM = mat('Nova_GoldMetal', srgb('#d9a54e'), metal=1.0, rough=0.22)
 GLOVE = mat('Nova_Glove', srgb('#1a1d26'), rough=0.55, sheen=0.3)
 SOLE = mat('Nova_Sole', srgb('#20232b'), rough=0.7)
@@ -49,9 +50,9 @@ spine = chain([((0, 0.0, 1.07), (0.13, 0.1)), ((0, 0.0, 1.2), (0.155, 0.11)), ((
                ((0, 0.01, 1.43), (0.15, 0.105))], pelvis)
 chain([((0, 0.0, 1.53), (0.052, 0.055)), ((0, -0.005, 1.6), (0.048, 0.05))], spine)
 for s in (1, -1):
-    sh = chain([((s * 0.12, 0.01, 1.455), (0.07, 0.07)), (tuple(arm_pt(s, 0)), (0.062, 0.062))], spine)
-    el = chain([(tuple(arm_pt(s, 0.15)), (0.058, 0.056)), (tuple(arm_pt(s, UA)), (0.046, 0.046)),
-                (tuple(arm_pt(s, UA + 0.12)), (0.048, 0.044)), (tuple(arm_pt(s, UA + FA)), (0.033, 0.026)),
+    sh = chain([((s * 0.12, 0.01, 1.455), (0.075, 0.075)), (tuple(arm_pt(s, 0)), (0.068, 0.066))], spine)
+    el = chain([(tuple(arm_pt(s, 0.15)), (0.063, 0.06)), (tuple(arm_pt(s, UA)), (0.05, 0.05)),
+                (tuple(arm_pt(s, UA + 0.12)), (0.052, 0.047)), (tuple(arm_pt(s, UA + FA)), (0.033, 0.026)),
                 (tuple(arm_pt(s, UA + FA + 0.09)), (0.042, 0.022)), (tuple(arm_pt(s, UA + FA + 0.17)), (0.03, 0.016))], sh)
     chain([((s * HX, 0.0, 0.92), (0.085, 0.085)), ((s * 0.1, -0.005, 0.72), (0.075, 0.078)), ((s * 0.1, 0.0, KNEE), (0.055, 0.058)),
            ((s * 0.1, 0.012, 0.32), (0.055, 0.06)), ((s * 0.1, 0.0, ANK), (0.038, 0.04)), ((s * 0.1, -0.12, 0.035), (0.04, 0.025))], pelvis)
@@ -146,7 +147,9 @@ if len(sp) == 8:
     st = mesh_obj('Nova_Star', vs, fs, GOLD); mod(st, 'SOLIDIFY', thickness=0.004)
 for s in (1, -1):
     seam = project(ct, [(s * 0.035, 1.47), (s * 0.08, 1.43), (s * 0.13, 1.4), (s * 0.165, 1.33)], lift=0.003)
-    tube(f'Nova_ChestSeam{s}', GOLD, seam, 0.0028)
+    tube(f'Nova_ChestSeam{s}', GOLD, seam, 0.0036)
+    tube(f'Nova_ChestLine{s}', GROOVE, project(ct, [(s * 0.02, 1.25), (s * 0.06, 1.23), (s * 0.12, 1.25), (s * 0.165, 1.29)], lift=0.002), 0.0022)
+    tube(f'Nova_ChestRib{s}', GROOVE, project(ct, [(s * 0.1, 1.44), (s * 0.115, 1.38), (s * 0.12, 1.3)], lift=0.002), 0.002)
     tube(f'Nova_CollarSeam{s}', GOLD, project(bvh(collar), [(s * 0.026, 1.545), (s * 0.026, 1.585), (s * 0.028, 1.62)], lift=0.002), 0.0024)
 
 # ---- Arms: pauldrons, forearm guard, gloves, and the Sentinel Bracer on the right ----
@@ -157,7 +160,10 @@ for s in (1, -1):
     tube(f'Nova_PauldronSeam{s}', GOLD, [sh + Vector((s * 0.02, -0.088, 0.0)), sh + Vector((s * 0.062, -0.064, 0.008)), sh + Vector((s * 0.093, -0.01, 0.0))], 0.0025)
     axis = arm_pt(s, 1) - arm_pt(s, 0)
     hand = arm_pt(s, UA + FA + 0.08)
-    patch(f'Nova_Glove{s}', GLOVE, None, (0.045, 0.03, 0.075), res=(18, 12), thick=0, M=frame(hand, axis))
+    patch(f'Nova_Glove{s}', GLOVE, None, (0.046, 0.032, 0.072), e=0.8, res=(18, 12), thick=0, M=frame(hand, axis))
+    patch(f'Nova_GloveCuff{s}', GLOVE, None, (0.042, 0.04, 0.025), v=(-60, 60), res=(16, 6), thick=0.005, M=frame(hand - axis * 0.075, axis))
+    tb = hand + Vector((0, -0.03, 0.02)) - Vector((s * 0.012, 0, 0))
+    tube(f'Nova_GloveThumb{s}', GLOVE, [tb, tb + Vector((0, -0.022, -0.03)), tb + Vector((0, -0.024, -0.058))], 0.014, radii=[1, 0.9, 0.7])
     patch(f'Nova_Knuckle{s}', PEARL, None, (0.03, 0.012, 0.022), u=(-90, 90), res=(12, 8), thick=0.004,
           M=frame(hand + Vector((0, -0.028, -0.01)), axis))
     if s == 1:      # his left forearm guard
@@ -167,18 +173,23 @@ for s in (1, -1):
 s = -1; axis = (arm_pt(s, 1) - arm_pt(s, 0)).normalized()
 def bracer_shape(p, ss, t):
     q = p.copy(); k = (0.5 - q.z / 0.44)                   # 0 at the elbow end, 1 at the nose
-    k = max(0.0, min(1.0, k)); w = 1 - 0.55 * k ** 1.6
-    q.x *= w * 0.88; q.y = q.y * w - 0.016 * k
+    k = max(0.0, min(1.0, k)); w = 1 - 0.62 * k ** 1.4
+    q.x *= w * 0.78; q.y = q.y * w - 0.02 * k
     if q.y < 0: q.y -= 0.012 * (1 - abs(q.x) / 0.06) * (1 - k)            # a raised ridge along the top
     return q
 BC = arm_pt(s, UA + FA - 0.04)
-bracer = patch('Nova_Bracer', PEARL, None, (0.064, 0.07, 0.22), e=0.55, thick=0.008, res=(32, 24), shape=bracer_shape, subsurf=1,
+bracer = patch('Nova_Bracer', PEARL, None, (0.064, 0.072, 0.24), e=0.55, thick=0.008, res=(32, 24), shape=bracer_shape, subsurf=1,
                M=frame(BC, -axis))
 bt = bvh(bracer)
-tip = BC + axis * 0.22
+tip = BC + axis * 0.235
 patch('Nova_BracerEmitter', GOLD, None, (0.028, 0.028, 0.01), res=(20, 8), thick=0, M=frame(tip + axis * 0.004, axis))
-edge = [BC + axis * d + Vector((0, -0.074, 0)) * (1 - 0.42 * max(0, min(1, 0.5 + d / 0.44)) ** 2) for d in (-0.17, -0.06, 0.06, 0.16)]
-tube('Nova_BracerSeam', GOLD, [p + Vector((0, -0.006, 0)) for p in edge], 0.003)
+for off, name in ((0.0, 'Nova_BracerSeam'), (0.03, 'Nova_BracerSeamL'), (-0.03, 'Nova_BracerSeamR')):
+    pts = []
+    for d in (-0.19, -0.1, 0.0, 0.1, 0.19):
+        o = BC + axis * d + Vector((off, -0.3, 0))
+        hit, n, _, _ = bt.ray_cast(o, Vector((0, 1, 0)))
+        if hit is not None: pts.append(hit + n * 0.003)
+    if len(pts) >= 3: tube(name, GOLD if off == 0 else GROOVE, pts, 0.0035 if off == 0 else 0.0022)
 
 # ---- Legs: thigh panels, knee pads, greaves and boots ----
 for s in (1, -1):
@@ -190,6 +201,8 @@ for s in (1, -1):
     def greave_shape(p, ss, t):
         q = p.copy(); q.y -= 0.012 * max(0, -q.y) / 0.07; return q          # a shin ridge at the front
     patch(f'Nova_Greave{s}', PEARL, (s * 0.1, 0.004, 0.27), (0.06, 0.066, 0.2), v=(-75, 85), e=0.55, thick=0.008, res=(28, 16), shape=greave_shape, subsurf=1)
+    tube(f'Nova_ThighSeam{s}', GOLD, [(s * 0.168, -0.035, 0.86), (s * 0.176, -0.04, 0.72), (s * 0.17, -0.035, 0.58)], 0.003)
+    tube(f'Nova_GreaveLine{s}', GROOVE, [(s * 0.1, -0.082, 0.42), (s * 0.1, -0.084, 0.3), (s * 0.1, -0.078, 0.16)], 0.0022)
     tube(f'Nova_GreaveStripe{s}', NAVY2, [(s * 0.158, -0.0, 0.41), (s * 0.161, 0.0, 0.3), (s * 0.155, 0.0, 0.2)], 0.007)
     def boot_shape(p, ss, t):
         q = p.copy(); q.z = max(q.z, -0.045); return q                      # a flat sole
@@ -212,6 +225,7 @@ def visor_shape(p, s, t):
     return q
 patch('Nova_HelmVisor', VISOR, HC + Vector((0, 0.0, 0.012)), (0.113, 0.128, 0.142), u=(-78, 78), v=(-6, 24), e=0.85, thick=0.004, res=(32, 12), shape=visor_shape)
 patch('Nova_HelmChin', PEARL, HC + Vector((0, 0.002, 0.012)), (0.11, 0.125, 0.14), u=(-60, 60), v=(-66, -22), e=0.88, thick=0.004, res=(24, 10), shape=helm_shape)
+patch('Nova_HelmNeckSeal', NAVY, (0, 0.006, 1.61), (0.055, 0.058, 0.05), v=(-60, 60), res=(20, 6), thick=0)
 tube('Nova_HelmCrest', PEARL, [HC + Vector(v) for v in ((0, -0.125, 0.06), (0, -0.09, 0.13), (0, 0.0, 0.158), (0, 0.09, 0.12), (0, 0.125, 0.04))], 0.012, radii=[0.3, 0.9, 1, 0.9, 0.4])
 for s_ in (1, -1):
     patch(f'Nova_HelmDisc{s_}', GOLDM, HC + Vector((s_ * 0.113, 0.01, 0.0)), (0.008, 0.03, 0.03), res=(16, 10), thick=0, subsurf=1)

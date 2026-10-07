@@ -228,6 +228,8 @@ namespace NovaStriker.Game
                 if (!(saved.settingsVersion >= 9)) { saved.lockMode = "auto"; saved.settingsVersion = 9; }
                 // Version 10 (Unity): Echo shows his face by default, as in his concept art
                 if (!(saved.settingsVersion >= 10)) { saved.echoHead = "bare"; saved.settingsVersion = 10; }
+                // Version 11 (Unity): Nova is drawn with his 3D model and wears his helmet, which critical health knocks off
+                if (!(saved.settingsVersion >= 11)) { saved.novaHead = "helmet"; saved.charModels = "models"; saved.settingsVersion = 11; }
                 SETTINGS = saved;
             }
             catch (System.Exception) { /* unreadable: keep defaults */ }

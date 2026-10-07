@@ -133,6 +133,17 @@ default settings the simulation is still the prototype's (the parity tests run w
   - light enemies for 80 ticks;
   - heavy enemies for 45 ticks;
   - bosses only reel.
+- **Nova's 3D model** (Settings › *Character models* › *3D models*, the default). The model is
+  `Resources/NovaStriker/Models/nova_model.fbx`, made by the scripts in `Art/Blender`.
+  - **Animation:** its skeleton copies the built-in rig's pose every frame, so it moves exactly as the rig does,
+    with every move and aim angle and no animation clips.
+  - **Materials:** they are the rig's own, so the gold seams pulse with his charge.
+  - **Fallback:** if the model can't load, the built-in rig is drawn instead.
+- **Nova's helmet comes off at critical health** (Settings › *Nova's head* › *Full helmet*, the default).
+  - **When:** at 25% health or less, or when he goes down, the helmet is knocked off. It flies up and back,
+    tumbles, bounces and fades, and his face shows: a warning to the player.
+  - **Coming back:** it returns once he is healed above 40% or revived.
+  - **Code:** `Anim` (`HELMET_OFF`, `HELMET_BACK`) and `HelmetFx`.
 - **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
   press.
 - **HDR output** (Settings › *HDR output*). On an HDR display with HDR turned on in the system, the game
