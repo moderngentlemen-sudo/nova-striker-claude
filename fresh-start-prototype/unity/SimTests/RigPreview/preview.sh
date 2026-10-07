@@ -1,7 +1,7 @@
 #!/bin/sh
 # Renders Nova's or Echo's procedural rig (Rigs.cs) from six angles to <who>-preview.png, without Unity.
 # Needs node, python3, the playwright package and Chromium (three.js loads from jsDelivr).
-# Usage: sh preview.sh [nova|echo] [out.png]
+# Usage: sh preview.sh [nova|echo|ram] [out.png]
 D=$(cd "$(dirname "$0")" && pwd); WHO=${1:-nova}; OUT=${2:-$D/$WHO-preview.png}; T=${TMPDIR:-/tmp}/ns-rigpreview; mkdir -p $T
 python3 $D/conv.py $D/../../Assets/NovaStriker/Game/View/Rigs.cs $WHO > $T/rig.js || exit 1
 { echo '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#2b3542;position:relative}</style>'

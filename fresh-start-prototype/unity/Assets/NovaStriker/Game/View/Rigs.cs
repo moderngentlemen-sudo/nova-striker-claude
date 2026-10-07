@@ -114,7 +114,8 @@ namespace NovaStriker.Game
         public static Rig BuildPlayerRig(string charId)
         {
             if (charId == "nova") return BuildNovaRig();
-            if (charId == "ram" || charId == "fix") return BuildNewRig(charId);
+            if (charId == "ram") return BuildRamRig();
+            if (charId == "fix") return BuildNewRig(charId);
             // Echo, as in his concept art: cream-white armour with bronze-gold trim over a dark charcoal undersuit, orange
             // energy, a bare face with spiky blond hair (the helmet and mask are the other looks: Settings, Echo's head)
             var c = CHARS[charId]; var D = Mats(c);
@@ -380,6 +381,184 @@ namespace NovaStriker.Game
             return rig;
         }
 
+        // ---- RAM: his concept art ----
+        // A towering frame in battle-worn gunmetal over dark joints and undersuit, electric blue light in the seams
+        // (the abdomen's bands, the joint discs, the boots, the T visor), a rounded helm with curled ram's horns, huge
+        // rounded pauldrons, big blocky fists, segmented legs on round joint discs, the Breach Cannon over his right
+        // shoulder with its blue muzzle ring, and the Rampart: a heavy stone-grey frame round a glowing hexagonal
+        // hard-light panel, with a ram's-head emblem.
+        static Rig BuildRamRig()
+        {
+            var c = CHARS["ram"]; var D = Mats(c);
+            var M = RimAll(new RigMats { @base = Armour("#8f98a3", 0.5f, 0.55f), trim = Armour("#2a2f37", 0.45f, 0.5f), under = Std("#15181d", 0.6f, 0.3f), energy = D.energy, visor = D.visor, amber = D.amber });
+            TMat horn = Std("#b7a68a", 0.55f, 0.25f), frame = Armour("#7b838d", 0.65f, 0.35f), core = GlowMat(c.energy, 3.2f);
+            var ex = new RigExtra();
+            var S = Skeleton("ram", M, 0.095f, 0.11f, 0.42f, 0.16f, 0.31f);
+            TObj hips = S.hips, spine = S.spine, head = S.head; Limb armN = S.armN, armF = S.armF, legN = S.legN, legF = S.legF;
+
+            // Pelvis: a dark core under armoured tassets, a glowing belt line
+            hips.add(MeshAt(RBox(0.44f, 0.24f, 0.56f, 0.08f), M.under, 0, 0.02f));
+            hips.add(MeshAt(RBox(0.14f, 0.24f, 0.32f, 0.05f), M.@base, 0.21f, -0.04f));
+            foreach (var z in new[] { 0.27f, -0.27f }) hips.add(MeshAt(RBox(0.34f, 0.26f, 0.08f, 0.04f), M.@base, 0.0f, -0.05f, z));
+            hips.add(MeshAt(RBox(0.46f, 0.03f, 0.58f, 0.01f), M.energy, 0, 0.13f));
+
+            // Torso: the abdomen in dark bands with blue light between them, a layered chest, a collar ring
+            for (int k = 0; k < 3; k++)
+            {
+                float y = 0.1f + k * 0.085f, w = 0.4f + k * 0.03f;
+                spine.add(MeshAt(RBox(w, 0.065f, 0.5f + k * 0.03f, 0.03f), M.trim, 0.02f, y));
+                spine.add(MeshAt(RBox(w - 0.04f, 0.02f, 0.46f + k * 0.03f, 0.008f), M.energy, 0.03f, y + 0.045f));
+            }
+            spine.add(MeshAt(RBox(0.4f, 0.36f, 0.5f, 0.1f), M.under, 0, 0.2f));
+            spine.add(MeshAt(RBox(0.54f, 0.46f, 0.7f, 0.14f), M.@base, 0.03f, 0.47f));
+            spine.add(MeshAt(RBox(0.3f, 0.2f, 0.4f, 0.08f), M.@base, 0.2f, 0.53f));
+            foreach (var z in new[] { 0.19f, -0.19f })
+            {
+                var pec = MeshAt(RBox(0.26f, 0.24f, 0.26f, 0.08f), M.@base, 0.12f, 0.46f, z); pec.rotation.x = z > 0 ? 0.12f : -0.12f; spine.add(pec);
+                spine.add(MeshAt(RBox(0.04f, 0.12f, 0.02f, 0.008f), M.energy, 0.24f, 0.32f, z * 1.15f));
+                spine.add(MeshAt(RBox(0.36f, 0.035f, 0.02f, 0.01f), M.energy, 0.04f, 0.4f, z * 1.84f));   // (side seams, seen in play)
+            }
+            spine.add(MeshAt(RBox(0.04f, 0.06f, 0.14f, 0.015f), core, 0.33f, 0.38f));
+            var collar = MeshAt(Geo.Torus(0.2f, 0.06f, 8, 20), M.trim, 0.02f, 0.69f); collar.rotation.x = Mathf.PI / 2; spine.add(collar);
+            // Back: the pack and its exhaust stacks
+            spine.add(MeshAt(RBox(0.28f, 0.54f, 0.54f, 0.08f), M.trim, -0.37f, 0.44f));
+            foreach (var y in new[] { 0.36f, 0.44f, 0.52f }) spine.add(MeshAt(RBox(0.03f, 0.025f, 0.32f, 0.01f), M.energy, -0.515f, y));
+            ex.stacks = new List<TMesh>();
+            foreach (var z in new[] { 0.15f, -0.15f })
+            {
+                var st = MeshAt(Geo.Cylinder(0.065f, 0.075f, 0.36f, 12), M.under, -0.43f, 0.8f, z); st.rotation.z = 0.35f; spine.add(st);
+                var rim = MeshAt(Geo.Torus(0.066f, 0.016f, 6, 14), M.energy, -0.49f, 0.97f, z); rim.rotation.set(Mathf.PI / 2, 0.35f, 0); spine.add(rim);
+                ex.stacks.Add(rim);
+            }
+            // Huge rounded pauldrons with a dark rim and a light line
+            foreach (var z in new[] { 0.44f, -0.44f })
+            {
+                var pad = MeshAt(Geo.Sphere(0.23f, 20, 14), M.@base, 0, 0.57f, z); pad.scale.set(1.08f, 0.7f, 0.92f); spine.add(pad);
+                var lip = MeshAt(Geo.Torus(0.215f, 0.032f, 8, 24), M.trim, 0, 0.49f, z); lip.rotation.x = Mathf.PI / 2; spine.add(lip);
+                spine.add(MeshAt(Geo.Cylinder(0.055f, 0.055f, 0.03f, 16), M.trim, 0.1f, 0.6f, z + Mathf.Sign(z) * 0.2f)).rotation.x = Mathf.PI / 2;
+                spine.add(MeshAt(RBox(0.26f, 0.03f, 0.02f, 0.01f), M.energy, 0, 0.53f, z + Mathf.Sign(z) * 0.215f));
+            }
+
+            // Head: a rounded helm with a crest, the T visor in blue, a jaw guard, and curled ram's horns
+            head.position.set(0.13f, 0.74f, 0);
+            var helm = MeshAt(Geo.Sphere(0.17f, 20, 16), M.@base, 0, 0.07f); helm.scale.set(1.05f, 1, 0.92f); head.add(helm);
+            head.add(MeshAt(RBox(0.2f, 0.04f, 0.06f, 0.015f), M.@base, -0.02f, 0.23f));
+            head.add(MeshAt(RBox(0.12f, 0.12f, 0.24f, 0.04f), M.trim, 0.1f, -0.03f));
+            head.add(MeshAt(RBox(0.04f, 0.035f, 0.22f, 0.012f), M.energy, 0.165f, 0.07f));
+            head.add(MeshAt(RBox(0.04f, 0.1f, 0.035f, 0.01f), M.energy, 0.165f, 0.02f));
+            foreach (var z in new[] { 0.15f, -0.15f })
+            {
+                // a ram's horn: sweeping back from the temple, curling down and forward round the side of the helm
+                var hornA = MeshAt(Geo.Torus(0.13f, 0.05f, 8, 22, Mathf.PI * 1.55f), horn, -0.04f, 0.1f, z * 1.25f);
+                hornA.rotation.set(0, 0, 1.1f); hornA.scale.set(1, 1, 1.2f); head.add(hornA);
+                head.add(MeshAt(Geo.Sphere(0.055f, 10, 8), horn, 0.04f, 0.2f, z * 1.12f));
+                head.add(MeshAt(Geo.Cylinder(0.05f, 0.05f, 0.04f, 14), M.trim, -0.02f, 0.08f, z * 1.08f)).rotation.x = Mathf.PI / 2;
+            }
+
+            // Arms: dark sleeves on round joint discs, massive gauntlets, big blocky fists
+            foreach (var a in new[] { armN, armF })
+            {
+                float sz = Mathf.Sign(a.top.position.z);
+                a.top.add(MeshAt(RBox(0.24f, 0.22f, 0.24f, 0.06f), M.@base, 0.01f, -0.16f));
+                var disc = MeshAt(Geo.Cylinder(0.1f, 0.1f, 0.06f, 18), M.trim, 0, 0, sz * 0.1f); disc.rotation.x = Mathf.PI / 2; a.joint.add(disc);
+                var glow = MeshAt(Geo.Cylinder(0.045f, 0.045f, 0.062f, 14), core, 0, 0, sz * 0.1f); glow.rotation.x = Mathf.PI / 2; a.joint.add(glow);
+                a.joint.add(MeshAt(RBox(0.26f, 0.32f, 0.28f, 0.07f), M.@base, 0.01f, -0.16f));
+                a.joint.add(MeshAt(RBox(0.02f, 0.2f, 0.04f, 0.008f), M.energy, 0.145f, -0.16f));
+                a.end.add(MeshAt(RBox(0.22f, 0.2f, 0.22f, 0.06f), M.trim, 0.01f, -0.05f));
+                a.end.add(MeshAt(RBox(0.08f, 0.06f, 0.2f, 0.02f), M.under, 0.1f, -0.1f));
+            }
+            foreach (var z in new[] { 0.07f, -0.07f })
+            {
+                armF.joint.add(MeshAt(Geo.Cylinder(0.03f, 0.03f, 0.3f, 10), M.under, -0.1f, -0.14f, z));
+                armF.joint.add(MeshAt(Geo.Torus(0.036f, 0.012f, 6, 12), M.energy, -0.1f, -0.2f, z));
+            }
+
+            // Legs: segmented plates over round hip and knee discs, pistons behind the shins, heavy boots lit at the toe
+            ex.pistons = new List<TMesh>();
+            foreach (var l in new[] { legN, legF })
+            {
+                float sz = Mathf.Sign(l.top.position.z);
+                var hipD = MeshAt(Geo.Cylinder(0.11f, 0.11f, 0.06f, 18), M.trim, 0, -0.02f, sz * 0.12f); hipD.rotation.x = Mathf.PI / 2; l.top.add(hipD);
+                l.top.add(MeshAt(RBox(0.3f, 0.17f, 0.3f, 0.07f), M.@base, 0.02f, -0.12f));
+                l.top.add(MeshAt(RBox(0.28f, 0.15f, 0.28f, 0.06f), M.@base, 0.03f, -0.3f));
+                var knee = MeshAt(Geo.Cylinder(0.11f, 0.11f, 0.07f, 18), M.trim, 0.02f, 0, sz * 0.12f); knee.rotation.x = Mathf.PI / 2; l.joint.add(knee);
+                var kglow = MeshAt(Geo.Cylinder(0.05f, 0.05f, 0.072f, 14), core, 0.02f, 0, sz * 0.12f); kglow.rotation.x = Mathf.PI / 2; l.joint.add(kglow);
+                l.joint.add(MeshAt(RBox(0.16f, 0.14f, 0.24f, 0.05f), M.@base, 0.12f, -0.02f));
+                l.joint.add(MeshAt(RBox(0.27f, 0.34f, 0.27f, 0.07f), M.@base, 0.04f, -0.25f));
+                var pis = MeshAt(Geo.Cylinder(0.035f, 0.035f, 0.32f, 10), M.trim, -0.11f, -0.22f, 0); l.joint.add(pis);
+                var ring = MeshAt(Geo.Torus(0.04f, 0.012f, 6, 12), M.energy, -0.11f, -0.32f, 0); ring.rotation.x = Mathf.PI / 2; l.joint.add(ring);
+                ex.pistons.Add(ring);
+                l.end.add(MeshAt(RBox(0.38f, 0.15f, 0.28f, 0.05f), M.trim, 0.07f, -0.03f));
+                l.end.add(MeshAt(RBox(0.14f, 0.1f, 0.26f, 0.04f), M.@base, 0.2f, 0.02f));
+                l.end.add(MeshAt(RBox(0.03f, 0.03f, 0.22f, 0.01f), M.energy, 0.275f, 0.0f));
+            }
+
+            // The Rampart: posed by the animation in body space. A heavy stone-grey frame (bars and corner blocks)
+            // round a glowing hexagonal hard-light panel, the ram's-head emblem at its heart.
+            var shield = G(0.45f, 0.95f, 0.42f); S.body.add(shield);
+            var panel = new TMat { colorCss = "#1f4fae", emissiveCss = c.energy, emissiveIntensity = 1.8f, map = HexTexture(), emissiveMap = HexTexture(), roughness = 0.2f, transparent = true, opacity = 0.88f };
+            var face = MeshAt(Geo.Plane(0.62f, 1.02f), panel, 0, 0, 0.05f); shield.add(face);
+            shield.add(MeshAt(RBox(0.6f, 1.0f, 0.06f, 0.02f), M.under, 0, 0, -0.01f));
+            foreach (var y in new[] { 0.53f, -0.53f }) shield.add(MeshAt(RBox(0.78f, 0.1f, 0.14f, 0.03f), frame, 0, y, 0.02f));
+            foreach (var x in new[] { 0.35f, -0.35f }) shield.add(MeshAt(RBox(0.1f, 1.12f, 0.14f, 0.03f), frame, x, 0, 0.02f));
+            foreach (var (x, y) in new[] { (0.36f, 0.54f), (-0.36f, 0.54f), (0.36f, -0.54f), (-0.36f, -0.54f) }) shield.add(MeshAt(RBox(0.16f, 0.16f, 0.17f, 0.03f), frame, x, y, 0.03f));
+            foreach (var y in new[] { 0.22f, -0.22f }) foreach (var x in new[] { 0.35f, -0.35f }) shield.add(MeshAt(RBox(0.13f, 0.12f, 0.16f, 0.025f), frame, x, y, 0.03f));
+            var crest = G(0, 0.06f, 0.1f); shield.add(crest);
+            // the ram's-head emblem: a tapering face, its glowing eyes, and two great curled horns
+            var muzzleE = MeshAt(RBox(0.16f, 0.3f, 0.05f, 0.05f), frame, 0, -0.03f); crest.add(muzzleE);
+            crest.add(MeshAt(RBox(0.22f, 0.12f, 0.05f, 0.04f), frame, 0, 0.1f));
+            foreach (var sx in new[] { 1f, -1f })
+            {
+                crest.add(MeshAt(RBox(0.04f, 0.018f, 0.02f, 0.006f), M.energy, sx * 0.055f, 0.08f, 0.03f));
+                var h = MeshAt(Geo.Torus(0.12f, 0.035f, 8, 18, Mathf.PI * 1.45f), frame, sx * 0.15f, 0.08f, 0); h.rotation.z = sx > 0 ? -0.55f : Mathf.PI + 0.55f; crest.add(h);
+            }
+            var edge = G(0.32f, 0.56f, 0); shield.add(edge);
+            ex.shield = shield; ex.shieldEdge = edge;
+            // The Breach Cannon over his right shoulder: it turns to the aim
+            var cannon = G(-0.08f, 0.84f, -0.3f); S.spine.add(cannon);
+            cannon.add(MeshAt(RBox(0.28f, 0.2f, 0.22f, 0.05f), M.trim));
+            var barrel = MeshAt(Geo.Cylinder(0.065f, 0.08f, 0.52f, 14), M.under, 0.3f, 0.02f, 0); barrel.rotation.z = -Mathf.PI / 2; cannon.add(barrel);
+            foreach (var x in new[] { 0.2f, 0.34f }) { var bd = MeshAt(Geo.Cylinder(0.088f, 0.088f, 0.05f, 14), M.@base, x, 0.02f, 0); bd.rotation.z = -Mathf.PI / 2; cannon.add(bd); }
+            cannon.add(MeshAt(RBox(0.16f, 0.05f, 0.05f, 0.015f), M.@base, 0.12f, 0.13f));
+            var band = MeshAt(Geo.Torus(0.078f, 0.02f, 8, 16), core, 0.55f, 0.02f, 0); band.rotation.y = Mathf.PI / 2; cannon.add(band);
+            var muzzle = G(0.58f, 0.02f, 0); cannon.add(muzzle);
+            ex.cannon = cannon; ex.muzzle = muzzle;
+            ex.edges["shield"] = new Edge(shield, edge, 0.2f); ex.edges["fistF"] = new Edge(armF.joint, armF.end, 0.5f); ex.edges["fistN"] = new Edge(armN.joint, armN.end, 0.5f);
+            S.extra = ex; S.mats = M; S.@char = "ram";
+            return FinishRig(S);
+        }
+
+        // The Rampart's hard light: bright hexagon edges over a deeper glow (tileable, made once)
+        static Texture2D hexTex;
+        static Texture2D HexTexture()
+        {
+            if (hexTex != null) return hexTex;
+            const int w = 128, h = 222; var px = new Color32[w * h];
+            float R = 21;   // (cell radius in pixels: about three across the panel's width)
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    // distance to the nearest hexagon edge on a pointy-top grid
+                    float best = 1e9f, second = 1e9f;
+                    float cw = Mathf.Sqrt(3) * R, ch = 1.5f * R;
+                    for (int j = -1; j <= Mathf.CeilToInt(h / ch) + 1; j++)
+                        for (int i = -1; i <= Mathf.CeilToInt(w / cw) + 1; i++)
+                        {
+                            float cx = i * cw + (j % 2 != 0 ? cw / 2 : 0), cy = j * ch;
+                            float d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+                            if (d < best) { second = best; best = d; } else if (d < second) second = d;
+                        }
+                    float edgeD = (Mathf.Sqrt(second) - Mathf.Sqrt(best)) / 2;
+                    float line = Mathf.Clamp01(1 - edgeD / 2.2f), inner = 0.35f + 0.25f * Mathf.Clamp01(edgeD / R);
+                    float v = Mathf.Max(line, inner);
+                    byte b = (byte)Mathf.RoundToInt(255 * v);
+                    px[y * w + x] = new Color32(b, b, b, 255);
+                }
+            hexTex = new Texture2D(w, h, TextureFormat.RGBA32, true, false) { wrapMode = TextureWrapMode.Repeat, name = "rampart-hex" };
+            hexTex.SetPixels32(px); hexTex.Apply(true, true);
+            return hexTex;
+        }
+
         // The common tail of every rig: shadows, and Echo's Veil (any rig can fade)
         static Rig FinishRig(Rig rig)
         {
@@ -411,7 +590,7 @@ namespace NovaStriker.Game
             return rig;
         }
 
-        // ---- RAM and Fix ----
+        // ---- Fix (and the skeleton RAM and Fix share) ----
         static Rig Skeleton(string charId, RigMats M, float arm, float leg, float shoulderZ, float hipZ, float upperArm = 0.3f, float foreArm = 0.29f)
         {
             TObj root = G(), size = G(), flip = G(), body = G();
@@ -431,80 +610,6 @@ namespace NovaStriker.Game
         {
             var c = CHARS[charId]; var M = RimAll(Mats(c)); var ex = new RigExtra();
             Rig S;
-            if (charId == "ram")
-            {
-                S = Skeleton(charId, M, 0.095f, 0.11f, 0.42f, 0.16f, 0.31f);
-                TObj hips = S.hips, spine = S.spine, head = S.head; Limb armN = S.armN, armF = S.armF, legN = S.legN, legF = S.legF;
-                hips.add(MeshAt(RBox(0.44f, 0.24f, 0.56f, 0.08f), M.trim, 0, 0.02f));
-                hips.add(MeshAt(RBox(0.12f, 0.22f, 0.28f, 0.04f), M.@base, 0.21f, -0.04f));
-                spine.add(MeshAt(RBox(0.4f, 0.36f, 0.5f, 0.1f), M.under, 0, 0.18f));
-                spine.add(MeshAt(RBox(0.54f, 0.5f, 0.68f, 0.13f), M.@base, 0.03f, 0.45f));
-                spine.add(MeshAt(RBox(0.44f, 0.16f, 0.58f, 0.06f), M.trim, 0.04f, 0.2f));
-                spine.add(MeshAt(RBox(0.38f, 0.05f, 0.02f, 0.01f), M.energy, 0.04f, 0.52f, 0.345f));
-                spine.add(MeshAt(RBox(0.3f, 0.04f, 0.02f, 0.01f), M.energy, 0.06f, 0.4f, 0.345f));
-                spine.add(MeshAt(RBox(0.32f, 0.13f, 0.46f, 0.05f), M.trim, -0.02f, 0.66f));
-                spine.add(MeshAt(RBox(0.26f, 0.52f, 0.52f, 0.08f), M.trim, -0.36f, 0.44f));
-                ex.stacks = new List<TMesh>();
-                foreach (var z in new[] { 0.15f, -0.15f })
-                {
-                    var st = MeshAt(Geo.Cylinder(0.06f, 0.07f, 0.34f, 12), M.under, -0.42f, 0.78f, z); st.rotation.z = 0.35f; spine.add(st);
-                    var rim = MeshAt(Geo.Torus(0.062f, 0.016f, 6, 14), M.energy, -0.48f, 0.94f, z); rim.rotation.set(Mathf.PI / 2, 0.35f, 0); spine.add(rim);
-                    ex.stacks.Add(rim);
-                }
-                foreach (var z in new[] { 0.42f, -0.42f })
-                {
-                    spine.add(MeshAt(RBox(0.46f, 0.26f, 0.34f, 0.11f), M.@base, 0, 0.62f, z));
-                    spine.add(MeshAt(RBox(0.36f, 0.06f, 0.36f, 0.03f), M.trim, 0, 0.76f, z));
-                    spine.add(MeshAt(RBox(0.3f, 0.035f, 0.02f, 0.01f), M.energy, 0, 0.62f, z + Mathf.Sign(z) * 0.172f));
-                }
-                head.position.set(0.13f, 0.74f, 0);
-                head.add(MeshAt(Geo.Sphere(0.165f, 20, 16), M.trim, 0, 0.06f));
-                head.add(MeshAt(RBox(0.22f, 0.13f, 0.27f, 0.05f), M.@base, 0.07f, -0.04f));
-                head.add(MeshAt(RBox(0.05f, 0.04f, 0.24f, 0.012f), M.energy, 0.15f, 0.065f));
-                foreach (var z in new[] { 0.152f, -0.152f }) head.add(MeshAt(RBox(0.15f, 0.036f, 0.022f, 0.01f), M.energy, 0.07f, 0.065f, z));
-                foreach (var z in new[] { 0.15f, -0.15f })
-                {
-                    var horn = MeshAt(Geo.Torus(0.1f, 0.038f, 8, 20, Mathf.PI * 1.45f), M.@base, -0.05f, 0.08f, z);
-                    horn.rotation.set(0, 0, 0.9f); horn.scale.set(1, 1, 1.3f); head.add(horn);
-                    head.add(MeshAt(Geo.Sphere(0.03f, 8, 6), M.energy, 0.0f, -0.01f, z * 1.06f));
-                }
-                foreach (var a in new[] { armN, armF }) { a.joint.add(MeshAt(RBox(0.24f, 0.3f, 0.26f, 0.06f), M.@base, 0.01f, -0.15f)); a.end.add(MeshAt(Geo.Sphere(0.11f, 12, 10), M.under, 0.01f, -0.04f)); }
-                foreach (var z in new[] { 0.07f, -0.07f })
-                {
-                    armF.joint.add(MeshAt(Geo.Cylinder(0.03f, 0.03f, 0.3f, 10), M.under, -0.1f, -0.14f, z));
-                    armF.joint.add(MeshAt(Geo.Torus(0.036f, 0.012f, 6, 12), M.energy, -0.1f, -0.2f, z));
-                }
-                ex.pistons = new List<TMesh>();
-                foreach (var l in new[] { legN, legF })
-                {
-                    l.top.add(MeshAt(RBox(0.28f, 0.32f, 0.28f, 0.08f), M.@base, 0.02f, -0.18f));
-                    l.joint.add(MeshAt(RBox(0.26f, 0.34f, 0.26f, 0.07f), M.@base, 0.04f, -0.24f));
-                    var pis = MeshAt(Geo.Cylinder(0.035f, 0.035f, 0.32f, 10), M.trim, -0.1f, -0.22f, 0); l.joint.add(pis);
-                    var ring = MeshAt(Geo.Torus(0.04f, 0.012f, 6, 12), M.energy, -0.1f, -0.32f, 0); ring.rotation.x = Mathf.PI / 2; l.joint.add(ring);
-                    ex.pistons.Add(ring);
-                    l.end.add(MeshAt(RBox(0.36f, 0.14f, 0.26f, 0.05f), M.trim, 0.07f, -0.03f));
-                }
-                // The Rampart: a tower shield posed by the animation in body space
-                var shield = G(0.45f, 0.95f, 0.42f); S.body.add(shield);
-                shield.add(MeshAt(RBox(0.7f, 1.12f, 0.1f, 0.06f), M.trim, 0, 0, -0.02f));
-                shield.add(MeshAt(RBox(0.6f, 1.0f, 0.1f, 0.05f), M.@base, 0, 0, 0.02f));
-                foreach (var y in new[] { 0.5f, -0.5f }) shield.add(MeshAt(RBox(0.56f, 0.04f, 0.02f, 0.01f), M.energy, 0, y, 0.075f));
-                foreach (var x in new[] { 0.33f, -0.33f }) shield.add(MeshAt(RBox(0.035f, 0.9f, 0.02f, 0.01f), M.energy, x, 0, 0.06f));
-                var crest = G(0, 0.12f, 0.08f); shield.add(crest);
-                crest.add(MeshAt(Geo.Cylinder(0.1f, 0.1f, 0.03f, 18), M.energy)).rotation.x = Mathf.PI / 2;
-                foreach (var sx in new[] { 1f, -1f }) { var h = MeshAt(Geo.Torus(0.11f, 0.024f, 6, 16, Mathf.PI * 1.3f), M.energy, sx * 0.1f, 0.06f, 0); h.rotation.z = sx > 0 ? -0.4f : Mathf.PI + 0.4f; crest.add(h); }
-                var edge = G(0.32f, 0.56f, 0); shield.add(edge);
-                ex.shield = shield; ex.shieldEdge = edge;
-                // The Breach Cannon on the right shoulder: it turns to the aim
-                var cannon = G(-0.08f, 0.84f, -0.3f); S.spine.add(cannon);
-                cannon.add(MeshAt(RBox(0.26f, 0.18f, 0.2f, 0.05f), M.trim));
-                var barrel = MeshAt(Geo.Cylinder(0.06f, 0.075f, 0.5f, 14), M.under, 0.3f, 0.02f, 0); barrel.rotation.z = -Mathf.PI / 2; cannon.add(barrel);
-                var band = MeshAt(Geo.Torus(0.075f, 0.018f, 6, 14), M.energy, 0.42f, 0.02f, 0); band.rotation.y = Mathf.PI / 2; cannon.add(band);
-                var muzzle = G(0.58f, 0.02f, 0); cannon.add(muzzle);
-                ex.cannon = cannon; ex.muzzle = muzzle;
-                ex.edges["shield"] = new Edge(shield, edge, 0.2f); ex.edges["fistF"] = new Edge(armF.joint, armF.end, 0.5f); ex.edges["fistN"] = new Edge(armN.joint, armN.end, 0.5f);
-            }
-            else
             {
                 S = Skeleton(charId, M, 0.06f, 0.08f, 0.28f, 0.125f);
                 TObj hips = S.hips, spine = S.spine, head = S.head; Limb armN = S.armN, armF = S.armF, legN = S.legN, legF = S.legF;

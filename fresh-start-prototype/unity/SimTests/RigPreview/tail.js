@@ -1,5 +1,5 @@
 // Lays out five views (side, three-quarter, front, back, aiming) and renders them.
-  S.heads = heads; return S;
+  S.heads = typeof heads !== 'undefined' ? heads : {}; return S;
 }
 const W = 2100, H = 760, views = [
   ['Side (gameplay)', 0, null], ['Three-quarter', -0.7, null], ['Front', -Math.PI / 2, null], ['Back', Math.PI / 2, null], ['Aiming', 0, 'aim'], ['Helmet look', -0.7, 'helmet'],
@@ -20,7 +20,10 @@ views.forEach(([name, ry, pose], i) => {
   if (pose === 'aim') S.root.position.x = -0.22;
   for (const [k, h] of Object.entries(S.heads)) h.visible = pose === 'helmet' ? k === 'helmet' : k !== 'helmet' && k !== 'mask';
   scene.add(S.root);
-  const cam = new THREE.PerspectiveCamera(22, vw / H, 0.1, 50); cam.position.set(0, 1.05, 5.6); cam.lookAt(0, 1.0, 0);
+  // frame the character: fit its height (RAM is far bigger than Nova)
+  const box = new THREE.Box3().setFromObject(S.root), hgt = Math.max(2.0, box.max.y - box.min.y + 0.4), cy = (box.max.y + box.min.y) / 2;
+  const dist = hgt / (2 * Math.tan(11 * Math.PI / 180)) + 1;
+  const cam = new THREE.PerspectiveCamera(22, vw / H, 0.1, 100); cam.position.set(0, cy + 0.05, dist); cam.lookAt(0, cy, 0);
   renderer.setViewport(i * vw, 0, vw, H); renderer.setScissor(i * vw, 0, vw, H); renderer.render(scene, cam);
   const lab = document.createElement('div'); lab.textContent = name;
   Object.assign(lab.style, { position: 'absolute', left: (i * vw) + 'px', width: vw + 'px', top: '14px', textAlign: 'center', color: '#dfe8f2', font: '600 22px sans-serif' });

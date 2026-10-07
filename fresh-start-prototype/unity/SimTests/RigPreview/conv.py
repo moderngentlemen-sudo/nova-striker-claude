@@ -1,9 +1,9 @@
 # Converts a rig builder in Rigs.cs (C#) into JavaScript for preview.sh, mechanically, so the picture uses the same numbers.
-# Usage: conv.py Rigs.cs nova|echo
+# Usage: conv.py Rigs.cs nova|echo|ram
 import re, sys
 s = open(sys.argv[1]).read()
-if sys.argv[2] == 'nova':
-    i = s.index('static Rig BuildNovaRig()'); body = s[s.index('{', i) + 1:s.index('S.extra = ex; S.mats = M;', i)]
+if sys.argv[2] in ('nova', 'ram'):
+    i = s.index('static Rig Build%sRig()' % sys.argv[2].capitalize()); body = s[s.index('{', i) + 1:s.index('S.extra = ex; S.mats = M;', i)]
 else:   # Echo: the shared builder, minus its first lines that hand the others off
     i = s.index('public static Rig BuildPlayerRig(string charId)'); body = s[s.index('{', i) + 1:s.index('var rig = FinishRig(new Rig', i)]
     body = '\n'.join(l for l in body.split('\n') if 'return Build' not in l) + '\nconst S = { root, armN, armF, legN, legF };'
@@ -23,6 +23,9 @@ for line in body.split('\n'):
     l = re.sub(r'(\d)f\b', r'\1', l)
     l = l.replace('Mathf.PI', 'Math.PI').replace('Mathf.Sign', 'Math.sign').replace('new List<TMesh>()', '[]').replace('.Add(', '.push(')
     l = l.replace('Side.Double', 'THREE.DoubleSide').replace('Blending.Additive', 'THREE.AdditiveBlending').replace('new TMesh(', 'new THREE.Mesh(')
+    l = l.replace('for (int ', 'for (let ')
+    # (the game's add returns the child, three.js's returns the parent: route chained calls through addc)
+    l = re.sub(r'(\w+(?:\.\w+)*)\.add\((MeshAt\(.*?\))\)\.(rotation|scale|position)', r'addc(\1, \2).\3', l)
     l = l.replace('new RigExtra()', '{ jets: [], blades: [], edges: {} }').replace('new List<TObj>()', '[]').replace('const float ', 'const ')
     out.append(l)
 print('\n'.join(out))

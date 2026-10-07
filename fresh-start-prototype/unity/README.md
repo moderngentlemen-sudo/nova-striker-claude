@@ -200,6 +200,13 @@ default settings the simulation is still the prototype's (the parity tests run w
   - **Armour:** cream-white armour with bronze-gold trim over a dark charcoal undersuit, and orange energy.
   - **Head:** his bare face with spiky blond hair is the default (settings saved earlier switch to it once). The
     helmet and the mask are still in *Settings › Echo's head*.
+- **RAM's look.** His rig follows his concept art (`Rigs.BuildRamRig`):
+  - **Armour:** battle-worn gunmetal over dark joints, with electric-blue light in the abdomen's bands, the joint
+    discs, the boots and the T visor.
+  - **Head and build:** a rounded helm with curled ram's horns, huge rounded pauldrons and big blocky fists.
+  - **Cannon:** the Breach Cannon over his right shoulder, with a blue muzzle ring.
+  - **Shield:** the Rampart, a heavy stone-grey frame round a glowing hexagonal hard-light panel with a
+    ram's-head emblem.
 - **Fonts.** The UI uses Unity's built-in font. To use the prototype's fonts, put `SairaCondensed-Bold`,
   `Barlow-Medium` and `IBMPlexMono-Regular` in `Resources/NovaStriker/Fonts`.
 - **Panels and text.** The HUD panels are not skewed. TextMeshPro is not used.
