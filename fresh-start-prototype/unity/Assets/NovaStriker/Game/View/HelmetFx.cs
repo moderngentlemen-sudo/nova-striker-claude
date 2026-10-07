@@ -1,6 +1,6 @@
-// Nova's helmet knocked off (Anim decides when: critical health). A copy of the helmet as it sits that moment, on
-// the rig or on his 3D model, flies up and back, tumbling, bounces on the ground, then shrinks away. The head
-// underneath already shows his face.
+// Nova's or RAM's helmet knocked off (Anim decides when: critical health). A copy of the helmet as it sits that
+// moment, on the rig or on the 3D model, flies up and back, tumbling, bounces on the ground, then shrinks away. The
+// head underneath already shows the face.
 using System.Collections.Generic;
 using NovaStriker.Sim;
 using UnityEngine;

@@ -85,6 +85,7 @@ namespace NovaStriker.Game
         readonly List<Renderer> renderers = new List<Renderer>();
         readonly List<(Material m, float w)> outlineMats = new List<(Material, float)>();
         List<TMesh> body; bool rigHidden;
+        TObj shieldModel;   // (RAM's modelled Rampart, hung on the rig's shield: BuildShield)
 
         public ModelSkin(Rig rig, string charId)
         {
@@ -165,6 +166,7 @@ namespace NovaStriker.Game
         {
             if (!ready) return;
             holder.visible = on;
+            if (shieldModel != null) shieldModel.visible = on;
             SetRigHidden(on);
             if (!on) return;
             if (D.driveFromRig) { Drive(); return; }
@@ -264,8 +266,36 @@ namespace NovaStriker.Game
             helmet = B(@char[0].ToString().ToUpper() + @char.Substring(1) + "_Helmet");
             face = B(@char[0].ToString().ToUpper() + @char.Substring(1) + "_FaceAndHair");
             SkinMaterials();
+            BuildShield();
             rig.flip.add(holder);
             ready = true;
+        }
+        // RAM's Rampart as modelled in Blender (build_ram_shield.py; export_ram_shield.py writes
+        // Resources/NovaStriker/Models/<id>_shield.json in the shield group's own three.js space): it hangs on the
+        // rig's shield, so the game poses it as before, in place of the rig's frame and emblem. The rig's glowing
+        // hard-light panel stays, inside the modelled frame.
+        [System.Serializable] sealed class GearPart { public string mat; public float[] p, n, uv; public int[] i; }
+        [System.Serializable] sealed class Gear { public GearPart[] parts; }
+        void BuildShield()
+        {
+            var src = Resources.Load<TextAsset>("NovaStriker/Models/" + @char + "_shield");
+            if (src == null || rig.extra.shield == null) return;
+            Gear gear;
+            try { gear = JsonUtility.FromJson<Gear>(src.text); }
+            catch (System.Exception e) { Debug.LogWarning("Shield model unreadable; the built-in one is drawn: " + e.Message); return; }
+            if (gear?.parts == null) return;
+            shieldModel = Group.Make(0, 0, 0, "shield-model");
+            foreach (var P in gear.parts)
+            {
+                var g = new GeoBuilder();
+                for (int k = 0; k < P.p.Length / 3; k++)
+                    g.V(new Vector3(P.p[3 * k], P.p[3 * k + 1], P.p[3 * k + 2]), new Vector3(P.n[3 * k], P.n[3 * k + 1], P.n[3 * k + 2]), new Vector2(P.uv[2 * k], P.uv[2 * k + 1]));
+                for (int k = 0; k < P.i.Length; k += 3) g.T(P.i[k], P.i[k + 1], P.i[k + 2]);
+                var tm = MatFor(P.mat) ?? TMat.Std(0x7b838d, 0.65f, 0.35f);
+                shieldModel.add(new TMesh(g.ToMesh("shield-" + P.mat), tm) { cast = true });
+            }
+            Look.AddOutlines(shieldModel, 0x0b0f18, 0.016f);
+            rig.extra.shield.add(shieldModel);
         }
         // where a bone's first child sits (its tail), or a step along it when it has none
         Vector3 Child(Transform b) => b.childCount > 0 ? HolderPos(b.GetChild(0)) : HolderPos(b) + (Vector3)(InHolder(b).GetColumn(1)) * 0.1f;
@@ -326,11 +356,19 @@ namespace NovaStriker.Game
                 "Nova_Lip" => TMat.Std(0xb77a62, 0.5f, 0),
                 "Nova_PanelLine" => TMat.Std(0x9aa3ad, 0.5f, 0.2f),
                 "Nova_Visor" => new TMat { colorCss = "#ffc867", emissiveCss = "#ff9d1a", emissiveIntensity = 0.5f, roughness = 0.12f, metalness = 0.85f },
+                "Ram_Skin" => TMat.Std(0x6b412c, 0.55f, 0),
+                "Ram_Hair" => TMat.Std(0x4f5257, 0.75f, 0.05f),
+                "Ram_EyeWhite" => TMat.Std(0xece6dc, 0.25f, 0),
+                "Ram_Iris" => TMat.Std(0x3a2414, 0.15f, 0.1f),
+                "Ram_Lip" => TMat.Std(0x7a4a36, 0.5f, 0),
+                "Ram_Scar" => TMat.Std(0x9a6650, 0.45f, 0),
+                "Ram_Frame" => Worn(new TMat(TMat.Kind.Physical) { colorCss = "#7b838d", roughness = 0.65f, metalness = 0.35f, clearcoat = 0.65f, clearcoatRoughness = 0.18f }),
                 _ => null,
             };
             if (t != null) extraMats[name] = t;
             return t;
         }
+        static TMat Worn(TMat m) { Look.Wear(m); return m; }
         void SkinMaterials()
         {
             foreach (var r in model.GetComponentsInChildren<Renderer>(true))
@@ -366,6 +404,8 @@ namespace NovaStriker.Game
                 var gear = new HashSet<TObj>();
                 var ex = rig.extra;
                 foreach (var g in new TObj[] { ex.shield, ex.greave, ex.module, ex.cannon }) g?.traverse(o => gear.Add(o));
+                // (a modelled shield takes the place of the rig's: only the rig's see-through hard-light panel stays)
+                if (shieldModel != null) { ex.shield.traverse(o => gear.Remove(o)); shieldModel.traverse(o => gear.Add(o)); }
                 foreach (var l in new[] { ex.jets, ex.blades, ex.gauntlets }) if (l != null) foreach (var g in l) gear.Add(g);
                 rig.root.traverse(o =>
                 {
@@ -373,7 +413,7 @@ namespace NovaStriker.Game
                     var m = me.material;
                     if (m == null || m.kind == TMat.Kind.Basic || m.kind == TMat.Kind.Sprite) return;
                     bool glow = m.transparent || m.emissiveIntensity > 1;
-                    if (glow && !(D.driveFromRig && (m == rig.mats.energy || rig.@char == "ram"))) return;
+                    if (glow && !(D.driveFromRig && (m == rig.mats.energy || (rig.@char == "ram" && !m.transparent)))) return;
                     body.Add(me);
                 });
             }
@@ -386,6 +426,7 @@ namespace NovaStriker.Game
         {
             if (graph.IsValid()) graph.Destroy();
             if (holder != null) holder.destroy();
+            if (shieldModel != null) shieldModel.destroy();
             if (body != null) foreach (var o in body) o.visible = true;
             ready = false;
         }

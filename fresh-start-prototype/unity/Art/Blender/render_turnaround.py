@@ -33,6 +33,8 @@ H = max(zs) if zs else 1.85; k = H / 1.85
 views = [('front', 0, 0.95 * k, 6.2 * k), ('three_quarter', 40, 0.95 * k, 6.2 * k), ('side', 90, 0.95 * k, 6.2 * k), ('back', 180, 0.95 * k, 6.2 * k),
          ('face', 25, H - 0.15 * k, 1.25 * k)]
 helm = [o for o in sc.objects if 'Helm' in o.name and o.type == 'MESH' and not o.hide_render]
+if not helm and k > 1.2:   # (a tall character's top is not his head: aim at the face)
+    helm = [o for o in sc.objects if o.name.endswith('_Head') and o.type == 'MESH' and not o.hide_render]
 if helm:   # aim the close-up at the helmet itself
     hz = [(o.matrix_world @ V3(c)).z for o in helm for c in o.bound_box]; views[-1] = ('face', 35, (min(hz) + max(hz)) / 2, 2.6 * k)
 files = []

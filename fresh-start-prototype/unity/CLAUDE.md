@@ -34,7 +34,7 @@ All run without Unity, from `SimTests/`:
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
-- `RigPreview/`: `sh preview.sh nova|echo out.png` renders Nova's or Echo's rig from six angles without Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
+- `RigPreview/`: `sh preview.sh nova|echo|ram out.png` renders a character's rig (faces, not helmets) from six angles without Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
   rig, and send the picture to the owner. Set `CHROMIUM=/opt/pw-browsers/chromium` in the cloud container.
 - `Art/Blender/` (outside `SimTests/`): scripts that model the characters in Blender 4.2. In the cloud
   container, Blender can be downloaded from download.blender.org into `/opt/blender`.
@@ -49,7 +49,9 @@ All run without Unity, from `SimTests/`:
     Its bones must keep the rig's joint names, which `Models.cs` drives (`MAP`).
   - **RAM:** `build_ram.py` (set `NS_TEX=<folder of make_textures.py's PNGs>` for the battle-worn review
     renders, and leave it unset for the export), then `rig_export_ram.py` writes `ram_model.fbx` the same way.
-    His rigid pieces follow bones by name prefix (`RULES`); keep a new piece's name matching one.
+    His rigid pieces follow bones by name prefix (`RULES`); keep a new piece's name matching one. His face and
+    helmet go in the `Ram_FaceAndHair` and `Ram_Helmet` collections (`render.sh ... helmet` renders the helmet).
+    `build_ram_shield.py` models the Rampart and `export_ram_shield.py` writes `Models/ram_shield.json`.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
   the shader check.
@@ -86,8 +88,11 @@ The README's *Unity-only additions* has the full description.
   T visor, and the hex-panel Rampart with a ram's-head emblem. The owner asked for futuristic horns with a use:
   they are now armoured sensor fins, with a sensor pod at each tip and an actuator disc at the temple. His charge shows the shield as a blue holographic
   ram's head: an idea for Siege Breaker's look. `Rigs.BuildRamRig` follows the art, and `RigPreview` draws him
-  (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`) is in the game, driven by the rig like
-  Nova's; the rig's Rampart and Breach Cannon stay visible over it. It has not yet been seen in Unity.
+  (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`) and modelled Rampart (`ram_shield.json`) are
+  in the game, driven by the rig like Nova's; the rig's Breach Cannon stays visible over the model. His helmet
+  is knocked off at critical health (`ramHead` setting). His face is our design (the concept shows none): a grey
+  buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. None of this has been seen
+  in Unity yet.
 - **Effects to add later** (the owner asked to keep these for later):
   - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
     Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with

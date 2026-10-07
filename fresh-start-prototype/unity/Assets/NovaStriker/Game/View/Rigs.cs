@@ -55,7 +55,7 @@ namespace NovaStriker.Game
         public bool curSet;
         public string headMode;
         public float cloak;
-        public bool helmetOff, helmetKnock;   // (Nova: his helmet knocked off at critical health: Anim, HelmetFx)
+        public bool helmetOff, helmetKnock;   // (Nova and RAM: the helmet knocked off at critical health: Anim, HelmetFx)
         // set by the view
         public TMesh ring;
         public List<TMesh> shells = new List<TMesh>();
@@ -439,13 +439,32 @@ namespace NovaStriker.Game
                 spine.add(MeshAt(RBox(0.26f, 0.03f, 0.02f, 0.01f), M.energy, 0, 0.53f, z + Mathf.Sign(z) * 0.215f));
             }
 
-            // Head: a rounded helm with a crest, the T visor in blue, a jaw guard, and the horn fins
+            // Heads: the helmet (a rounded helm with a crest, the T visor in blue, a jaw guard, and the horn fins), knocked
+            // off at critical health, and under it his face: a weathered veteran with a grey buzz cut and short grey beard,
+            // a scar through his left brow, and a cybernetic right eye glowing blue (it reads the fins' sensors)
             head.position.set(0.13f, 0.74f, 0);
-            var helm = MeshAt(Geo.Sphere(0.17f, 20, 16), M.@base, 0, 0.07f); helm.scale.set(1.05f, 1, 0.92f); head.add(helm);
-            head.add(MeshAt(RBox(0.2f, 0.04f, 0.06f, 0.015f), M.@base, -0.02f, 0.23f));
-            head.add(MeshAt(RBox(0.12f, 0.12f, 0.24f, 0.04f), M.trim, 0.1f, -0.03f));
-            head.add(MeshAt(RBox(0.04f, 0.035f, 0.22f, 0.012f), M.energy, 0.165f, 0.07f));
-            head.add(MeshAt(RBox(0.04f, 0.1f, 0.035f, 0.01f), M.energy, 0.165f, 0.02f));
+            var heads = new Dictionary<string, TObj>();
+            var skin = Std("#8a5a3e", 0.62f, 0); var grey = Std("#8d8f93", 0.8f, 0); var scar = Std("#b07a5e", 0.55f, 0);
+            var eye = new TMat { colorHex = 0x2a1a12, roughness = 0.4f };
+            var bare = G(0, 0.02f, 0); bare.scale.setScalar(1.12f); head.add(bare);
+            bare.add(MeshAt(Geo.Cylinder(0.075f, 0.085f, 0.12f, 14), skin, 0, -0.05f));
+            var skull = MeshAt(Geo.Sphere(0.13f, 24, 18), skin, 0.01f, 0.065f); skull.scale.set(1, 1.1f, 0.95f); bare.add(skull);
+            bare.add(MeshAt(RBox(0.15f, 0.1f, 0.21f, 0.05f), skin, 0.045f, 0.0f));                       // a square jaw
+            bare.add(MeshAt(RBox(0.1f, 0.075f, 0.225f, 0.035f), grey, 0.075f, -0.025f));                 // short beard
+            var cut = MeshAt(Geo.Sphere(0.136f, 24, 12, 0, Mathf.PI * 2, 0, Mathf.PI * 0.42f), grey, 0.008f, 0.07f); cut.rotation.z = 0.25f; bare.add(cut);
+            bare.add(MeshAt(RBox(0.035f, 0.028f, 0.2f, 0.012f), skin, 0.118f, 0.105f));                  // heavy brow
+            bare.add(MeshAt(RBox(0.032f, 0.055f, 0.034f, 0.012f), skin, 0.138f, 0.062f));                 // nose
+            foreach (var z in new[] { 0.128f, -0.128f }) bare.add(MeshAt(Geo.Sphere(0.028f, 8, 6), skin, 0, 0.065f, z));
+            bare.add(MeshAt(Geo.Sphere(0.012f, 8, 6), eye, 0.123f, 0.083f, -0.046f));
+            var mark = MeshAt(RBox(0.006f, 0.07f, 0.008f, 0.003f), scar, 0.13f, 0.095f, -0.03f); mark.rotation.x = 0.35f; bare.add(mark);
+            bare.add(MeshAt(RBox(0.03f, 0.05f, 0.05f, 0.012f), M.trim, 0.118f, 0.085f, 0.048f));          // the implant's housing
+            bare.add(MeshAt(Geo.Sphere(0.016f, 10, 8), core, 0.13f, 0.083f, 0.048f));
+            var helmet = G(); head.add(helmet);
+            var helm = MeshAt(Geo.Sphere(0.17f, 20, 16), M.@base, 0, 0.07f); helm.scale.set(1.05f, 1, 0.92f); helmet.add(helm);
+            helmet.add(MeshAt(RBox(0.2f, 0.04f, 0.06f, 0.015f), M.@base, -0.02f, 0.23f));
+            helmet.add(MeshAt(RBox(0.12f, 0.12f, 0.24f, 0.04f), M.trim, 0.1f, -0.03f));
+            helmet.add(MeshAt(RBox(0.04f, 0.035f, 0.22f, 0.012f), M.energy, 0.165f, 0.07f));
+            helmet.add(MeshAt(RBox(0.04f, 0.1f, 0.035f, 0.01f), M.energy, 0.165f, 0.02f));
             // The horns, made to work: armoured sensor fins sweeping back and down round the helm (as in Art/Blender's
             // model): four overlapping gunmetal blade plates over a dark core, a blue channel along their outer face, a
             // sensor pod at the tip (the Breach Cannon's targeting array) and a powered actuator disc at the temple
@@ -457,20 +476,21 @@ namespace NovaStriker.Game
                     float t = k / 8f, a = Mathf.PI * (0.42f + 1.05f * t), r = 0.19f * (1 - 0.25f * t);
                     px[k] = -0.015f - (Mathf.Cos(a) * r * 1.05f + 0.08f) / 1.34f; py[k] = 0.134f + (Mathf.Sin(a) * r - 0.04f) / 1.34f; pz[k] = sz * (0.149f + (0.06f + 0.07f * t) / 1.34f);
                 }
-                head.add(MeshAt(Geo.Cylinder(0.06f, 0.06f, 0.045f, 16), M.trim, -0.015f, 0.134f, sz * 0.17f)).rotation.x = Mathf.PI / 2;
+                helmet.add(MeshAt(Geo.Cylinder(0.06f, 0.06f, 0.045f, 16), M.trim, -0.015f, 0.134f, sz * 0.17f)).rotation.x = Mathf.PI / 2;
                 for (int k = 0; k < 4; k++)
                 {
                     int a0 = 2 * k, a1 = 2 * k + 2;
                     float dx = px[a1] - px[a0], dy = py[a1] - py[a0], dl = Mathf.Sqrt(dx * dx + dy * dy), rz = Mathf.Atan2(-dx, dy);
                     float mx = (px[a0] + px[a1]) / 2 + dx * 0.08f, my = (py[a0] + py[a1]) / 2 + dy * 0.08f, mz = (pz[a0] + pz[a1]) / 2;
-                    var plate = MeshAt(RBox(0.1f - k * 0.016f, dl * 1.2f, 0.037f - k * 0.004f, 0.012f), M.@base, mx, my, mz); plate.rotation.z = rz; head.add(plate);
-                    var coreP = MeshAt(RBox(0.07f - k * 0.011f, dl, 0.022f, 0.006f), M.trim, (px[a0] + px[a1]) / 2, (py[a0] + py[a1]) / 2, mz); coreP.rotation.z = rz; head.add(coreP);
-                    var glowP = MeshAt(RBox(0.012f, dl * 1.08f, 0.006f, 0.003f), M.energy, mx, my, mz + sz * (0.02f - k * 0.002f)); glowP.rotation.z = rz; head.add(glowP);
+                    var plate = MeshAt(RBox(0.1f - k * 0.016f, dl * 1.2f, 0.037f - k * 0.004f, 0.012f), M.@base, mx, my, mz); plate.rotation.z = rz; helmet.add(plate);
+                    var coreP = MeshAt(RBox(0.07f - k * 0.011f, dl, 0.022f, 0.006f), M.trim, (px[a0] + px[a1]) / 2, (py[a0] + py[a1]) / 2, mz); coreP.rotation.z = rz; helmet.add(coreP);
+                    var glowP = MeshAt(RBox(0.012f, dl * 1.08f, 0.006f, 0.003f), M.energy, mx, my, mz + sz * (0.02f - k * 0.002f)); glowP.rotation.z = rz; helmet.add(glowP);
                 }
                 float tx = px[8] - px[7], ty = py[8] - py[7], tl = Mathf.Sqrt(tx * tx + ty * ty);
-                head.add(MeshAt(Geo.Sphere(0.032f, 10, 8), M.trim, px[8] + tx / tl * 0.03f, py[8] + ty / tl * 0.03f, pz[8]));
-                head.add(MeshAt(Geo.Sphere(0.022f, 10, 8), core, px[8] + tx / tl * 0.05f, py[8] + ty / tl * 0.05f, pz[8]));
+                helmet.add(MeshAt(Geo.Sphere(0.032f, 10, 8), M.trim, px[8] + tx / tl * 0.03f, py[8] + ty / tl * 0.03f, pz[8]));
+                helmet.add(MeshAt(Geo.Sphere(0.022f, 10, 8), core, px[8] + tx / tl * 0.05f, py[8] + ty / tl * 0.05f, pz[8]));
             }
+            heads["bare"] = bare; heads["helmet"] = helmet;
 
             // Arms: dark sleeves on round joint discs, massive gauntlets, big blocky fists
             foreach (var a in new[] { armN, armF })
@@ -541,8 +561,15 @@ namespace NovaStriker.Game
             var muzzle = G(0.58f, 0.02f, 0); cannon.add(muzzle);
             ex.cannon = cannon; ex.muzzle = muzzle;
             ex.edges["shield"] = new Edge(shield, edge, 0.2f); ex.edges["fistF"] = new Edge(armF.joint, armF.end, 0.5f); ex.edges["fistN"] = new Edge(armN.joint, armN.end, 0.5f);
-            S.extra = ex; S.mats = M; S.@char = "ram";
-            return FinishRig(S);
+            S.extra = ex; S.mats = M; S.@char = "ram"; S.heads = heads;
+            var rig = FinishRig(S);
+            rig.setHeadFn = mode =>
+            {
+                if (rig.headMode == mode) return;
+                rig.headMode = mode; helmet.visible = mode == "helmet"; bare.visible = mode != "helmet";
+            };
+            rig.setHead(SETTINGS.ramHead ?? "helmet");
+            return rig;
         }
 
         // The Rampart's hard light: bright hexagon edges over a deeper glow (tileable, made once)

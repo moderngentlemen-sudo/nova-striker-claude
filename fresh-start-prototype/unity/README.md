@@ -213,8 +213,14 @@ default settings the simulation is still the prototype's (the parity tests run w
     `Art/Blender/make_textures.py`), on the rig and the model alike (`Look.Wear`).
 - **RAM's 3D model** (the same *Character models* setting). The model is
   `Resources/NovaStriker/Models/ram_model.fbx` (`Art/Blender/build_ram.py`, then `rig_export_ram.py`). Like
-  Nova's, it copies the rig's pose every frame and wears the rig's materials. The Rampart and the Breach Cannon
-  are not modelled: the rig's own stay visible over the model, posed as before.
+  Nova's, it copies the rig's pose every frame and wears the rig's materials.
+  - **Rampart:** modelled too (`build_ram_shield.py`, exported by `export_ram_shield.py` as `ram_shield.json`).
+    It hangs on the rig's shield, so it is posed as before; the rig's glowing hex panel stays inside its frame.
+  - **Breach Cannon:** not modelled; the rig's own stays visible over the model.
+- **RAM's helmet comes off at critical health** (Settings › *RAM's head* › *Full helmet*, the default), as
+  Nova's does (`Anim.Helmet`, `HelmetFx`). Under it is his face, designed for the game (the concept art shows none):
+  a weathered veteran with a grey buzz cut and short grey beard, a scar through his left brow, and a cybernetic
+  right eye glowing blue.
 - **Fonts.** The UI uses Unity's built-in font. To use the prototype's fonts, put `SairaCondensed-Bold`,
   `Barlow-Medium` and `IBMPlexMono-Regular` in `Resources/NovaStriker/Fonts`.
 - **Panels and text.** The HUD panels are not skewed. TextMeshPro is not used.

@@ -3,7 +3,9 @@
 #   blender -b <out>/ram.blend -P rig_export_ram.py -- <path/to/ram_model.fbx>
 # The bones carry the names Models.cs drives (root, hips, spine, head, upperarm/forearm/hand, thigh/shin/foot with
 # .L/.R), placed on build_ram.py's landmarks. The undersuit is skinned to them; every armour piece follows one bone
-# rigidly. Everything is joined into one mesh, Ram_Body. The Rampart and the Breach Cannon stay the game's own.
+# rigidly. Everything is joined into three meshes the game shows or hides: Ram_Body and Ram_FaceAndHair are skinned,
+# and Ram_Helmet is a rigid piece hung on the head bone, so the game can knock it off whole. The Rampart is
+# exported separately (export_ram_shield.py); the Breach Cannon stays the game's own.
 # The mesh gets box-projected UVs (one tile every UV_TILE m) for the game's battle-worn texture ("worn").
 import math, os, sys, bpy, bmesh
 from mathutils import Vector
@@ -43,6 +45,8 @@ bpy.ops.object.mode_set(mode='OBJECT')
 RULES = [
     (('Ram_Fist', 'Ram_Finger', 'Ram_Thumb'), 'hand'),            # (first: Ram_Finger would match the fins' Ram_Fin)
     (('Ram_Helm', 'Ram_Crest', 'Ram_Face', 'Ram_Visor', 'Ram_Jaw', 'Ram_Horn', 'Ram_Fin', 'Ram_Sensor'), 'head'),
+    (('Ram_Head', 'Ram_Eye', 'Ram_Iris', 'Ram_Scar', 'Ram_Implant', 'Ram_Brow', 'Ram_Ear', 'Ram_Nose', 'Ram_Mouth', 'Ram_Beard',
+      'Ram_Moustache', 'Ram_HairCap', 'Ram_Neck'), 'head'),
     (('Ram_Chest', 'Ram_Pec', 'Ram_Rib', 'Ram_Core', 'Ram_Backplate', 'Ram_Pack', 'Ram_Stack', 'Ram_Collar', 'Ram_AbBand', 'Ram_AbGlow'), 'spine'),
     (('Ram_Pelvis', 'Ram_Cod'), 'hips'),
     (('Ram_Pauldron', 'Ram_Sleeve'), 'upperarm'), (('Ram_Elbow', 'Ram_Gauntlet'), 'forearm'),
@@ -67,9 +71,10 @@ def apply_all(o):
             if m.type == 'SUBSURF': m.levels = 1
             bpy.ops.object.modifier_apply(modifier=m.name)
 
-parts = []
+meshes = {'Ram_Body': [], 'Ram_FaceAndHair': [], 'Ram_Helmet': []}
 for o in list(bpy.data.objects):
     if o.type not in ('MESH', 'CURVE') or o == rig: continue
+    look = next((c.name for c in o.users_collection if c.name in meshes), 'Ram_Body')
     apply_all(o)
     if o.name == 'Ram_Body':
         bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); rig.select_set(True); bpy.context.view_layer.objects.active = rig
@@ -81,41 +86,48 @@ for o in list(bpy.data.objects):
         if b is None: print('WARNING: no bone for', o.name); b = 'spine'
         g = o.vertex_groups.new(name=b); g.add(list(range(len(o.data.vertices))), 1.0, 'REPLACE')
     for m in list(o.modifiers): o.modifiers.remove(m)
-    parts.append(o)
+    meshes[look].append(o)
 
-# Within the triangle budget by simplifying only the large pieces (small details would vanish)
-BUDGET = 40000
+# Each look within its triangle budget by simplifying only its large pieces (small details would vanish), then
+# joined into one mesh: the body and the face skinned to the skeleton, the helmet a rigid piece on the head bone
+# (so the game can knock it off whole)
+BUDGET = {'Ram_Body': 40000, 'Ram_FaceAndHair': 12000, 'Ram_Helmet': 9000}
 def tri_count(o): return sum(len(p.vertices) - 2 for p in o.data.polygons)
-big = [o for o in parts if tri_count(o) > 1500]
-small = sum(tri_count(o) for o in parts if o not in big); large = sum(tri_count(o) for o in big)
-if large and small + large > BUDGET:
-    r = max(0.05, (BUDGET - small) / large)
-    for o in big:
-        d = o.modifiers.new('Decimate', 'DECIMATE'); d.ratio = r
-        bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
-        bpy.ops.object.modifier_apply(modifier=d.name)
+out = []
+for name, objs in meshes.items():
+    if not objs: continue
+    big = [o for o in objs if tri_count(o) > 1500]
+    small = sum(tri_count(o) for o in objs if o not in big); large = sum(tri_count(o) for o in big)
+    if large and small + large > BUDGET[name]:
+        r = max(0.05, (BUDGET[name] - small) / large)
+        for o in big:
+            d = o.modifiers.new('Decimate', 'DECIMATE'); d.ratio = r
+            bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
+            bpy.ops.object.modifier_apply(modifier=d.name)
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in objs: o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    if len(objs) > 1: bpy.ops.object.join()
+    j = bpy.context.view_layer.objects.active; j.name = name; j.data.name = name
+    # box-projected UVs in world space: each face takes the plane its normal faces most
+    bm = bmesh.new(); bm.from_mesh(j.data)
+    uv = bm.loops.layers.uv.verify()
+    for f in bm.faces:
+        n = f.normal; ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for l in f.loops:
+            p = j.matrix_world @ l.vert.co
+            u, v = (p.x, p.y) if az >= ax and az >= ay else (p.y, p.z) if ax >= ay else (p.x, p.z)
+            l[uv].uv = (u / UV_TILE, v / UV_TILE)
+    bm.to_mesh(j.data); bm.free()
+    if name == 'Ram_Helmet':
+        w = j.matrix_world.copy(); j.vertex_groups.clear(); j.parent = rig; j.parent_type = 'BONE'; j.parent_bone = 'head'; j.matrix_world = w
+    else:
+        j.parent = rig; m = j.modifiers.new('Armature', 'ARMATURE'); m.object = rig
+    print(f'{name}: {tri_count(j)} triangles, {len(j.data.materials)} materials')
+    out.append(j)
 
-bpy.ops.object.select_all(action='DESELECT')
-for o in parts: o.select_set(True)
-bpy.context.view_layer.objects.active = parts[0]
-bpy.ops.object.join()
-j = bpy.context.view_layer.objects.active; j.name = 'Ram_Body'; j.data.name = 'Ram_Body'
-
-# Box-projected UVs in world space: each face takes the plane its normal faces most
-bm = bmesh.new(); bm.from_mesh(j.data)
-uv = bm.loops.layers.uv.verify()
-for f in bm.faces:
-    n = f.normal; ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
-    for l in f.loops:
-        p = j.matrix_world @ l.vert.co
-        u, v = (p.x, p.y) if az >= ax and az >= ay else (p.y, p.z) if ax >= ay else (p.x, p.z)
-        l[uv].uv = (u / UV_TILE, v / UV_TILE)
-bm.to_mesh(j.data); bm.free()
-
-j.parent = rig; m = j.modifiers.new('Armature', 'ARMATURE'); m.object = rig
-print(f'Ram_Body: {tri_count(j)} triangles, {len(j.data.materials)} materials')
-
-bpy.ops.object.select_all(action='DESELECT'); rig.select_set(True); j.select_set(True)
+bpy.ops.object.select_all(action='DESELECT'); rig.select_set(True)
+for j in out: j.select_set(True)
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.fbx(filepath=OUT, use_selection=True, object_types={'ARMATURE', 'MESH'}, add_leaf_bones=False, bake_anim=False,
                          apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y', mesh_smooth_type='FACE', use_armature_deform_only=True)

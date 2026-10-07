@@ -1,8 +1,8 @@
 # RAM, built from his concept art: a towering armoured frame in battle-worn gunmetal over dark joints and undersuit,
 # electric-blue light in the abdomen's bands, the joint discs, the boots and the T visor; a rounded helm with its
 # horns made into armoured sensor fins, huge rounded pauldrons, a layered chest with a glowing core, a back pack with exhaust stacks, big
-# blocky fists and segmented legs on round joint discs. His proportions follow his in-game skeleton (Rigs.Skeleton
-# for "ram", drawn 1.34 times life size), so the model lines up with the rig that drives it. The Rampart and the
+# blocky fists and segmented legs on round joint discs; under the helmet (knocked off at critical health), his
+# face. His proportions follow his in-game skeleton (Rigs.Skeleton for "ram", drawn 1.34 times life size), so the model lines up with the rig that drives it. The Rampart and the
 # Breach Cannon stay the game's own (it poses them separately), so they are not modelled here.
 # Run: blender -b -P build_ram.py -- <out-dir>   (writes ram.blend)
 import math, os, sys, bpy
@@ -158,6 +158,74 @@ for s in (1, -1):
     box(f'Ram_BootGlow{s}', GLOW, foot + Vector((0, -0.322, 0.02)), (0.24, 0.01, 0.035), 0.005)
     box(f'Ram_Sole{s}', SUIT, foot + Vector((0, 0, -0.11)), (0.38, 0.64, 0.04), 0.01)
     box(f'Ram_Ankle{s}', ARMOUR, leg_pt(s, ANK_Z + 0.24), (0.3, 0.3, 0.12), 0.04, 3)
+
+# ---- His face, under the helmet (the helmet is knocked off at critical health): a weathered veteran with a heavy
+# square jaw, a grey buzz cut and short grey beard, a scar through his left brow, and a cybernetic right eye that
+# glows blue (it reads the fins' sensors). Face and helmet go in their own collections so the game shows one ----
+SKIN = mat('Ram_Skin', srgb('#6b412c'), rough=0.55, sss=0.12)
+GREY = mat('Ram_Hair', srgb('#4f5257'), rough=0.75, sheen=0.15)
+EYEW = mat('Ram_EyeWhite', srgb('#ece6dc'), rough=0.2)
+IRIS = mat('Ram_Iris', srgb('#3a2414'), rough=0.15, coat=1.0)
+LIP = mat('Ram_Lip', srgb('#7a4a36'), rough=0.45)
+SCAR = mat('Ram_Scar', srgb('#9a6650'), rough=0.4)
+HC = HEAD + Vector((0, 0.02, 0.12))
+def head_shape(p, s, t):
+    q = p.copy()
+    if q.z < 0:                                   # a heavy, square jaw: the lower face stays broad and blunt
+        k = min(1, -q.z / 0.18); q.x *= 1 + 0.04 * k - 0.1 * k ** 3; q.y *= 1 - 0.06 * k
+        if q.y < 0: q.y -= 0.015 * k
+    if q.y > 0: q.y *= 1.06
+    return q
+head = patch('Ram_Head', SKIN, HC, (0.17, 0.185, 0.205), e=0.8, res=(40, 28), thick=0, shape=head_shape, subsurf=1)
+ht = bvh(head)
+def on_face(x, z, lift=0.0):
+    hit, n, _, _ = ht.ray_cast(Vector((x, -2, z)), Vector((0, 1, 0)))
+    return hit + n * lift, n
+EZ = HC.z + 0.025
+for s in (1, -1):                                  # (1 is his left)
+    if s == 1:
+        p, n = on_face(s * 0.055, EZ)
+        patch('Ram_Eye1', EYEW, p - n * 0.006, (0.024, 0.014, 0.015), res=(16, 10), thick=0, subsurf=1)
+        p2, _ = on_face(s * 0.054, EZ - 0.001, 0.008)
+        patch('Ram_Iris1', IRIS, p2, (0.011, 0.004, 0.012), res=(12, 8), thick=0, subsurf=1)
+        tube('Ram_Scar1', SCAR, [on_face(s * x, z, 0.003)[0] for x, z in ((0.07, EZ + 0.065), (0.06, EZ + 0.03), (0.05, EZ - 0.03), (0.042, EZ - 0.06))], 0.0045, radii=[0.4, 1, 1, 0.4])
+    else:                                          # the implant: a dark housing set into the socket, a blue lens
+        p, n = on_face(s * 0.055, EZ, 0.004)
+        cyl('Ram_Implant-1', TRIM, p - n * 0.01, p + n * 0.012, 0.03, 16)
+        patch('Ram_ImplantLens-1', GLOW, p + n * 0.012, (0.017, 0.006, 0.017), res=(12, 8), thick=0, subsurf=1)
+        tube('Ram_ImplantSeam-1', GLOW, [on_face(s * x, z, 0.003)[0] for x, z in ((0.085, EZ), (0.11, EZ - 0.01), (0.125, EZ - 0.04))], 0.003)
+    tube(f'Ram_Brow{s}', GREY, [on_face(s * x, z, 0.006)[0] for x, z in ((0.022, EZ + 0.038), (0.055, EZ + 0.046), (0.088, EZ + 0.036))], 0.009, radii=[1.1, 1.0, 0.6])
+    patch(f'Ram_Ear{s}', SKIN, HC + Vector((s * 0.168, 0.02, -0.01)), (0.018, 0.03, 0.045), res=(12, 10), thick=0, subsurf=1)
+p, n = on_face(0, EZ - 0.04)
+patch('Ram_Nose', SKIN, p + Vector((0, 0.012, 0.004)), (0.024, 0.026, 0.038), v=(-90, 90), res=(14, 10), thick=0, subsurf=1)
+mouth = [on_face(x, EZ - 0.105, 0.002)[0] for x in (-0.035, -0.017, 0, 0.017, 0.035)]
+tube('Ram_Mouth', LIP, mouth, 0.004, radii=[0.5, 1, 1, 1, 0.5])
+# short grey beard over the jaw and chin, and a moustache
+def edge(d): x = min(1, max(0, (d + 3) / 6)); return x * x * (3 - 2 * x)   # (a soft edge, not a stepped one)
+def beard_shape(p, s, t):                          # the jaw and chin below the mouth, sideburns up to the ears
+    q = p.copy(); th = math.degrees(math.atan2(q.x, -q.y)); ph = math.degrees(math.asin(max(-1, min(1, q.z / max(q.length, 1e-6)))))
+    line = -30 + 28 * min(1, max(0, (abs(th) - 35) / 40))
+    return head_shape(q, s, t) * (0.9 + 0.125 * edge(line - ph))
+patch('Ram_Beard', GREY, HC, (0.17, 0.185, 0.205), u=(-105, 105), v=(-90, 5), e=0.8, res=(48, 24), thick=0, shape=beard_shape, subsurf=1)
+tube('Ram_Moustache', GREY, [on_face(x, EZ - 0.088 + 0.012 * abs(x) / 0.05, 0.007)[0] for x in (-0.05, -0.025, 0, 0.025, 0.05)], 0.008, radii=[0.4, 1, 1, 1, 0.4])
+# the buzz cut: a close cap down to a squared hairline
+def cap_shape(p, s, t):
+    q = p.copy(); r = q.length
+    th = math.degrees(math.atan2(q.x, -q.y)); ph = math.degrees(math.asin(max(-1, min(1, q.z / max(r, 1e-6)))))
+    line = 12 + 30 * max(0.0, math.cos(math.radians(th))) ** 2
+    return head_shape(q, s, t) * (0.9 + 0.1 * edge(ph - line))
+patch('Ram_HairCap', GREY, HC, (0.173, 0.188, 0.209), e=0.8, res=(72, 44), thick=0, shape=cap_shape, subsurf=1)
+patch('Ram_Neck', SKIN, (0, HC.y + 0.02, HC.z - 0.19), (0.1, 0.1, 0.09), res=(20, 8), v=(-60, 60), thick=0, subsurf=1)
+
+def group(name, prefixes):
+    col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
+    for o in list(bpy.context.scene.collection.objects):
+        if o.name.startswith(prefixes):
+            bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+group('Ram_FaceAndHair', ('Ram_Head', 'Ram_Eye', 'Ram_Iris', 'Ram_Scar', 'Ram_Implant', 'Ram_Brow', 'Ram_Ear', 'Ram_Nose', 'Ram_Mouth',
+                         'Ram_Beard', 'Ram_Moustache', 'Ram_HairCap', 'Ram_Neck'))
+group('Ram_Helmet', ('Ram_Helm', 'Ram_Crest', 'Ram_Face', 'Ram_Visor', 'Ram_Jaw', 'Ram_Horn', 'Ram_Fin0', 'Ram_Fin1', 'Ram_Fin2', 'Ram_Fin3',
+                    'Ram_FinCore', 'Ram_FinGlow', 'Ram_Sensor'))
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'ram.blend'))
 print('built', len(bpy.data.objects), 'objects')
