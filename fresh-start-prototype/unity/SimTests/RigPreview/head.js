@@ -5,7 +5,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const RBox = (w, h, d, r = 0.05) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3));
 const Geo = {
   Cylinder: (rt, rb, h, rad = 32, hs = 1, open = false) => new THREE.CylinderGeometry(rt, rb, h, rad, hs, open),
-  Sphere: (r, w = 32, h = 16) => new THREE.SphereGeometry(r, w, h),
+  Sphere: (r, w = 32, h = 16, ps = 0, pl = Math.PI * 2, ts = 0, tl = Math.PI) => new THREE.SphereGeometry(r, w, h, ps, pl, ts, tl),
+  Octahedron: (r, d = 0) => new THREE.OctahedronGeometry(r, d), Cone: (r, h, rs = 32) => new THREE.ConeGeometry(r, h, rs),
   Torus: (r, t, rs = 12, ts = 48) => new THREE.TorusGeometry(r, t, rs, ts),
   Circle: (r, s) => new THREE.CircleGeometry(r, s), Icosahedron: (r, d) => new THREE.IcosahedronGeometry(r, d),
   Capsule: (r, l, c, rs) => new THREE.CapsuleGeometry(r, l, c, rs),
@@ -22,8 +23,8 @@ const GlowMat = (c, k = 2.4) => mkMat({ colorCss: c, emissiveCss: c, emissiveInt
 const MeshAt = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
 const G = (x = 0, y = 0, z = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); return g; };
 const ATTACH_LOOK = { lance: { tint: '#ffb547' } };
-const c = { energy: '#ffb547' };
-const NOVA_SUIT_BLUE = '#46b4ff';
+const CHARS = { nova: { energy: '#ffb547' } }; const RimAll = (M) => M;
+const SETTINGS = { novaHead: 'bare' };
 function MakeLimb(parent, M, upperLen, lowerLen, r, z) {
   const top = G(0, 0, z); parent.add(top);
   top.add(MeshAt(Geo.Capsule(r, upperLen - r, 4, 12), M.under, 0, -upperLen / 2));
@@ -41,12 +42,10 @@ function Skeleton(id, M, arm, leg, shoulderZ, hipZ, upperArm = 0.3, foreArm = 0.
   const legN = MakeLimb(hips, M, 0.46, 0.46, leg, hipZ), legF = MakeLimb(hips, M, 0.46, 0.46, leg, -hipZ);
   return { root, body, hips, spine, head, armN, armF, legN, legF };
 }
+const Std = (c, r, m = 0.08) => mkMat({ colorCss: c, roughness: r, metalness: m });
+const Mats = (c) => ({
+  base: mkMat({ colorCss: '#eef2f7', roughness: 0.4, metalness: 0.1, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
+  trim: mkMat({ colorCss: '#2f5f9e', roughness: 0.36, metalness: 0.3, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
+  under: Std('#1c2c48', 0.62, 0.15), energy: GlowMat(c.energy),
+});
 function build() {
-  const M = {
-    base: mkMat({ colorCss: '#e6eaef', roughness: 0.34, metalness: 0.04, clearcoat: 0.65, clearcoatRoughness: 0.18 }),
-    trim: mkMat({ colorCss: '#5b6571', roughness: 0.3, metalness: 0.75, clearcoat: 0.3, clearcoatRoughness: 0.25 }),
-    under: mkMat({ colorCss: '#1b2028', roughness: 0.55, metalness: 0.2 }),
-    energy: GlowMat(NOVA_SUIT_BLUE),
-    visor: mkMat({ colorCss: '#0f2a44', emissiveCss: '#2f8fd8', emissiveIntensity: 0.45, roughness: 0.08, metalness: 0.6 }),
-  };
-  const navy = mkMat({ colorCss: '#22344f', roughness: 0.6, metalness: 0.05 });

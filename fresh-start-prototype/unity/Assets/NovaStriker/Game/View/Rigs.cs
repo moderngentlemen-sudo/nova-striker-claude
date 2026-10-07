@@ -1,9 +1,8 @@
 // Procedural character rigs (rigs.js): placeholder art that keeps each silhouette's defining features: Nova's
-// Strike Suit (his approved concept: BuildNovaRig) with its forearm cannon; Echo's scarf, collar, gauntlets, staff;
+// suit from his concept art (BuildNovaRig) with the Sentinel Bracer; Echo's scarf, collar, gauntlets, staff;
 // RAM's tower shield, shoulder cannon and horned helmet on a far heavier frame; Fix's goggles, tool pack with its
 // crane arm, wrench and welder. Every rig shares one skeleton (same joints; Nova's shoulders and head sit a little
-// lower, as in his blockout), so the animation drives them all; RAM and Fix are drawn bigger or smaller through
-// `size` (CHARS[].scale).
+// lower), so the animation drives them all; RAM and Fix are drawn bigger or smaller through `size` (CHARS[].scale).
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -224,137 +223,118 @@ namespace NovaStriker.Game
             return rig;
         }
 
-        // ---- Nova: the approved Strike Suit (CHR-NOVA production brief, proportions from the approved V3 blockout) ----
-        // White ceramic plates over a black carbon undersuit, titanium structure, restrained navy soft goods, blue
-        // energy channels and a blue-tinted visor: a streamlined frontline soldier, sealed combat helmet, segmented
-        // V-chest and abdomen, flat angular pauldrons, compact back power module, field belt, heavy boots, and the
-        // integrated cannon along the right forearm. No cape, scarf or coat tails. The suit's blue is the brief's;
-        // his gameplay effects (shots, hard light, Aegis) keep CHARS["nova"].energy so they still read as his.
-        // Plates sit clear of the joints so crouch, Powerslide, wall cling and aiming keep their silhouette.
-        public const string NOVA_SUIT_BLUE = "#46b4ff";
+        // ---- Nova: his approved concept art (portrait, turnaround and action sheets) ----
+        // Pearl-white armour over a navy bodysuit with glowing gold seams: a high stand-up collar, a sculpted breastplate
+        // with the gold four-point star, rounded pauldrons, a round gold belt buckle, white side panels down the thighs,
+        // big knee pads, white greaves and boots, and the Sentinel Bracer: a long white shell over the right forearm that
+        // reaches past the fist, gold along its edge and at its emitter. His face shows, with swept-back dark hair; the
+        // full white helmet with its gold visor is the other look (Settings: Nova's head).
         static Rig BuildNovaRig()
         {
-            var c = CHARS["nova"];
-            var M = RimAll(new RigMats
-            {
-                @base = Armour("#e6eaef", 0.34f, 0.04f),                                  // ceramic
-                trim = new TMat(TMat.Kind.Physical) { colorCss = "#5b6571", roughness = 0.3f, metalness = 0.75f, clearcoat = 0.3f, clearcoatRoughness = 0.25f },   // titanium
-                under = Std("#1b2028", 0.55f, 0.2f),                                       // carbon undersuit
-                energy = GlowMat(NOVA_SUIT_BLUE),
-                visor = new TMat { colorCss = "#0f2a44", emissiveCss = "#2f8fd8", emissiveIntensity = 0.45f, roughness = 0.08f, metalness = 0.6f },
-            });
-            var navy = Std("#22344f", 0.6f, 0.05f); AddRim(navy, "#d6ecff", 0.35f);
+            var c = CHARS["nova"]; var M = RimAll(Mats(c));
+            TMat glove = Std("#1d2230", 0.6f, 0.15f), gold = Std("#e3b25c", 0.25f, 0.85f);
+            TMat skin = new TMat { colorHex = 0xd6a07e, roughness = 0.8f }, hairMat = new TMat { colorHex = 0x2e1d14, roughness = 0.75f };
+            TMat goldVisor = new TMat { colorCss = "#ffcf6a", emissiveCss = "#ff9d1a", emissiveIntensity = 0.5f, roughness = 0.12f, metalness = 0.8f };
             var S = Skeleton("nova", M, 0.062f, 0.085f, 0.3f, 0.13f);
             TObj hips = S.hips, spine = S.spine, head = S.head; Limb armN = S.armN, armF = S.armF, legN = S.legN, legF = S.legF;
-            // The blockout's lower shoulders and smaller head (V3: longer-looking arms, less helmet mass)
-            armN.top.position.y = armF.top.position.y = 0.5f; head.position.y = 0.63f;
+            armN.top.position.y = armF.top.position.y = 0.51f; head.position.y = 0.64f;
             var ex = new RigExtra();
 
-            // Pelvis and field belt
+            // Pelvis, white belt and the round gold buckle
             hips.add(MeshAt(RBox(0.26f, 0.2f, 0.33f, 0.07f), M.under, 0, 0.0f));
-            hips.add(MeshAt(RBox(0.29f, 0.065f, 0.36f, 0.025f), navy, 0, 0.075f));
-            hips.add(MeshAt(RBox(0.045f, 0.06f, 0.11f, 0.015f), M.trim, 0.15f, 0.075f));
-            hips.add(MeshAt(RBox(0.05f, 0.13f, 0.15f, 0.02f), M.@base, 0.125f, -0.035f));
-            foreach (var z in new[] { 0.185f, -0.185f }) hips.add(MeshAt(RBox(0.08f, 0.085f, 0.055f, 0.02f), navy, -0.06f, 0.035f, z));
-            hips.add(MeshAt(RBox(0.06f, 0.08f, 0.12f, 0.02f), navy, -0.15f, 0.04f, 0.07f));
+            hips.add(MeshAt(RBox(0.285f, 0.05f, 0.355f, 0.02f), M.@base, 0, 0.08f));
+            var buckle = MeshAt(Geo.Cylinder(0.05f, 0.05f, 0.025f, 20), gold, 0.15f, 0.08f); buckle.rotation.z = Mathf.PI / 2; hips.add(buckle);
+            var core = MeshAt(Geo.Cylinder(0.026f, 0.026f, 0.012f, 16), M.energy, 0.165f, 0.08f); core.rotation.z = Mathf.PI / 2; hips.add(core);
 
-            // Torso: carbon core, segmented abdomen, three-piece V-chest, collar, chest core, back module
+            // Torso: navy core, breastplate with its gold star and seams, high collar, back plate
             spine.add(MeshAt(RBox(0.26f, 0.34f, 0.36f, 0.08f), M.under, 0, 0.2f));
-            spine.add(MeshAt(RBox(0.15f, 0.075f, 0.28f, 0.025f), M.@base, 0.065f, 0.065f));
-            spine.add(MeshAt(RBox(0.17f, 0.095f, 0.32f, 0.03f), M.@base, 0.06f, 0.165f));
-            spine.add(MeshAt(RBox(0.22f, 0.25f, 0.2f, 0.06f), M.@base, 0.05f, 0.38f));
+            spine.add(MeshAt(RBox(0.25f, 0.27f, 0.4f, 0.09f), M.@base, 0.035f, 0.41f));
+            spine.add(MeshAt(RBox(0.2f, 0.1f, 0.18f, 0.05f), M.@base, 0.045f, 0.265f));
+            var starV = MeshAt(Geo.Octahedron(0.055f), M.energy, 0.162f, 0.42f); starV.scale.set(0.15f, 1, 0.35f); spine.add(starV);
+            var starH = MeshAt(Geo.Octahedron(0.055f), M.energy, 0.162f, 0.42f); starH.scale.set(0.15f, 0.3f, 0.75f); spine.add(starH);
             foreach (var sz in new[] { 1f, -1f })
             {
-                var plate = MeshAt(RBox(0.24f, 0.23f, 0.17f, 0.06f), M.@base, 0.035f, 0.405f, sz * 0.135f); plate.rotation.x = sz * 0.13f; spine.add(plate);
-                spine.add(MeshAt(RBox(0.15f, 0.014f, 0.012f, 0.005f), M.energy, 0.04f, 0.33f, sz * 0.222f));   // side channel, seen from the gameplay camera
-                spine.add(MeshAt(RBox(0.012f, 0.13f, 0.012f, 0.005f), M.energy, 0.163f, 0.4f, sz * 0.07f));
+                var seam = MeshAt(RBox(0.01f, 0.012f, 0.13f, 0.004f), M.energy, 0.158f, 0.5f, sz * 0.1f); seam.rotation.x = sz * 0.5f; spine.add(seam);
+                spine.add(MeshAt(RBox(0.16f, 0.012f, 0.01f, 0.004f), M.energy, 0.035f, 0.33f, sz * 0.2f));   // side seam, seen from the gameplay camera
+                spine.add(MeshAt(RBox(0.01f, 0.08f, 0.01f, 0.004f), M.energy, 0.1f, 0.6f, sz * 0.032f));     // either side of the collar's opening
             }
-            spine.add(MeshAt(RBox(0.16f, 0.05f, 0.4f, 0.02f), M.trim, -0.005f, 0.525f));
-            spine.add(MeshAt(RBox(0.02f, 0.1f, 0.1f, 0.01f), M.trim, 0.162f, 0.36f));
-            spine.add(MeshAt(RBox(0.02f, 0.065f, 0.065f, 0.01f), M.energy, 0.172f, 0.36f));
-            spine.add(MeshAt(RBox(0.1f, 0.3f, 0.26f, 0.035f), M.trim, -0.175f, 0.36f));
-            foreach (var z in new[] { 0.075f, -0.075f }) spine.add(MeshAt(RBox(0.012f, 0.18f, 0.02f, 0.005f), M.energy, -0.228f, 0.36f, z));
-            var aerial = MeshAt(Geo.Cylinder(0.008f, 0.008f, 0.16f, 6), M.trim, -0.2f, 0.58f, -0.1f); aerial.rotation.z = 0.25f; spine.add(aerial);
+            spine.add(MeshAt(Geo.Cylinder(0.1f, 0.12f, 0.11f, 20), M.@base, 0, 0.6f));
+            spine.add(MeshAt(RBox(0.08f, 0.24f, 0.3f, 0.04f), M.@base, -0.15f, 0.42f));
 
-            // Sealed combat helmet: a narrow ceramic shell with a brow and a neck guard (so the profile reads as a helmet,
-            // not a ball), a flush wraparound visor with its lit slit, jaw guard, and titanium comms plates behind the visor
-            spine.add(MeshAt(Geo.Cylinder(0.06f, 0.07f, 0.1f, 12), M.under, 0, 0.6f));
-            var shell = MeshAt(Geo.Sphere(0.12f, 24, 16), M.@base, -0.01f, 0.1f); shell.scale.set(0.95f, 0.98f, 0.9f); head.add(shell);
-            head.add(MeshAt(RBox(0.07f, 0.03f, 0.19f, 0.012f), M.@base, 0.07f, 0.15f));
-            head.add(MeshAt(RBox(0.08f, 0.09f, 0.2f, 0.03f), M.@base, -0.085f, 0.04f));
-            head.add(MeshAt(RBox(0.06f, 0.055f, 0.18f, 0.02f), M.visor, 0.08f, 0.105f));
-            foreach (var z in new[] { 0.095f, -0.095f }) head.add(MeshAt(RBox(0.09f, 0.045f, 0.025f, 0.01f), M.visor, 0.04f, 0.105f, z));
-            head.add(MeshAt(RBox(0.008f, 0.012f, 0.15f, 0.004f), M.energy, 0.111f, 0.107f));
-            head.add(MeshAt(RBox(0.08f, 0.06f, 0.13f, 0.025f), M.@base, 0.055f, 0.035f));
-            head.add(MeshAt(RBox(0.008f, 0.03f, 0.07f, 0.003f), M.trim, 0.096f, 0.03f));
-            foreach (var z in new[] { 0.104f, -0.104f })
+            // Heads: his face with swept-back dark hair, or the full white helmet with its gold visor
+            var heads = new Dictionary<string, TObj>();
+            head.add(MeshAt(Geo.Cylinder(0.05f, 0.055f, 0.1f, 12), skin, 0, -0.03f));
+            var bare = G(); head.add(bare);
+            var face = MeshAt(Geo.Sphere(0.125f, 24, 18), skin, 0, 0.1f); face.scale.set(1, 1.08f, 0.95f); bare.add(face);
+            var eye = new TMat { colorHex = 0x2a1a12, roughness = 0.4f };
+            foreach (var z in new[] { 0.042f, -0.042f })
             {
-                head.add(MeshAt(RBox(0.07f, 0.06f, 0.02f, 0.008f), M.trim, -0.035f, 0.075f, z));
-                head.add(MeshAt(RBox(0.03f, 0.008f, 0.006f, 0.003f), M.energy, -0.035f, 0.09f, z + Mathf.Sign(z) * 0.012f));
+                bare.add(MeshAt(Geo.Sphere(0.011f, 8, 6), eye, 0.116f, 0.112f, z * 0.95f));
+                bare.add(MeshAt(RBox(0.008f, 0.008f, 0.035f, 0.003f), hairMat, 0.118f, 0.138f, z));
+                bare.add(MeshAt(Geo.Sphere(0.03f, 8, 6), skin, -0.005f, 0.1f, z * 2.85f));
             }
-            var antenna = MeshAt(Geo.Cylinder(0.005f, 0.006f, 0.1f, 6), M.trim, -0.06f, 0.15f, 0.1f); antenna.rotation.z = 0.5f; head.add(antenna);
+            bare.add(MeshAt(RBox(0.025f, 0.04f, 0.025f, 0.01f), skin, 0.122f, 0.09f));
+            var hair = G(0, 0.1f, 0); bare.add(hair);
+            var cap = MeshAt(Geo.Sphere(0.135f, 24, 12, 0, Mathf.PI * 2, 0, Mathf.PI * 0.45f), hairMat); cap.rotation.z = 0.3f; hair.add(cap);
+            foreach (var (x, y, z, rz) in new[] { (0.09f, 0.075f, 0.04f, 0.55f), (0.09f, 0.075f, -0.04f, 0.65f), (0.05f, 0.105f, 0.0f, 0.85f), (0.0f, 0.115f, 0.05f, 1.15f), (0.0f, 0.115f, -0.05f, 1.15f), (-0.06f, 0.095f, 0.0f, 1.5f) })
+            {
+                var tuft = MeshAt(Geo.Cone(0.042f, 0.11f, 5), hairMat, x, y, z); tuft.rotation.z = rz; hair.add(tuft);
+            }
+            var helmet = G(); head.add(helmet);
+            var shell = MeshAt(Geo.Sphere(0.15f, 24, 18), M.@base, 0, 0.1f); shell.scale.set(1, 1.05f, 0.95f); helmet.add(shell);
+            helmet.add(MeshAt(Geo.Sphere(0.153f, 20, 14, Mathf.PI - 1.15f, 2.3f, 0.55f, 1.15f), goldVisor, 0, 0.1f));
+            helmet.add(MeshAt(RBox(0.05f, 0.03f, 0.03f, 0.01f), M.@base, 0.14f, 0.2f));
+            foreach (var z in new[] { 0.14f, -0.14f }) helmet.add(MeshAt(RBox(0.06f, 0.025f, 0.02f, 0.008f), M.energy, 0.0f, 0.1f, z));
+            heads["bare"] = bare; heads["helmet"] = helmet;
 
-            // Arms: carbon sleeves, flat angular pauldrons (they ride the arm), titanium elbows, gloves
+            // Arms: rounded pauldrons, navy sleeves with a white outer stripe, the left forearm guard, dark gloves
             foreach (var a in new[] { armN, armF })
             {
                 float sz = Mathf.Sign(a.top.position.z);
-                var pad = MeshAt(RBox(0.22f, 0.08f, 0.17f, 0.03f), M.@base, 0.0f, 0.0f, sz * 0.03f); pad.rotation.x = sz * 0.19f; a.top.add(pad);
-                var edge = MeshAt(RBox(0.2f, 0.022f, 0.15f, 0.008f), M.trim, 0.0f, -0.048f, sz * 0.035f); edge.rotation.x = sz * 0.19f; a.top.add(edge);
-                a.top.add(MeshAt(RBox(0.12f, 0.016f, 0.01f, 0.004f), M.energy, 0.0f, -0.005f, sz * 0.12f));
-                a.top.add(MeshAt(RBox(0.1f, 0.12f, 0.1f, 0.03f), M.@base, 0.02f, -0.15f));
-                a.joint.add(MeshAt(Geo.Sphere(0.058f, 12, 10), M.trim, 0, 0));
-                a.end.add(MeshAt(Geo.Sphere(0.068f, 12, 10), M.under, 0, -0.03f));
-                a.end.add(MeshAt(RBox(0.05f, 0.04f, 0.09f, 0.012f), M.trim, 0.05f, -0.03f));
+                var pad = MeshAt(Geo.Sphere(0.09f, 18, 12), M.@base, 0, -0.01f, sz * 0.012f); pad.scale.set(1.15f, 0.62f, 1); a.top.add(pad);
+                a.top.add(MeshAt(RBox(0.15f, 0.05f, 0.1f, 0.02f), M.@base, 0, -0.06f, sz * 0.035f));
+                a.top.add(MeshAt(RBox(0.06f, 0.16f, 0.02f, 0.008f), M.@base, 0, -0.16f, sz * 0.058f));
+                a.end.add(MeshAt(Geo.Sphere(0.068f, 12, 10), glove, 0, -0.03f));
+                a.end.add(MeshAt(RBox(0.04f, 0.03f, 0.08f, 0.012f), M.@base, 0.05f, -0.03f));
             }
-            armF.joint.add(MeshAt(RBox(0.14f, 0.23f, 0.14f, 0.04f), M.@base, 0.01f, -0.15f));
-            armF.joint.add(MeshAt(RBox(0.012f, 0.16f, 0.012f, 0.005f), M.energy, 0.075f, -0.15f, -0.04f));
+            armF.joint.add(MeshAt(RBox(0.13f, 0.22f, 0.13f, 0.05f), M.@base, 0.01f, -0.15f));
+            armF.joint.add(MeshAt(RBox(0.01f, 0.16f, 0.01f, 0.004f), M.energy, 0.072f, -0.15f, -0.04f));
 
-            // Legs: thigh and hip plates, knee pads, shin guards, heavy titanium boots (sole and skate blades at the old height)
+            // Legs: white side panels down the navy thighs, knee pads, greaves with a navy stripe, white boots
             foreach (var l in new[] { legN, legF })
             {
                 float sz = Mathf.Sign(l.top.position.z);
-                l.top.add(MeshAt(RBox(0.06f, 0.22f, 0.13f, 0.025f), M.@base, 0.075f, -0.2f));
-                l.top.add(MeshAt(RBox(0.12f, 0.17f, 0.025f, 0.01f), M.@base, 0.01f, -0.22f, sz * 0.088f));
-                l.top.add(MeshAt(RBox(0.15f, 0.085f, 0.035f, 0.012f), M.@base, 0.0f, -0.03f, sz * 0.1f));
-                l.joint.add(MeshAt(RBox(0.07f, 0.09f, 0.12f, 0.03f), M.@base, 0.085f, -0.01f));
-                l.joint.add(MeshAt(RBox(0.06f, 0.26f, 0.12f, 0.025f), M.@base, 0.07f, -0.24f));
-                l.joint.add(MeshAt(RBox(0.1f, 0.14f, 0.02f, 0.008f), M.@base, 0.02f, -0.27f, sz * 0.078f));
-                l.joint.add(MeshAt(RBox(0.014f, 0.16f, 0.008f, 0.003f), M.energy, 0.075f, -0.27f, sz * 0.09f));
-                l.end.add(MeshAt(RBox(0.15f, 0.08f, 0.16f, 0.03f), M.trim, 0.0f, 0.06f));
-                l.end.add(MeshAt(RBox(0.27f, 0.1f, 0.17f, 0.035f), M.trim, 0.06f, 0.0f));
-                l.end.add(MeshAt(RBox(0.08f, 0.07f, 0.15f, 0.025f), M.@base, 0.16f, 0.01f));
-                l.end.add(MeshAt(RBox(0.29f, 0.02f, 0.17f, 0.008f), M.under, 0.06f, -0.06f));
+                l.top.add(MeshAt(RBox(0.13f, 0.32f, 0.04f, 0.015f), M.@base, 0.0f, -0.2f, sz * 0.062f));
+                var knee = MeshAt(Geo.Sphere(0.064f, 14, 10), M.@base, 0.065f, 0.0f); knee.scale.set(0.9f, 1.1f, 1.05f); l.joint.add(knee);
+                l.joint.add(MeshAt(Geo.Sphere(0.013f, 8, 6), M.energy, 0.123f, 0.0f));
+                l.joint.add(MeshAt(RBox(0.15f, 0.32f, 0.16f, 0.06f), M.@base, 0.03f, -0.26f));
+                l.joint.add(MeshAt(RBox(0.03f, 0.2f, 0.01f, 0.004f), M.trim, 0.0f, -0.25f, sz * 0.081f));
+                l.end.add(MeshAt(RBox(0.15f, 0.035f, 0.165f, 0.012f), M.trim, 0.0f, 0.06f));
+                l.end.add(MeshAt(RBox(0.27f, 0.1f, 0.17f, 0.04f), M.@base, 0.06f, 0.0f));
+                l.end.add(MeshAt(RBox(0.29f, 0.022f, 0.175f, 0.008f), glove, 0.06f, -0.06f));
             }
             // Light boosters and skate-blade boots
-            var jetMat = new TMat(TMat.Kind.Basic) { colorHex = 0xd8f1ff, transparent = true, opacity = 0.85f, blending = Blending.Additive, depthWrite = false };
+            var jetMat = new TMat(TMat.Kind.Basic) { colorHex = 0xfff1c9, transparent = true, opacity = 0.85f, blending = Blending.Additive, depthWrite = false };
             foreach (var l in new[] { legN, legF })
             {
                 var j = new TMesh(Geo.Cylinder(0, 0.07f, 0.34f, 10, 1, true), jetMat); j.rotation.z = Mathf.PI; j.position.set(0.04f, -0.26f, 0);
                 j.visible = false; l.end.add(j); ex.jets.Add(j);
             }
-            var bladeMat = GlowMat(NOVA_SUIT_BLUE, 1.6f);
+            var bladeMat = GlowMat(c.energy, 1.6f);
             foreach (var l in new[] { legN, legF })
                 foreach (var z in new[] { 0.083f, -0.083f })
                 {
                     var b = MeshAt(RBox(0.28f, 0.018f, 0.01f, 0.004f), bladeMat, 0.06f, -0.066f, z); l.end.add(b); ex.blades.Add(b);
                 }
 
-            // The forearm cannon (the Sentinel Bracer: gun and shield in one device) on the right arm: a ceramic housing,
-            // a slim titanium barrel along the forearm that reaches past the fist, sensor/scope, tactical light, and the
-            // attachment slot on the side facing the camera (lit in the current attachment's colour)
+            // CP-07, the Sentinel Bracer (gun and shield in one device): the long white shell and its narrower nose past
+            // the fist, gold along the edge and at the emitter, and the attachment slot on the side facing the camera
             var bracer = G(0, -0.14f, 0); armN.joint.add(bracer);
-            bracer.add(MeshAt(RBox(0.15f, 0.3f, 0.17f, 0.04f), M.@base, 0.0f, 0));
-            bracer.add(MeshAt(RBox(0.012f, 0.22f, 0.012f, 0.005f), M.energy, 0.05f, -0.02f, 0.086f));
-            bracer.add(MeshAt(Geo.Cylinder(0.05f, 0.046f, 0.4f, 14), M.trim, 0.075f, -0.08f, 0));
-            foreach (var y in new[] { -0.16f, -0.22f })
-            {
-                var band = MeshAt(Geo.Torus(0.05f, 0.008f, 6, 16), M.energy, 0.075f, y, 0); band.rotation.x = Mathf.PI / 2; bracer.add(band);
-            }
-            bracer.add(MeshAt(RBox(0.045f, 0.08f, 0.04f, 0.012f), M.trim, 0.135f, 0.05f));
-            bracer.add(MeshAt(RBox(0.008f, 0.025f, 0.025f, 0.004f), M.energy, 0.16f, 0.025f));
-            var light = MeshAt(Geo.Cylinder(0.016f, 0.016f, 0.05f, 8), M.trim, 0.03f, -0.2f, 0.065f); bracer.add(light);
-            bracer.add(MeshAt(Geo.Cylinder(0.012f, 0.012f, 0.008f, 8), GlowMat("#e8f6ff", 1.2f), 0.03f, -0.226f, 0.065f));
-            var muzzle = MeshAt(Geo.Cylinder(0.04f, 0.046f, 0.04f, 14), M.energy, 0.075f, -0.3f, 0); bracer.add(muzzle);
+            bracer.add(MeshAt(RBox(0.17f, 0.36f, 0.17f, 0.07f), M.@base, 0.02f, -0.04f));
+            bracer.add(MeshAt(RBox(0.13f, 0.15f, 0.13f, 0.05f), M.@base, 0.045f, -0.24f));
+            bracer.add(MeshAt(RBox(0.012f, 0.4f, 0.03f, 0.005f), M.energy, 0.11f, -0.1f));
+            bracer.add(MeshAt(RBox(0.1f, 0.2f, 0.01f, 0.004f), M.trim, 0.02f, -0.02f, -0.087f));
+            var muzzle = MeshAt(Geo.Cylinder(0.035f, 0.045f, 0.04f, 14), M.energy, 0.05f, -0.33f, 0); bracer.add(muzzle);
             ex.muzzle = muzzle;
             var shield = G(0.14f, -0.1f, 0); bracer.add(shield);
             var plateMat = new TMat { colorHex = 0xfff1d6, emissiveCss = c.energy, emissiveIntensity = 1.6f, transparent = true, opacity = 0.55f, side = Side.Double, roughness = 0.2f };
@@ -362,10 +342,10 @@ namespace NovaStriker.Game
             shield.scale.setScalar(0.001f);
             ex.bracer = bracer; ex.shield = shield; ex.plateMat = plateMat;
             var moduleMat = new TMat { colorCss = ATTACH_LOOK["lance"].tint, emissiveCss = ATTACH_LOOK["lance"].tint, emissiveIntensity = 2.2f, roughness = 0.3f };
-            var module = MeshAt(RBox(0.07f, 0.09f, 0.04f, 0.012f), moduleMat, 0.0f, 0.07f, 0.095f); bracer.add(module);
+            var module = MeshAt(RBox(0.07f, 0.09f, 0.03f, 0.01f), moduleMat, 0.02f, 0.06f, 0.09f); bracer.add(module);
             ex.module = module; ex.moduleMat = moduleMat;
 
-            // Hard-light fists and greave (his gameplay colour, as before)
+            // Hard-light fists and greave
             var hardMat = new TMat { colorCss = "#fff4d6", emissiveCss = c.energy, emissiveIntensity = 2.6f, transparent = true, opacity = 0.82f, roughness = 0.15f };
             ex.gauntlets = new List<TMesh>();
             foreach (var a in new[] { armN, armF })
@@ -376,8 +356,15 @@ namespace NovaStriker.Game
             legN.end.add(greave); ex.greave = greave; ex.hardMat = hardMat;
             ex.edges["fistN"] = new Edge(armN.joint, armN.end, 0.55f); ex.edges["fistF"] = new Edge(armF.joint, armF.end, 0.55f); ex.edges["boot"] = new Edge(legN.joint, legN.end, 0.5f);
 
-            S.extra = ex; S.mats = M; S.@char = "nova";
-            return FinishRig(S);
+            S.extra = ex; S.mats = M; S.@char = "nova"; S.heads = heads;
+            var rig = FinishRig(S);
+            rig.setHeadFn = mode =>
+            {
+                if (rig.headMode == mode) return;
+                rig.headMode = mode; helmet.visible = mode == "helmet"; bare.visible = mode != "helmet";
+            };
+            rig.setHead(SETTINGS.novaHead ?? "bare");
+            return rig;
         }
 
         // The common tail of every rig: shadows, and Echo's Veil (any rig can fade)

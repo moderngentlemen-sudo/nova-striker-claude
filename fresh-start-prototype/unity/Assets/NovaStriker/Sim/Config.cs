@@ -49,6 +49,7 @@ namespace NovaStriker.Sim
         public string novaKit = "marksman";   // 'marksman' (projectile proposal) or 'sentinel' (Pass 1 kit)
         public string echoKit = "hunter";     // 'hunter' (close-range proposal) or 'pursuit' (Pass 1 kit)
         public string echoHead = "helmet";    // presentation only: 'helmet', 'mask' or 'bare'
+        public string novaHead = "bare";      // presentation only (Unity only): 'bare' (his face, as in his concept art) or 'helmet'
         public string echoRanged = "B";       // Pursuit kit only. A: Tracer only · B: Bolts + Tracer · C: no ranged
         public bool dashIframes = false;
         public string vbStop = "hard";        // 'hard' stop or 'keep30' momentum

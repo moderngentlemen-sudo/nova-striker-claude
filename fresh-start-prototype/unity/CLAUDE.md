@@ -54,13 +54,14 @@ The README's *Unity-only additions* has the full description.
   - **Code:** tuning is `NOVA_SHIELD` in `Sim/Config.cs`; the simulation is `Sim/PlayerSim.Nova.cs`; the block
     is in `Sim/Combat.cs`; the visuals are `Game/View/NovaShieldFx.cs` and `Anim.AbsorbGlow`; the HUD is
     `Game/UI/HudChips.cs`.
-- **Nova's design.** His rig follows the approved concept: the *Strike Suit* brief and the V3 blockout in the
-  main `nova-striker` repository (branch `dev/blender-production`):
-  - `Docs/nova-blender-production-brief.md`;
-  - `Blender/Tools/ns_build_nova_blockout_v3.py`.
+- **Nova's design.** His rig follows the concept art the owner shared in chat:
+  - **Head:** his face with swept-back dark hair, or the white helmet with the gold visor (`novaHead` setting).
+  - **Suit:** pearl-white armour over navy, gold seams, the gold star on his chest, a high collar and a round
+    gold buckle.
+  - **Bracer:** the long white Sentinel Bracer on his right forearm.
 
-  The concept images aren't in either repository. The brief bans capes, scarves and coat tails. The suit is
-  blue (`NOVA_SUIT_BLUE`). His gameplay effects still use `CHARS["nova"].energy` (gold).
+  Gold is his colour (`CHARS["nova"].energy`). Ignore the main repository's blue "Strike Suit" Blender brief: it
+  is a different direction. Check rig changes with `RigPreview`.
 - **Parry stun.** Setting `novaParryStun`; the code is `World.ParryStun`.
 - **Quit game.** On the start card and in the pause menu (`UiMenus.cs`).
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
@@ -68,9 +69,10 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
-- **Nova's effects colour.** The suit is blue, as the brief says, but his shots, hard light and Aegis are still
-  gold. Ask the owner whether they should turn blue too. RAM is already blue, and the shield is a lighter blue.
-- **Nova's open helmet.** The brief plans an unhelmeted state. It isn't drawn yet, because there is no face.
+- **Echo's look.** The owner's concept art shows Echo too: a bare face with spiky blond hair, cream-white armour
+  with gold and orange accents, a flowing cream scarf, and orange blades. Compare the rig against it.
+- **Nova's shield colour.** The concept art shows a gold hexagonal (honeycomb) hard-light shield, but the absorbing
+  shield is blue, which the owner asked for earlier. Ask before changing it.
 
 - **Balance:** 2.5× damage at a full charge may be too strong. Offer to slow the charge or drain it sooner.
 - **Beam and shield:** the Level 4 beam currently lowers the shield. Ask whether the owner would rather it

@@ -146,18 +146,17 @@ default settings the simulation is still the prototype's (the parity tests run w
 
 ## Differences from the browser prototype
 
-- **Nova's look.** His rig follows his approved concept, the *Strike Suit* in the CHR-NOVA production brief
-  (`Docs/nova-blender-production-brief.md` on the main `nova-striker` repository's `dev/blender-production`
-  branch), with proportions from the approved V3 blockout:
-  - **Materials:** white ceramic plates over a black carbon undersuit, titanium structure, navy belt and pouches,
-    blue energy lines.
-  - **Head:** a sealed combat helmet with a blue-tinted wraparound visor.
-  - **Torso:** a segmented V-chest and abdomen, flat angular pauldrons and a compact back power module.
-  - **Legs:** heavy boots.
-  - **Weapon:** a slim cannon along his right forearm.
+- **Nova's look.** His rig follows his concept art, which the owner shared:
+  - **Armour:** pearl-white armour over a navy bodysuit, with glowing gold seams.
+  - **Chest and waist:** a high stand-up collar, the gold four-point star on his chest and a round gold belt
+    buckle.
+  - **Shoulders and legs:** rounded pauldrons, white side panels down the thighs, knee pads, and white greaves and
+    boots.
+  - **Bracer:** the Sentinel Bracer, a long white shell over his right forearm that reaches past the fist.
 
-  The suit's blue is the brief's. His shots, hard light and Aegis keep his gameplay colour. The rig is
-  `Rigs.BuildNovaRig`. It is still a procedural stand-in, until a real model goes in through *Character models*.
+  His face shows, with swept-back dark hair. *Settings › Nova's head* switches to the full white helmet with its
+  gold visor (a Unity-only setting, presentation only). The rig is `Rigs.BuildNovaRig`. It is still a procedural
+  stand-in, until a real model goes in through *Character models*.
 - **Fonts.** The UI uses Unity's built-in font. To use the prototype's fonts, put `SairaCondensed-Bold`,
   `Barlow-Medium` and `IBMPlexMono-Regular` in `Resources/NovaStriker/Fonts`.
 - **Panels and text.** The HUD panels are not skewed. TextMeshPro is not used.

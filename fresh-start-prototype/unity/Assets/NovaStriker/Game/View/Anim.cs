@@ -512,6 +512,7 @@ namespace NovaStriker.Game
                 rig.mats.energy.emissiveIntensity = 2.2f + charge * 1.2f + (p.chargeT > 0 || p.burstT > 0 || p.dashChargeT > 0 || st == "beam" ? Mathf.Sin(t * 30) * 0.4f : 0) + (flash ? 2.5f : 0)
                     + (p.overcharge > 0 ? 1.2f + Mathf.Sin(t * 12) * 0.5f : 0) + (st == "ult" ? 4 + Mathf.Sin(t * 36) * 0.8f : 0)
                     + AbsorbGlow(rig, p, t, dt);
+                rig.setHead(SETTINGS.novaHead ?? "bare");
                 foreach (var j in ex.jets) { j.visible = p.thrusting; j.scale.set(1, 0.8f + R() * 0.5f, 1); }
                 ex.module.visible = mk; foreach (var b in ex.blades) b.visible = mk;
                 if (mk && ex.moduleTint != p.attachment)

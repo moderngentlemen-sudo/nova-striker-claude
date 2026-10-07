@@ -1,8 +1,8 @@
 // Lays out five views (side, three-quarter, front, back, aiming) and renders them.
-  return S;
+  S.heads = heads; return S;
 }
-const W = 1800, H = 760, views = [
-  ['Side (gameplay)', 0, null], ['Three-quarter', -0.7, null], ['Front', -Math.PI / 2, null], ['Back', Math.PI / 2, null], ['Aiming', 0, 'aim'],
+const W = 2100, H = 760, views = [
+  ['Side (gameplay)', 0, null], ['Three-quarter', -0.7, null], ['Front', -Math.PI / 2, null], ['Back', Math.PI / 2, null], ['Aiming', 0, 'aim'], ['Helmet look', -0.7, 'helmet'],
 ];
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(W, H); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
@@ -18,6 +18,7 @@ views.forEach(([name, ry, pose], i) => {
   const S = build(); S.root.rotation.y = ry;
   if (pose === 'aim') { S.armN.top.rotation.z = 1.45; S.armN.joint.rotation.z = 0.1; S.armF.top.rotation.z = 0.5; S.armF.joint.rotation.z = 1.2; S.legN.top.rotation.z = 0.25; S.legN.joint.rotation.z = -0.3; S.legF.top.rotation.z = -0.2; }
   if (pose === 'aim') S.root.position.x = -0.22;
+  for (const [k, h] of Object.entries(S.heads)) h.visible = k === (pose === 'helmet' ? 'helmet' : 'bare');
   scene.add(S.root);
   const cam = new THREE.PerspectiveCamera(22, vw / H, 0.1, 50); cam.position.set(0, 1.05, 5.6); cam.lookAt(0, 1.0, 0);
   renderer.setViewport(i * vw, 0, vw, H); renderer.setScissor(i * vw, 0, vw, H); renderer.render(scene, cam);
