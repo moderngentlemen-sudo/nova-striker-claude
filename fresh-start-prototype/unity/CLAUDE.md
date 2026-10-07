@@ -75,6 +75,9 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
+- **Nova's 3D model in Unity.** It has not yet been seen in Unity. If it stands wrong (facing, scale, limbs),
+  the code to adjust is `BuildDriven` in `Models.cs`. Settings › *Character models* › *Built-in rigs* is the
+  fallback.
 - **Echo's look.** His rig was restyled from the same concept art: cream-white armour, bronze-gold trim, a
   charcoal undersuit, and his bare face with spiky blond hair as the default. The concept also shows his flowing
   cream scarf (drawn by the effects code) and his orange blades.
