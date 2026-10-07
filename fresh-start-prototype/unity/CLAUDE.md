@@ -40,6 +40,10 @@ All run without Unity, from `SimTests/`:
   container, Blender can be downloaded from download.blender.org into `/opt/blender`.
   - **Review renders:** `BLENDER=<path> sh render.sh build_nova.py <out-dir> <name> [samples] [helmet]` builds
     Nova and renders a review sheet (front, three-quarter, side, back, face).
+  - **Gym kit:** `build_gym_kit.py` models it and `gym_layout.py` places it (from the level's boxes).
+    `render_gym.py` renders before/after review shots. `export_kit.py` writes
+    `Resources/NovaStriker/Env/gym_kit.json`. `make_textures.py` writes the paint, rubber, tread and shadow
+    textures (`.bytes`) beside it.
   - **Export to the game:** `blender -b <out-dir>/nova.blend -P rig_export_nova.py --
     ../../Assets/NovaStriker/Resources/NovaStriker/Models/nova_model.fbx` rigs and exports it. Commit the FBX.
     Its bones must keep the rig's joint names, which `Models.cs` drives (`MAP`).
@@ -74,6 +78,9 @@ The README's *Unity-only additions* has the full description.
   not yet been tested on an HDR display.
 
 ## Open threads and ideas
+
+- **The gym's dressing in Unity.** It has not yet been seen in Unity. It only dresses the zone (the boxes are
+  unchanged). The next zones can follow the same pattern: a kit, a layout from their boxes, and an export.
 
 - **Nova's 3D model in Unity.** It has not yet been seen in Unity. If it stands wrong (facing, scale, limbs),
   the code to adjust is `BuildDriven` in `Models.cs`. Settings › *Character models* › *Built-in rigs* is the

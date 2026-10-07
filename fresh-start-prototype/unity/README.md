@@ -144,6 +144,17 @@ default settings the simulation is still the prototype's (the parity tests run w
     tumbles, bounces and fades, and his face shows: a warning to the player.
   - **Coming back:** it returns once he is healed above 40% or revived.
   - **Code:** `Anim` (`HELMET_OFF`, `HELMET_BACK`) and `HelmetFx`.
+- **The Movement Gym's dressing.** A kit modelled in Blender (`Art/Blender`) dresses the first zone without
+  changing its shapes:
+  - **Deck:** hull panels on the deck's faces (lit edge, pipe runs, vents, hatches, ribs, stencils), and deck
+    plating with grip strips, floor lights and drains.
+  - **Markings:** start line, chevrons and hazard edges.
+  - **Panel and tunnel:** grip pads and framing on the wall-jump panel, and a warning band on the slide tunnel.
+  - **Back terrace:** training gear with soft contact shadows, a glass railing, floodlights and the
+    *MOVEMENT GYM* sign.
+  - **Surfaces:** painted metal with light wear, rubber and tread plate.
+  - **Code and data:** `GymDressing.cs` places it from `Resources/NovaStriker/Env/gym_kit.json`; the textures
+    are the `.bytes` files beside it.
 - **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
   press.
 - **HDR output** (Settings › *HDR output*). On an HDR display with HDR turned on in the system, the game

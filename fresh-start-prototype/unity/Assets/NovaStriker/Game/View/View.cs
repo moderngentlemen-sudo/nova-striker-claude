@@ -109,7 +109,7 @@ namespace NovaStriker.Game
 
             fx = new Fx(scene, rigs) { view = this };
             skyMat = TMat.Raw(new Material(Templates.Sky));
-            BuildSky(); BuildBackdrop(); BuildLevel(); BuildProps(); Landmarks.Build(this); FlushBaked();
+            BuildSky(); BuildBackdrop(); BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             breakables = new Breakables(scene, fx);
             Resize(Screen.width, Screen.height);
         }

@@ -10,6 +10,9 @@ from nova_lib import *
 OUT = sys.argv[sys.argv.index('--') + 1] if '--' in sys.argv else '/tmp'
 reset()
 HULL = mat('Kit_Hull', srgb('#e9eef3'), metal=0.1, rough=0.42, coat=0.3)
+HULLB = mat('Kit_HullB', srgb('#dce3eb'), metal=0.1, rough=0.46, coat=0.25)   # (a second paint batch, so panels vary)
+STENCIL = mat('Kit_Stencil', srgb('#5d6b7d'), rough=0.6)
+SHADOW = mat('Kit_Shadow', (0, 0, 0), rough=1)
 DARK = mat('Kit_HullDark', srgb('#3d4f66'), metal=0.2, rough=0.5)
 NAVY = mat('Kit_Navy', srgb('#2b4f7e'), metal=0.15, rough=0.45, coat=0.2)
 METAL = mat('Kit_Metal', srgb('#9aa6b2'), metal=0.85, rough=0.3)
@@ -56,21 +59,26 @@ box('nose', METAL, (0, -0.03, -0.06), (2.0, 0.12, 0.12), 0.03, 3)
 box('recess', BLACK, (0, 0.0, -0.2), (2.0, 0.04, 0.09), 0)
 box('strip', LIGHT, (0, -0.012, -0.2), (1.98, 0.02, 0.045), 0.004)
 for s in (-1, 1):
-    box('panel', HULL, (s * 0.495, -0.02, -0.72), (0.97, 0.05, 0.86), 0.02, 3)
+    box('panel', HULL if s < 0 else HULLB, (s * 0.495, -0.02, -0.72), (0.97, 0.05, 0.86), 0.02, 3)
     for bx, bz in ((0.42, -0.34), (0.42, -1.1)):
         cyl('bolt', METAL, (s * 0.495 + s * bx * (1 if bz > -1 else -1) * 0.9, -0.05, -0.72 + (0.36 if bz > -1 else -0.36)), (s * 0.495 + s * bx * 0.9 * (1 if bz > -1 else -1), -0.06, -0.72 + (0.36 if bz > -1 else -0.36)), 0.018, 8)
 box('band', DARK, (0, 0.0, -1.18), (2.0, 0.04, 0.05), 0)
+# a pipe run along the band (it continues from module to module), held by brackets
+for z, r in ((-1.05, 0.02), (-1.105, 0.013)): cyl('pipe', METAL, (-1.0, -0.075, z), (1.0, -0.075, z), r, 12)
+for x in (-0.5, 0.5): box('bracket', DARK, (x, -0.06, -1.075), (0.05, 0.05, 0.11), 0.01)
 done(c, b)
 
 # ---- Deck facade: 2 x 2 m middle sections, origin at the top centre: vents, a hatch, a rib ----
 for variant in ('Vent', 'Hatch', 'Rib'):
     c, b = kit('DeckFace' + variant)
     for s in (-1, 1):
-        box('panel', HULL if s < 0 or variant != 'Rib' else HULL, (s * 0.495, -0.02, -1.0), (0.97, 0.05, 1.94), 0.02, 3)
+        box('panel', HULLB if (s > 0) != (variant == 'Rib') else HULL, (s * 0.495, -0.02, -1.0), (0.97, 0.05, 1.94), 0.02, 3)
     box('seam', DARK, (0, 0.005, -1.0), (2.0, 0.03, 2.0), 0)
     if variant == 'Vent':
         box('ventframe', DARK, (0.495, -0.05, -0.75), (0.7, 0.03, 0.5), 0.01)
         for k in range(6): box('slat', METAL, (0.495, -0.07, -0.55 - k * 0.08), (0.64, 0.02, 0.025), 0.005, 1, rot=(math.radians(30), 0, 0))
+        box('sticker', HAZ, (0.14, -0.047, -0.3), (0.12, 0.004, 0.12), 0.002)
+        text('stickermark', BLACK, '!', (0.14, -0.05, -0.305), 0.09, depth=0.001)
         box('ventframe', DARK, (-0.495, -0.05, -1.45), (0.7, 0.03, 0.5), 0.01)
         for k in range(6): box('slat', METAL, (-0.495, -0.07, -1.25 - k * 0.08), (0.64, 0.02, 0.025), 0.005, 1, rot=(math.radians(30), 0, 0))
     elif variant == 'Hatch':
@@ -78,6 +86,8 @@ for variant in ('Vent', 'Hatch', 'Rib'):
         box('handle', METAL, (0.72, -0.08, -1.0), (0.04, 0.03, 0.3), 0.01)
         box('status', LIGHT, (0.3, -0.075, -0.45), (0.08, 0.01, 0.03), 0.004)
         stripes('hz', -0.9, -0.1, -1.92, -1.78, -0.05)
+        t = text('label', STENCIL, 'G-2', (0.495, -0.072, -0.2), 0.12, depth=0.002)
+        t = text('label2', STENCIL, 'ACCESS', (0.495, -0.072, -1.78), 0.07, depth=0.002)
     else:
         box('rib', METAL, (0, -0.07, -1.0), (0.18, 0.1, 2.0), 0.02)
         box('ribcore', DARK, (0, -0.12, -1.0), (0.06, 0.02, 1.9), 0.005)
@@ -104,6 +114,18 @@ for y in (-1.1, 0.0, 1.1): box('seam', SEAM, (0, y, 0.002), (2.0, 0.025, 0.004),
 box('seamx', SEAM, (-0.995, 0, 0.002), (0.025, 4.4, 0.004), 0)
 for s in (-1, 1): box('grip', GRIP, (s * 0.5, -1.75, 0.003), (0.7, 0.32, 0.006), 0)
 box('lane', LIGHT, (0, -2.05, 0.003), (2.0, 0.05, 0.006), 0)
+box('floorlight', LIGHT, (-0.995, 0, 0.004), (0.06, 0.06, 0.008), 0)
+done(c, b)
+c, b = kit('DeckFloorDrain')      # the same plating with a drain grate set into it
+for y in (-1.1, 0.0, 1.1): box('seam', SEAM, (0, y, 0.002), (2.0, 0.025, 0.004), 0)
+box('seamx', SEAM, (-0.995, 0, 0.002), (0.025, 4.4, 0.004), 0)
+for s in (-1, 1): box('grip', GRIP, (s * 0.5, -1.75, 0.003), (0.7, 0.32, 0.006), 0)
+box('lane', LIGHT, (0, -2.05, 0.003), (2.0, 0.05, 0.006), 0)
+box('grate', DARK, (0.3, 0.55, 0.003), (0.9, 0.3, 0.006), 0.004)
+for k in range(8): box('slot', BLACK, (-0.08 + k * 0.11, 0.55, 0.0065), (0.05, 0.24, 0.002), 0)
+done(c, b)
+c, b = kit('Shadow')              # a soft contact shadow, 1 x 1 m, scaled to what it sits under
+mesh_obj('shadow', [(-0.5, -0.5, 0.004), (0.5, -0.5, 0.004), (0.5, 0.5, 0.004), (-0.5, 0.5, 0.004)], [(0, 1, 2, 3)], SHADOW)
 done(c, b)
 
 # ---- Terrace railing, 2 m ----
@@ -111,6 +133,7 @@ c, b = kit('Railing')
 box('plinth', DARK, (0, 0, 0.06), (2.0, 0.16, 0.12), 0.02)
 for s in (-1, 1): cyl('post', METAL, (s * 0.97, 0, 0.1), (s * 0.97, 0, 1.08), 0.03, 12)
 cyl('rail', HULL, (-1.0, 0, 1.08), (1.0, 0, 1.08), 0.04, 12)
+cyl('midrail', METAL, (-1.0, 0.03, 0.55), (1.0, 0.03, 0.55), 0.015, 10)
 box('glass', GLASS, (0, 0, 0.6), (1.88, 0.02, 0.9), 0.005)
 box('glow', LIGHT, (0, -0.045, 1.06), (1.9, 0.01, 0.015), 0)
 done(c, b)

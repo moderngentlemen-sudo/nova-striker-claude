@@ -8,6 +8,8 @@ GROUND = [(-10, 14, -6, 0), (18, 32, -6, 0), (32, 40, -6, 6), (40, 60, -6, 0)]  
 CAP = 0.22
 TERRACE_Y = -1.1
 MIDS = ('DeckFaceVent', 'DeckFaceRib', 'DeckFaceHatch', 'DeckFaceRib')
+FOOT = {'Hurdle': (1.8, 0.9), 'CrashMat': (2.8, 1.9), 'Bench': (2.0, 0.9), 'Lockers': (2.2, 1.1), 'AgilityRing': (1.1, 1.1),
+        'TargetStand': (1.1, 1.1), 'HoloDisplay': (1.0, 0.9)}          # contact shadow sizes (m)
 
 def placements():
     P = []
@@ -18,7 +20,7 @@ def placements():
         for i in range(int((x1 - x0) / 2)):
             x = x0 + 1 + 2 * i
             put('DeckFaceTop', x, top, 2.2)
-            put('DeckFloor', x, y1, 0.0)
+            put('DeckFloorDrain' if k % 5 == 3 else 'DeckFloor', x, y1, 0.0)
             h = (top - 1.2) - y0; n = max(1, math.ceil(h / 2 - 0.15)); s = h / (2 * n)
             for j in range(n):
                 put(MIDS[(k + j) % len(MIDS)], x, top - 1.2 - j * 2 * s, 2.2, 0, 1, s, 1)
@@ -43,6 +45,7 @@ def placements():
                              ('Hurdle', 38.4, -4.1, 0), ('Lockers', 42.4, -8.6, 0), ('TargetStand', 46.1, -4.6, 0),
                              ('AgilityRing', 52.4, -6.5, 0), ('Bench', 55.2, -4.3, 0)):
         put(name, x, TERRACE_Y, dz, yaw)
+        fx, fz = FOOT[name]; put('Shadow', x, TERRACE_Y, dz, 0, fx, 1, fz)
     for i in range(36): put('Railing', -10 + 1 + 2 * i, TERRACE_Y, -10.2)
     for x in (-6, 16, 38, 58): put('FloodMast', x, TERRACE_Y, -9.5)
     put('GymSign', 28.0, 8.0, -15.0)

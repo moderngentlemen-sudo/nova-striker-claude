@@ -73,6 +73,32 @@ shoot('before')
 with bpy.data.libraries.load(os.path.join(KITDIR, 'gym_kit.blend'), link=False) as (src, dst):
     dst.collections = [c for c in src.collections if c.startswith('Kit_')]
 kits = {c.name[4:]: c for c in dst.collections}
+TEX = os.path.join(KITDIR, 'tex')
+SURF = {'Kit_Hull': ('paint', 2.5), 'Kit_HullB': ('paint', 2.5), 'Kit_HullDark': ('paint', 2.5), 'Kit_Navy': ('paint', 2.5),
+        'Kit_Metal': ('paint', 1.5), 'Kit_Pad': ('rubber', 0.8), 'Kit_PadOrange': ('rubber', 0.8), 'Kit_Grip': ('tread', 0.5)}
+def surface(m, kind, tile):
+    nt = m.node_tree; bsdf = nt.nodes['Principled BSDF']
+    geo = nt.nodes.new('ShaderNodeNewGeometry'); mp = nt.nodes.new('ShaderNodeVectorMath'); mp.operation = 'SCALE'; mp.inputs[3].default_value = 1 / tile
+    nt.links.new(geo.outputs['Position'], mp.inputs[0])
+    def img(nm, colour):
+        t = nt.nodes.new('ShaderNodeTexImage'); t.image = bpy.data.images.load(os.path.join(TEX, f'{kind}_{nm}.png'))
+        t.image.colorspace_settings.name = 'sRGB' if colour else 'Non-Color'; t.projection = 'BOX'; t.projection_blend = 0.3
+        nt.links.new(mp.outputs[0], t.inputs['Vector']); return t
+    base = bsdf.inputs['Base Color'].default_value[:]
+    a = img('albedo', False); mul = nt.nodes.new('ShaderNodeMixRGB'); mul.blend_type = 'MULTIPLY'; mul.inputs[0].default_value = 1
+    mul.inputs[1].default_value = base; nt.links.new(a.outputs['Color'], mul.inputs[2]); nt.links.new(mul.outputs[0], bsdf.inputs['Base Color'])
+    r = img('rough', False); rm = nt.nodes.new('ShaderNodeMath'); rm.operation = 'MULTIPLY'; rm.inputs[1].default_value = bsdf.inputs['Roughness'].default_value / 0.85
+    nt.links.new(r.outputs['Color'], rm.inputs[0]); nt.links.new(rm.outputs[0], bsdf.inputs['Roughness'])
+    h = img('height', False); bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.35; bump.inputs['Distance'].default_value = 0.003
+    nt.links.new(h.outputs['Color'], bump.inputs['Height']); nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+for m in bpy.data.materials:
+    if m.name in SURF: surface(m, *SURF[m.name])
+sm = bpy.data.materials.get('Kit_Shadow')
+if sm:          # the contact shadow: black, its alpha from the falloff texture
+    nt = sm.node_tree; bsdf = nt.nodes['Principled BSDF']; t = nt.nodes.new('ShaderNodeTexImage')
+    t.image = bpy.data.images.load(os.path.join(TEX, 'shadow.png')); t.image.colorspace_settings.name = 'Non-Color'
+    k = nt.nodes.new('ShaderNodeMath'); k.operation = 'MULTIPLY'; k.inputs[1].default_value = 0.6
+    nt.links.new(t.outputs['Color'], k.inputs[0]); nt.links.new(k.outputs[0], bsdf.inputs['Alpha'])
 for name, x, y, dz, yaw, sx, sy, sz in gym_layout.placements():
     e = bpy.data.objects.new(name, None); e.instance_type = 'COLLECTION'; e.instance_collection = kits[name]
     e.location = B(x, y, dz); e.rotation_euler = (0, 0, math.radians(yaw)); e.scale = (sx, sz, sy)

@@ -347,8 +347,48 @@ namespace NovaStriker.Game
         }
         public static SurfaceSet Surface(string kind)
         {
-            if (!sets.TryGetValue(kind, out var s)) { s = DrawSurface(kind, 512); sets[kind] = s; }
+            if (!sets.TryGetValue(kind, out var s)) { s = LoadSurface(kind) ?? DrawSurface(kind, 512); sets[kind] = s; }
             return s;
+        }
+        // A surface set made by Art/Blender/make_textures.py (paint, rubber, tread): Resources/NovaStriker/Env/<kind>,
+        // three 512 x 512 planes of bytes (height, then albedo detail, then roughness), top row first. Raw bytes
+        // rather than images, so no import setting can turn the normals into colour.
+        static SurfaceSet LoadSurface(string kind)
+        {
+            var src = Resources.Load<TextAsset>("NovaStriker/Env/" + kind);
+            if (src == null) return null;
+            const int n = 512; var b = src.bytes;
+            if (b.Length < n * n * 3) return null;
+            float H(int x, int y) => b[((y + n) % n) * n + (x + n) % n] / 255f;
+            var col = new Color32[n * n]; var nrm = new Color32[n * n]; var S = new SurfaceSet { n = n, rough = new float[n * n] };
+            const float strength = 6;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    int row = (n - 1 - y) * n + x;
+                    byte a = b[n * n + y * n + x]; col[row] = new Color32(a, a, a, 255);
+                    float dx = (H(x + 1, y) - H(x - 1, y)) * strength, dy = (H(x, y + 1) - H(x, y - 1)) * strength, l = Mathf.Sqrt(dx * dx + dy * dy + 1);
+                    nrm[row] = new Color32((byte)((-dx / l * 0.5f + 0.5f) * 255), (byte)((dy / l * 0.5f + 0.5f) * 255), (byte)((1 / l * 0.5f + 0.5f) * 255), 255);
+                    S.rough[y * n + x] = b[2 * n * n + y * n + x] / 255f;
+                }
+            S.map = new Texture2D(n, n, TextureFormat.RGBA32, true, false) { wrapMode = TextureWrapMode.Repeat, anisoLevel = 8, name = kind + "-map" };
+            S.map.SetPixels32(col); S.map.Apply(true, true);
+            S.normalMap = new Texture2D(n, n, TextureFormat.RGBA32, true, true) { wrapMode = TextureWrapMode.Repeat, anisoLevel = 8, name = kind + "-normal" };
+            S.normalMap.SetPixels32(nrm); S.normalMap.Apply(true, true);
+            return S;
+        }
+        // The soft round contact shadow (Resources/NovaStriker/Env/shadow: one 512 x 512 plane of alpha)
+        static Texture2D shadowTex;
+        public static Texture2D ShadowTexture()
+        {
+            if (shadowTex != null) return shadowTex;
+            var src = Resources.Load<TextAsset>("NovaStriker/Env/shadow"); const int n = 512;
+            var px = new Color32[n * n];
+            if (src != null && src.bytes.Length >= n * n)
+                for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) px[(n - 1 - y) * n + x] = new Color32(255, 255, 255, src.bytes[y * n + x]);
+            shadowTex = new Texture2D(n, n, TextureFormat.RGBA32, true, false) { wrapMode = TextureWrapMode.Clamp, name = "contact-shadow" };
+            shadowTex.SetPixels32(px); shadowTex.Apply(true, true);
+            return shadowTex;
         }
         // three.js scales its roughness map by the material's roughness; Unity reads smoothness from the alpha of
         // a metallic/smoothness map, so each (roughness, metalness) gets its own copy
