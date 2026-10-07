@@ -155,6 +155,12 @@ default settings the simulation is still the prototype's (the parity tests run w
   - **Surfaces:** painted metal with light wear, rubber and tread plate.
   - **Code and data:** `GymDressing.cs` places it from `Resources/NovaStriker/Env/gym_kit.json`; the textures
     are the `.bytes` files beside it.
+- **Movement in the sky** (the Skyport route; `Ambience.cs`):
+  - **Banners and flags:** the terrace banners and three flags on tall poles ripple in the breeze.
+  - **Clouds:** far clouds drift with the wind, and low cloud banks roll past below the deck.
+  - **Sunlight:** soft cloud shadows sweep across the deck (a scrolling cookie on the sun), and the sun's light
+    and glow rise and fall with the cover. Faint sunbeams fade in when it breaks through.
+  - **Elsewhere:** away from the open sky, it all fades out.
 - **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
   press.
 - **HDR output** (Settings › *HDR output*). On an HDR display with HDR turned on in the system, the game

@@ -42,6 +42,8 @@ namespace NovaStriker.Game
         double camTick = -1; Cam camPrev, camCur;
 
         readonly Light sun, rim;
+        Ambience ambience; TMesh sunGlow;
+        readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
         readonly Dictionary<string, Look.Env> envMaps;
@@ -109,7 +111,10 @@ namespace NovaStriker.Game
 
             fx = new Fx(scene, rigs) { view = this };
             skyMat = TMat.Raw(new Material(Templates.Sky));
-            BuildSky(); BuildBackdrop(); BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
+            BuildSky(); BuildBackdrop();
+            ambience = new Ambience(this, sun, sunGlow);
+            foreach (var c in farClouds) ambience.AddCloud(c);
+            BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             breakables = new Breakables(scene, fx);
             Resize(Screen.width, Screen.height);
         }
@@ -174,7 +179,7 @@ namespace NovaStriker.Game
             scene.add(sky);
             skyTop = Look.Lin(0x2b7fd3); skyMid = Look.Lin(0x7fbfee); skyBot = Look.Lin(0xd9eefa);
             var glowMat = TMat.Sprite(fx.tex.glow, 0xfff3d6); glowMat.depthWrite = false; glowMat.fog = false;
-            var sunGlow = Sprite.Make(glowMat); sunGlow.scale.set(90, 90, 1); sunGlow.position.set(-160, 130, -300); scene.add(sunGlow);
+            sunGlow = Sprite.Make(glowMat); sunGlow.scale.set(90, 90, 1); sunGlow.position.set(-160, 130, -300); scene.add(sunGlow);
         }
 
         void BuildBackdrop()
@@ -185,7 +190,7 @@ namespace NovaStriker.Game
                 var s = Sprite.Make(cloudMat);
                 float a = S.Rnd() * Mathf.PI * 2, r = 170 + S.Rnd() * 160;
                 s.position.set(60 + Mathf.Cos(a) * r, -12 + S.Rnd() * 28, -40 + Mathf.Sin(a) * r * 0.8f);
-                float k = 30 + S.Rnd() * 60; s.scale.set(k * 1.8f, k, 1); scene.add(s);
+                float k = 30 + S.Rnd() * 60; s.scale.set(k * 1.8f, k, 1); scene.add(s); farClouds.Add(s);
             }
             // Cloud sea below Skyport
             var sea = new TMesh(Geo.Plane(1200, 1200), TMat.Std(0xeef6fb, 1)) { receive = true };
@@ -289,7 +294,14 @@ namespace NovaStriker.Game
                 Add(Geo.Cylinder(0.07f, 0.09f, 5.5f, 8), navy, x + 5, Y + 2.75f, z - 2, false);
                 Add(Geo.Sphere(0.22f, 12, 10), lamp, x + 5, Y + 5.6f, z - 2, false);
                 // ((x / 11 + 10) % 3 | 0, with x / 11 fractional for x = -4)
-                Add(Geo.Plane(1.1f, 2.6f), cloth[(int)((x / 11f + 10) % 3)], x + 5.62f, Y + 3.9f, z - 2, false);
+                ambience.Banner(cloth[(int)((x / 11f + 10) % 3)], x + 5.07f, Y + 3.9f, z - 2, 1.1f, 2.6f);   // (it ripples: Ambience)
+            }
+            // Flags on tall poles at the back of the gym's terrace, streaming in the breeze
+            foreach (var (fx, k) in new[] { (6f, 0), (30f, 1), (52f, 2) })
+            {
+                Add(Geo.Cylinder(0.06f, 0.08f, 8.2f, 10), white, fx, Y + 4.1f, -9.8f);
+                Add(Geo.Sphere(0.12f, 10, 8), lamp, fx, Y + 8.25f, -9.8f, false);
+                ambience.Banner(cloth[k], fx + 0.06f, Y + 7.3f, -9.8f, 2.4f, 1.4f, 1.6f);
             }
             var archGeo = Geo.Torus(9, 0.55f, 10, 40, Mathf.PI);
             foreach (var x in new float[] { 8, 48, 88 }) Add(archGeo, white, x, -1, -16, false);
@@ -708,6 +720,7 @@ namespace NovaStriker.Game
             SyncEntities(world, a, dt);
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
+            ambience.Update(dt, camera.transform.position.x);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);
