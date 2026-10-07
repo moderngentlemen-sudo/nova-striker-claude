@@ -9,6 +9,7 @@
 /MemoryCaptures/
 *.csproj
 !SimTests/SimTests.csproj
+!SimTests/ShieldTests/ShieldTests.csproj
 *.sln
 *.pidb
 *.suo
@@ -18,6 +19,8 @@
 .idea/
 # The parity harness's build output
 SimTests/bin/
+SimTests/**/bin/
+SimTests/**/obj/
 SimTests/obj/
 
 # Made on each computer by Nova Striker > Set Up Project (or by Unity itself), so they stay out of the repository:
