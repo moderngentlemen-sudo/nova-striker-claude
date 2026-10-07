@@ -110,3 +110,36 @@ def to_mesh(obj):
     else:
         for m in list(obj.modifiers): bpy.ops.object.modifier_apply(modifier=m.name)
     return obj
+
+def box(name, material, center, size, bevel=0.01, segments=2, rot=(0, 0, 0)):
+    """A box (metres, centred on `center`, Blender axes) with rounded edges from a Bevel modifier."""
+    sx, sy, sz = (s / 2 for s in size)
+    v = [(-sx, -sy, -sz), (sx, -sy, -sz), (sx, sy, -sz), (-sx, sy, -sz), (-sx, -sy, sz), (sx, -sy, sz), (sx, sy, sz), (-sx, sy, sz)]
+    f = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
+    M = Matrix.Translation(Vector(center)) @ Matrix.Rotation(rot[2], 4, 'Z') @ Matrix.Rotation(rot[1], 4, 'Y') @ Matrix.Rotation(rot[0], 4, 'X')
+    o = mesh_obj(name, [M @ Vector(p) for p in v], f, material)
+    for p in o.data.polygons: p.use_smooth = False
+    if bevel: mod(o, 'BEVEL', width=bevel, segments=segments, limit_method='ANGLE', harden_normals=False)
+    mod(o, 'WEIGHTED_NORMAL', keep_sharp=True)
+    return o
+
+def cyl(name, material, a, b, r, verts=16, r2=None, cap=True):
+    """A cylinder (or cone, with r2) from point a to point b."""
+    a, b = Vector(a), Vector(b); d = b - a; L = d.length
+    M = frame(a, d)
+    r2 = r if r2 is None else r2
+    vs, fs = [], []
+    for k in range(verts):
+        t = 2 * math.pi * k / verts; c, s = math.cos(t), math.sin(t)
+        vs += [M @ Vector((c * r, s * r, 0)), M @ Vector((c * r2, s * r2, L))]
+    for k in range(verts):
+        i, j = 2 * k, 2 * ((k + 1) % verts); fs.append((i, j, j + 1, i + 1))
+    if cap:
+        fs.append(tuple(2 * k for k in reversed(range(verts)))); fs.append(tuple(2 * k + 1 for k in range(verts)))
+    o = mesh_obj(name, vs, fs, material)
+    return o
+
+def text(name, material, body, center, size, depth=0.02, align='CENTER'):
+    cu = bpy.data.curves.new(name, 'FONT'); cu.body = body; cu.size = size; cu.extrude = depth; cu.align_x = align; cu.align_y = 'CENTER'
+    o = bpy.data.objects.new(name, cu); o.location = Vector(center); o.rotation_euler = (math.pi / 2, 0, 0)
+    link(o, material, smooth=False); return o
