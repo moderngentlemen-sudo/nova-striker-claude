@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" ><defs><linearGradient id="n9" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#9fecff"/><stop offset="1" stop-color="#1f7cff"/></linearGradient>
+    <linearGradient id="bg9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16274a"/><stop offset="1" stop-color="#070c16"/></linearGradient>
+    <mask id="m9"><rect width="300" height="300" x="-50" y="-50" fill="#fff"/><polygon points="-40,50 120,45 120,50 -40,55" fill="#000"/></mask>
+    <filter id="g9"><feGaussianBlur stdDeviation="5"/></filter></defs>
+    <rect width="200" height="200" rx="44" fill="url(#bg9)"/><rect x="1" y="1" width="198" height="198" rx="43" fill="none" stroke="#ffffff22"/>
+    <g transform="translate(62 46) scale(1.08) skewX(-14)">
+      
+      <g mask="url(#m9)"><g filter="url(#g9)" opacity=".6"><path fill-rule="evenodd" d="M0,12L12,0L20,0L50,60L50,0L70,0L70,88L58,100L50,100L20,40L20,100L0,100Z" fill="#2fb8ff"/></g><path fill-rule="evenodd" d="M0,12L12,0L20,0L50,60L50,0L70,0L70,88L58,100L50,100L20,40L20,100L0,100Z" fill="url(#n9)"/></g>
+      <polygon points="-34,52 -8,51 -11,56 -37,57" fill="#ff2e7e"/>
+      <polygon points="0,108 70,107 68,111 -2,112" fill="#ff2e7e"/>
+    </g></svg>

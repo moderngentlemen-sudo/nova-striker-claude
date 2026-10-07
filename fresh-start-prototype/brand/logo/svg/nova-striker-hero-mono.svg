@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 930 172" ><defs><linearGradient id="n5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f7fc"/><stop offset=".5" stop-color="#f3f7fc"/><stop offset="1" stop-color="#f3f7fc"/></linearGradient><linearGradient id="s5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f7fc"/><stop offset=".5" stop-color="#f3f7fc"/><stop offset="1" stop-color="#f3f7fc"/></linearGradient>
+    <linearGradient id="ul5" x1="0" x2="1"><stop offset="0" stop-color="#f3f7fc" stop-opacity="0"/><stop offset=".55" stop-color="#f3f7fc"/><stop offset="1" stop-color="#f3f7fc"/></linearGradient>
+    <mask id="m5"><rect x="-80" y="-60" width="980" height="260" fill="#fff"/><polygon points="-60,50 860,43 860,48 -60,55" fill="#000"/></mask>
+    <filter id="g5" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="6"/></filter></defs>
+    <g transform="translate(46 30) skewX(-14)">
+      <g mask="url(#m5)">
+        
+        <path fill-rule="evenodd" d="M0,12L12,0L20,0L50,60L50,0L70,0L70,88L58,100L50,100L20,40L20,100L0,100Z" fill="url(#n5)"/><path fill-rule="evenodd" d="M97,0L147,0L147,80L127,100L77,100L77,20ZM107,20L127,20L127,70L117,80L97,80L97,30Z" fill="url(#n5)"/><path fill-rule="evenodd" d="M154,0L175,0L190,66L205,0L226,0L201,100L179,100Z" fill="url(#n5)"/><path fill-rule="evenodd" d="M242,0L264,0L289,100L268,100L264,82L242,82L238,100L217,100ZM246,64L260,64L253,34Z" fill="url(#n5)"/><path fill-rule="evenodd" d="M342,0L396,0L392,20L350,20L350,40L384,40L396,52L396,88L384,100L330,100L334,80L376,80L376,60L342,60L330,48L330,12Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M403,0L469,0L463,20L446,20L446,100L426,100L426,20L409,20Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M484,0L528,0L540,12L540,46L530,56L540,100L519,100L510,60L492,60L492,100L472,100L472,12ZM492,20L520,20L520,40L492,40Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M547,12L559,0L567,0L567,100L547,100Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M574,12L586,0L594,0L594,40L618,0L642,0L611,50L642,100L619,100L594,60L594,100L574,100Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M657,0L705,0L701,20L665,20L665,40L695,40L691,58L665,58L665,80L705,80L705,88L701,100L645,100L645,12Z" fill="url(#s5)"/><path fill-rule="evenodd" d="M724,0L768,0L780,12L780,46L770,56L806,116L783,116L750,60L732,60L732,100L712,100L712,12ZM732,20L760,20L760,40L732,40Z" fill="url(#s5)"/>
+      </g>
+      <polygon points="-34,48 -8,47 -11,52 -37,53" fill="#f3f7fc"/>
+      
+      <polygon points="-24,113 776,106 812,106 808,116 776,116" fill="url(#ul5)"/>
+    </g></svg>
