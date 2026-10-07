@@ -36,6 +36,10 @@ All run without Unity, from `SimTests/`:
   Extend it when you change those options.
 - `RigPreview/`: `sh preview.sh nova|echo out.png` renders Nova's or Echo's rig from six angles without Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
   rig, and send the picture to the owner. Set `CHROMIUM=/opt/pw-browsers/chromium` in the cloud container.
+- `Art/Blender/` (outside `SimTests/`): scripts that model the characters in Blender 4.2. Use
+  `BLENDER=<path> sh render.sh build_nova.py <out-dir> <name> [samples]` to build Nova and render a review sheet
+  (front, three-quarter, side, back, face). In the cloud container, Blender can be downloaded from
+  download.blender.org into `/opt/blender`.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
   the shader check.
