@@ -80,7 +80,8 @@ The README's *Unity-only additions* has the full description.
 ## Open threads and ideas
 
 - **RAM's concept art** (the owner shared it in chat) shows a gunmetal mech-like tank with ram's horns and a
-  T visor, and the hex-panel Rampart with a ram's-head emblem. His charge shows the shield as a blue holographic
+  T visor, and the hex-panel Rampart with a ram's-head emblem. The owner asked for futuristic horns with a use:
+  they are now armoured sensor fins, with a sensor pod at each tip and an actuator disc at the temple. His charge shows the shield as a blue holographic
   ram's head: an idea for Siege Breaker's look. `Rigs.BuildRamRig` follows the art, and `RigPreview` draws him
   (`sh preview.sh ram`). A 3D model, as for Nova, is a possible next step.
 - **Effects to add later** (the owner asked to keep these for later):

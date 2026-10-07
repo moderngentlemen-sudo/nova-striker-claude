@@ -1,6 +1,6 @@
 # RAM, built from his concept art: a towering armoured frame in battle-worn gunmetal over dark joints and undersuit,
-# electric-blue light in the abdomen's bands, the joint discs, the boots and the T visor; a rounded helm with curled
-# ram's horns, huge rounded pauldrons, a layered chest with a glowing core, a back pack with exhaust stacks, big
+# electric-blue light in the abdomen's bands, the joint discs, the boots and the T visor; a rounded helm with its
+# horns made into armoured sensor fins, huge rounded pauldrons, a layered chest with a glowing core, a back pack with exhaust stacks, big
 # blocky fists and segmented legs on round joint discs. His proportions follow his in-game skeleton (Rigs.Skeleton
 # for "ram", drawn 1.34 times life size), so the model lines up with the rig that drives it. The Rampart and the
 # Breach Cannon stay the game's own (it poses them separately), so they are not modelled here.
@@ -17,7 +17,6 @@ ARMOUR = mat('Ram_Armour', srgb('#5f6771'), metal=0.7, rough=0.4, coat=0.15)
 TRIM = mat('Ram_Trim', srgb('#2a2f37'), metal=0.5, rough=0.45)
 SUIT = mat('Ram_Suit', srgb('#15181d'), metal=0.3, rough=0.6)
 GLOW = mat('Ram_Glow', srgb('#58a6ff'), emit=srgb('#3f8cff'), strength=12)
-HORN = mat('Ram_Horn', srgb('#b7a68a'), metal=0.25, rough=0.55)
 
 # ---- Landmarks (m): the rig's joints times K ----
 HIP_Z, HIP_X = 0.95 * K, 0.16 * K
@@ -87,15 +86,30 @@ box('Ram_Face', TRIM, HEAD + Vector((0, -0.19, 0.06)), (0.3, 0.06, 0.26), 0.05, 
 box('Ram_VisorH', GLOW, HEAD + Vector((0, -0.225, 0.12)), (0.26, 0.02, 0.045), 0.01)
 box('Ram_VisorV', GLOW, HEAD + Vector((0, -0.225, 0.04)), (0.045, 0.02, 0.13), 0.01)
 box('Ram_Jaw', ARMOUR, HEAD + Vector((0, -0.17, -0.08)), (0.26, 0.12, 0.12), 0.04, 3)
+# The horns, made to work: armoured sensor fins that keep a ram's sweep back and down round the helm. Faceted
+# gunmetal blade plates overlapping like layered armour, a blue light channel along the outer face, a glowing sensor pod at the
+# tip (the Breach Cannon's targeting array), and a powered actuator disc at the temple.
 for s in (1, -1):
     base = HEAD + Vector((s * 0.2, 0.02, 0.18))
-    cyl(f'Ram_HornBase{s}', TRIM, base, base + Vector((s * 0.06, 0, 0)), 0.075, 16)
-    pts, radii = [], []
-    for k in range(13):           # the horn curls back, down and round to the front, thinning as it goes
-        t = k / 12; a = math.pi * 0.35 + t * math.pi * 1.55; r = 0.17 * (1 - 0.4 * t)
-        pts.append(base + Vector((s * (0.05 + 0.1 * t), math.cos(a) * r * 0.9 + 0.1, math.sin(a) * r - 0.05)))
-        radii.append(1 - 0.75 * t)
-    tube(f'Ram_Horn{s}', HORN, pts, 0.07, radii=radii, res=4)
+    cyl(f'Ram_HornBase{s}', TRIM, base, base + Vector((s * 0.06, 0, 0)), 0.08, 16)
+    tube(f'Ram_HornBaseGlow{s}', GLOW, [base + Vector((s * 0.062, 0.05 * math.cos(a), 0.05 * math.sin(a))) for a in [k * math.pi / 8 for k in range(16)]], 0.008, cyclic=True)
+    pts = []
+    for k in range(9):           # the fin's spine: up from the temple, back over, and down behind the helm
+        t = k / 8; a = math.pi * 0.42 + t * math.pi * 1.05; r = 0.19 * (1 - 0.25 * t)
+        pts.append(base + Vector((s * (0.06 + 0.07 * t), math.cos(a) * r * 1.05 + 0.08, math.sin(a) * r - 0.04)))
+    # four long blade plates, each overlapping the next like layered armour, over a dark core
+    for k in range(4):
+        a, b = pts[2 * k], pts[2 * k + 2]; ext = (b - a) * 0.18
+        h0, h1 = 0.135 - k * 0.022, 0.115 - k * 0.022
+        blade(f'Ram_Fin{k}{s}', ARMOUR, a - ext * 0.3, b + ext, (1, 0, 0), 0.05 - k * 0.006, h0, 0.046 - k * 0.006, h1, 0.008)
+        blade(f'Ram_FinCore{k}{s}', TRIM, a, b, (1, 0, 0), 0.03, h0 * 0.7, 0.03, h1 * 0.7, 0.003)
+    # the light channel along the outer face
+    outer = [p + Vector((s * (0.03 - 0.004 * n), 0, 0)) for n, p in enumerate(pts[1:-1])]
+    tube(f'Ram_FinGlow{s}', GLOW, outer, 0.008)
+    tip = pts[-1] + (pts[-1] - pts[-2]).normalized() * 0.03
+    dirn = (pts[-1] - pts[-2]).normalized()
+    cyl(f'Ram_SensorPod{s}', TRIM, pts[-1], tip + dirn * 0.03, 0.045, 12, r2=0.04)
+    patch(f'Ram_SensorLens{s}', GLOW, tip + dirn * 0.035, (0.03, 0.03, 0.03), res=(12, 8), thick=0, subsurf=1)
 
 # ---- Arms: huge rounded pauldrons, armoured sleeves, elbow discs, gauntlets and blocky fists ----
 for s in (1, -1):

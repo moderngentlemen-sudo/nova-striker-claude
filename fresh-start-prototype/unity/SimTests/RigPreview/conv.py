@@ -24,6 +24,8 @@ for line in body.split('\n'):
     l = l.replace('Mathf.PI', 'Math.PI').replace('Mathf.Sign', 'Math.sign').replace('new List<TMesh>()', '[]').replace('.Add(', '.push(')
     l = l.replace('Side.Double', 'THREE.DoubleSide').replace('Blending.Additive', 'THREE.AdditiveBlending').replace('new TMesh(', 'new THREE.Mesh(')
     l = l.replace('for (int ', 'for (let ')
+    l = re.sub(r'^(\s*)(?:float|int)\[\] ', r'\1let ', l); l = re.sub(r'new (?:float|int)\[(\d+)\]', r'new Array(\1).fill(0)', l)
+    l = re.sub(r'^(\s*)int ', r'\1let ', l)
     # (the game's add returns the child, three.js's returns the parent: route chained calls through addc)
     l = re.sub(r'(\w+(?:\.\w+)*)\.add\((MeshAt\(.*?\))\)\.(rotation|scale|position)', r'addc(\1, \2).\3', l)
     l = l.replace('new RigExtra()', '{ jets: [], blades: [], edges: {} }').replace('new List<TObj>()', '[]').replace('const float ', 'const ')

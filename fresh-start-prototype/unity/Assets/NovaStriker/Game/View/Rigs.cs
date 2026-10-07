@@ -383,7 +383,7 @@ namespace NovaStriker.Game
 
         // ---- RAM: his concept art ----
         // A towering frame in battle-worn gunmetal over dark joints and undersuit, electric blue light in the seams
-        // (the abdomen's bands, the joint discs, the boots, the T visor), a rounded helm with curled ram's horns, huge
+        // (the abdomen's bands, the joint discs, the boots, the T visor), a rounded helm whose horns are armoured sensor fins, huge
         // rounded pauldrons, big blocky fists, segmented legs on round joint discs, the Breach Cannon over his right
         // shoulder with its blue muzzle ring, and the Rampart: a heavy stone-grey frame round a glowing hexagonal
         // hard-light panel, with a ram's-head emblem.
@@ -391,7 +391,7 @@ namespace NovaStriker.Game
         {
             var c = CHARS["ram"]; var D = Mats(c);
             var M = RimAll(new RigMats { @base = Armour("#8f98a3", 0.5f, 0.55f), trim = Armour("#2a2f37", 0.45f, 0.5f), under = Std("#15181d", 0.6f, 0.3f), energy = D.energy, visor = D.visor, amber = D.amber });
-            TMat horn = Std("#b7a68a", 0.55f, 0.25f), frame = Armour("#7b838d", 0.65f, 0.35f), core = GlowMat(c.energy, 3.2f);
+            TMat frame = Armour("#7b838d", 0.65f, 0.35f), core = GlowMat(c.energy, 3.2f);
             var ex = new RigExtra();
             var S = Skeleton("ram", M, 0.095f, 0.11f, 0.42f, 0.16f, 0.31f);
             TObj hips = S.hips, spine = S.spine, head = S.head; Limb armN = S.armN, armF = S.armF, legN = S.legN, legF = S.legF;
@@ -439,20 +439,37 @@ namespace NovaStriker.Game
                 spine.add(MeshAt(RBox(0.26f, 0.03f, 0.02f, 0.01f), M.energy, 0, 0.53f, z + Mathf.Sign(z) * 0.215f));
             }
 
-            // Head: a rounded helm with a crest, the T visor in blue, a jaw guard, and curled ram's horns
+            // Head: a rounded helm with a crest, the T visor in blue, a jaw guard, and the horn fins
             head.position.set(0.13f, 0.74f, 0);
             var helm = MeshAt(Geo.Sphere(0.17f, 20, 16), M.@base, 0, 0.07f); helm.scale.set(1.05f, 1, 0.92f); head.add(helm);
             head.add(MeshAt(RBox(0.2f, 0.04f, 0.06f, 0.015f), M.@base, -0.02f, 0.23f));
             head.add(MeshAt(RBox(0.12f, 0.12f, 0.24f, 0.04f), M.trim, 0.1f, -0.03f));
             head.add(MeshAt(RBox(0.04f, 0.035f, 0.22f, 0.012f), M.energy, 0.165f, 0.07f));
             head.add(MeshAt(RBox(0.04f, 0.1f, 0.035f, 0.01f), M.energy, 0.165f, 0.02f));
-            foreach (var z in new[] { 0.15f, -0.15f })
+            // The horns, made to work: armoured sensor fins sweeping back and down round the helm (as in Art/Blender's
+            // model): four overlapping gunmetal blade plates over a dark core, a blue channel along their outer face, a
+            // sensor pod at the tip (the Breach Cannon's targeting array) and a powered actuator disc at the temple
+            foreach (var sz in new[] { 1f, -1f })
             {
-                // a ram's horn: sweeping back from the temple, curling down and forward round the side of the helm
-                var hornA = MeshAt(Geo.Torus(0.13f, 0.05f, 8, 22, Mathf.PI * 1.55f), horn, -0.04f, 0.1f, z * 1.25f);
-                hornA.rotation.set(0, 0, 1.1f); hornA.scale.set(1, 1, 1.2f); head.add(hornA);
-                head.add(MeshAt(Geo.Sphere(0.055f, 10, 8), horn, 0.04f, 0.2f, z * 1.12f));
-                head.add(MeshAt(Geo.Cylinder(0.05f, 0.05f, 0.04f, 14), M.trim, -0.02f, 0.08f, z * 1.08f)).rotation.x = Mathf.PI / 2;
+                float[] px = new float[9], py = new float[9], pz = new float[9];   // (plain numbers: RigPreview converts this to JavaScript)
+                for (int k = 0; k < 9; k++)
+                {
+                    float t = k / 8f, a = Mathf.PI * (0.42f + 1.05f * t), r = 0.19f * (1 - 0.25f * t);
+                    px[k] = -0.015f - (Mathf.Cos(a) * r * 1.05f + 0.08f) / 1.34f; py[k] = 0.134f + (Mathf.Sin(a) * r - 0.04f) / 1.34f; pz[k] = sz * (0.149f + (0.06f + 0.07f * t) / 1.34f);
+                }
+                head.add(MeshAt(Geo.Cylinder(0.06f, 0.06f, 0.045f, 16), M.trim, -0.015f, 0.134f, sz * 0.17f)).rotation.x = Mathf.PI / 2;
+                for (int k = 0; k < 4; k++)
+                {
+                    int a0 = 2 * k, a1 = 2 * k + 2;
+                    float dx = px[a1] - px[a0], dy = py[a1] - py[a0], dl = Mathf.Sqrt(dx * dx + dy * dy), rz = Mathf.Atan2(-dx, dy);
+                    float mx = (px[a0] + px[a1]) / 2 + dx * 0.08f, my = (py[a0] + py[a1]) / 2 + dy * 0.08f, mz = (pz[a0] + pz[a1]) / 2;
+                    var plate = MeshAt(RBox(0.1f - k * 0.016f, dl * 1.2f, 0.037f - k * 0.004f, 0.012f), M.@base, mx, my, mz); plate.rotation.z = rz; head.add(plate);
+                    var coreP = MeshAt(RBox(0.07f - k * 0.011f, dl, 0.022f, 0.006f), M.trim, (px[a0] + px[a1]) / 2, (py[a0] + py[a1]) / 2, mz); coreP.rotation.z = rz; head.add(coreP);
+                    var glowP = MeshAt(RBox(0.012f, dl * 1.08f, 0.006f, 0.003f), M.energy, mx, my, mz + sz * (0.02f - k * 0.002f)); glowP.rotation.z = rz; head.add(glowP);
+                }
+                float tx = px[8] - px[7], ty = py[8] - py[7], tl = Mathf.Sqrt(tx * tx + ty * ty);
+                head.add(MeshAt(Geo.Sphere(0.032f, 10, 8), M.trim, px[8] + tx / tl * 0.03f, py[8] + ty / tl * 0.03f, pz[8]));
+                head.add(MeshAt(Geo.Sphere(0.022f, 10, 8), core, px[8] + tx / tl * 0.05f, py[8] + ty / tl * 0.05f, pz[8]));
             }
 
             // Arms: dark sleeves on round joint discs, massive gauntlets, big blocky fists

@@ -28,7 +28,7 @@ const G = (x = 0, y = 0, z = 0) => { const g = new THREE.Group(); g.position.set
 const ATTACH_LOOK = { lance: { tint: '#ffb547' } };
 const CHARS = { nova: { energy: '#ffb547', trim: '#2f5f9e', base: '#eef2f7', under: '#1c2c48' }, echo: { energy: '#ff9a1f', trim: '#15151b', base: '#f4f4f2', under: '#1b1b22' },
   ram: { energy: '#58a6ff', trim: '#2d3540', base: '#aeb8c4', under: '#1b2129' } };
-const RimAll = (M) => M; const charId = 'echo';
+const RimAll = (M) => M; const Mathf = { PI: Math.PI, Sin: Math.sin, Cos: Math.cos, Sqrt: Math.sqrt, Atan2: Math.atan2, Sign: Math.sign, Abs: Math.abs, Min: Math.min, Max: Math.max }; const charId = 'echo';
 const SETTINGS = { novaHead: 'bare', echoHead: 'bare' };
 function MakeLimb(parent, M, upperLen, lowerLen, r, z) {
   const top = G(0, 0, z); parent.add(top);

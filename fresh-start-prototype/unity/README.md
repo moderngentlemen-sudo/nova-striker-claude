@@ -203,7 +203,9 @@ default settings the simulation is still the prototype's (the parity tests run w
 - **RAM's look.** His rig follows his concept art (`Rigs.BuildRamRig`):
   - **Armour:** battle-worn gunmetal over dark joints, with electric-blue light in the abdomen's bands, the joint
     discs, the boots and the T visor.
-  - **Head and build:** a rounded helm with curled ram's horns, huge rounded pauldrons and big blocky fists.
+  - **Head and build:** a rounded helm whose horns are armoured sensor fins, huge rounded pauldrons and big blocky
+    fists. The fins are overlapping gunmetal blades with a blue channel, a sensor pod at each tip (the Breach
+    Cannon's targeting array) and an actuator disc at the temple.
   - **Cannon:** the Breach Cannon over his right shoulder, with a blue muzzle ring.
   - **Shield:** the Rampart, a heavy stone-grey frame round a glowing hexagonal hard-light panel with a
     ram's-head emblem.

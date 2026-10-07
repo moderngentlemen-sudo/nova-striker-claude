@@ -123,6 +123,19 @@ def box(name, material, center, size, bevel=0.01, segments=2, rot=(0, 0, 0)):
     mod(o, 'WEIGHTED_NORMAL', keep_sharp=True)
     return o
 
+def blade(name, material, a, b, side, w0, h0, w1=None, h1=None, bevel=0.006):
+    """A bevelled plate from point a to point b: `w` thick along `side`, `h` deep across it (tapering to w1, h1)."""
+    a, b = Vector(a), Vector(b); d = (b - a).normalized(); x = Vector(side); x = (x - d * x.dot(d)).normalized(); y = d.cross(x)
+    w1 = w0 if w1 is None else w1; h1 = h0 if h1 is None else h1
+    vs = []
+    for p, w, h in ((a, w0, h0), (b, w1, h1)):
+        for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)): vs.append(p + x * sx * w / 2 + y * sy * h / 2)
+    fs = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
+    o = mesh_obj(name, vs, fs, material)
+    for p in o.data.polygons: p.use_smooth = False
+    if bevel: mod(o, 'BEVEL', width=bevel, segments=2, limit_method='ANGLE')
+    return o
+
 def cyl(name, material, a, b, r, verts=16, r2=None, cap=True):
     """A cylinder (or cone, with r2) from point a to point b."""
     a, b = Vector(a), Vector(b); d = b - a; L = d.length
