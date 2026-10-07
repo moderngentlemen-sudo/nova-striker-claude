@@ -34,6 +34,9 @@ All run without Unity, from `SimTests/`:
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
+- `RigPreview/`: `sh preview.sh out.png` renders Nova's rig (`Rigs.BuildNovaRig`) from five angles without
+  Unity. It converts the C# to three.js mechanically, so it shows the same numbers. Use it after changing his
+  rig, and send the picture to the owner. Set `CHROMIUM=/opt/pw-browsers/chromium` in the cloud container.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity
   Linux editor and packages; see `typecheck/README.md`. Shaders can't be compiled here: the GitHub build is
   the shader check.
@@ -51,12 +54,23 @@ The README's *Unity-only additions* has the full description.
   - **Code:** tuning is `NOVA_SHIELD` in `Sim/Config.cs`; the simulation is `Sim/PlayerSim.Nova.cs`; the block
     is in `Sim/Combat.cs`; the visuals are `Game/View/NovaShieldFx.cs` and `Anim.AbsorbGlow`; the HUD is
     `Game/UI/HudChips.cs`.
+- **Nova's design.** His rig follows the approved concept: the *Strike Suit* brief and the V3 blockout in the
+  main `nova-striker` repository (branch `dev/blender-production`):
+  - `Docs/nova-blender-production-brief.md`;
+  - `Blender/Tools/ns_build_nova_blockout_v3.py`.
+
+  The concept images aren't in either repository. The brief bans capes, scarves and coat tails. The suit is
+  blue (`NOVA_SUIT_BLUE`). His gameplay effects still use `CHARS["nova"].energy` (gold).
 - **Parry stun.** Setting `novaParryStun`; the code is `World.ParryStun`.
 - **Quit game.** On the start card and in the pause menu (`UiMenus.cs`).
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
   not yet been tested on an HDR display.
 
 ## Open threads and ideas
+
+- **Nova's effects colour.** The suit is blue, as the brief says, but his shots, hard light and Aegis are still
+  gold. Ask the owner whether they should turn blue too. RAM is already blue, and the shield is a lighter blue.
+- **Nova's open helmet.** The brief plans an unhelmeted state. It isn't drawn yet, because there is no face.
 
 - **Balance:** 2.5× damage at a full charge may be too strong. Offer to slow the charge or drain it sooner.
 - **Beam and shield:** the Level 4 beam currently lowers the shield. Ask whether the owner would rather it
