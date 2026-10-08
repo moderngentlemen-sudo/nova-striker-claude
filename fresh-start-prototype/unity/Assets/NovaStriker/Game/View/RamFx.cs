@@ -36,9 +36,7 @@ namespace NovaStriker.Game
         readonly List<Shard> shards = new List<Shard>(); int si2;
         sealed class CraterMark { public TMesh b, g; public float life, age, heat = 1; }
         readonly List<CraterMark> craters = new List<CraterMark>();
-        sealed class Spk { public float life, max, d; public double x, y, vx, vy; public Color c; }
-        readonly Spk[] spk = new Spk[160]; int si;
-        readonly DynMesh spkMesh;
+        NovaStriker.Game.Sparks sparks;   // (the view's: the same sparks Nova's skates throw)
 
         internal static Texture2D HexTex(bool cracks) => Fx.CanvasTex(256, (g, s) =>
         {
@@ -166,13 +164,6 @@ namespace NovaStriker.Game
                 b.visible = gl.visible = false; b.RenderOrder = 1; gl.RenderOrder = 2; scene.add(b); scene.add(gl);
                 craters.Add(new CraterMark { b = b, g = gl });
             }
-            // Sparks: thin streaks stretched along their flight (one mesh, ordinary blending); they fall, bounce off
-            // the floor and cool from white-hot to red
-            for (int i = 0; i < spk.Length; i++) spk[i] = new Spk();
-            var tris = new int[spk.Length * 6];
-            for (int i = 0; i < spk.Length; i++) { int a = i * 4; tris[i * 6] = a; tris[i * 6 + 1] = a + 1; tris[i * 6 + 2] = a + 2; tris[i * 6 + 3] = a; tris[i * 6 + 4] = a + 2; tris[i * 6 + 5] = a + 3; }
-            spkMesh = new DynMesh(spk.Length * 4, tris, new TMat(TMat.Kind.Basic) { vertexColors = true, transparent = true, depthWrite = false, side = Side.Double, fog = false }, true, false, "sparks");
-            spkMesh.obj.RenderOrder = 6; scene.add(spkMesh.obj);
         }
 
         // A quad's orientation along a sim-plane direction: `len` along (tx, ty) once scaled, facing the camera side
@@ -205,7 +196,7 @@ namespace NovaStriker.Game
                     CrackAt(p, P, ev.x, ev.y, (float)ev.dmg, (float)ev.frac);
                     if ((P.frac > 2f / 3 && ev.frac <= 2.0 / 3) || (P.frac > 1f / 3 && ev.frac <= 1.0 / 3)) Shatter(p, ev.x, ev.y, 7, 0.5f);
                     P.frac = (float)ev.frac;
-                    if (p.onGround) Sparks(p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.06, -(float)p.facing, 3 + Mathf.Min(8, (int)(ev.dmg / 2)), 0.9f);
+                    if (p.onGround) Sparks(p.slot, p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.06, -(float)p.facing, 3 + Mathf.Min(8, (int)(ev.dmg / 2)), 0.9f);
                     var (nx, ny) = GuardDir(p);
                     F.Burst(ev.x, ev.y, ev.heavy ? WHITE : PALE, ev.heavy ? 18 : 10, ev.heavy ? 9 : 6, 0.3f, 0.28f, dir: Mathf.Atan2((float)ny, (float)nx), spread: 1.6f, grav: 6);
                     F.Sprite(ev.x, ev.y, "star", WHITE, ev.heavy ? 1.3f : 0.8f, 0.12f, 1.4f);
@@ -252,7 +243,7 @@ namespace NovaStriker.Game
                     F.Dust(p.x, p.y, 0.4f + 0.2f * L, new[] { ev.dx > 0 ? Mathf.PI : 0 }, noRing: L < 2);
                     F.Smoke(x, p.y + 0.3, "#8e97a3", 4 + 3 * L, 3 + L, 0.5f, 0.5f, dir: ev.dx > 0 ? Mathf.PI : 0, spread: 0.8f, op: 0.45f);
                     if (L != 0) { F.Sprite(p.x, p.y + 1.2, "ring", BLUE, 0.8f + 0.3f * L, 0.2f, 2.4f); F.Burst(p.x, p.y + 1.2, BLUE, 12 + 8 * L, 8 + 3 * L, 0.3f, 0.3f, dir: ev.dx > 0 ? Mathf.PI : 0, spread: 1.1f); }
-                    if (p.onGround) Sparks(p.x + ev.dx * (p.w / 2 + 0.2), p.y + 0.08, (float)ev.dx, 10 + 6 * L, 1.2f);
+                    if (p.onGround) Sparks(p.slot, p.x + ev.dx * (p.w / 2 + 0.2), p.y + 0.08, (float)ev.dx, 10 + 6 * L, 1.2f);
                     for (int i = 0; i < 6; i++) F.Smoke(p.x - p.facing * 0.55, p.y + 2.25, "#6f7883", 1, 2, 0.4f, 0.6f, dir: Mathf.PI / 2 + (ev.dx > 0 ? 0.6f : -0.6f), spread: 0.5f, op: 0.45f, grav: -1.2f);
                     break;
                 }
@@ -320,8 +311,9 @@ namespace NovaStriker.Game
 
         public void Update(float dt, World world, View view)
         {
+            sparks = view.sparks;
             t += dt;
-            UpdateCraters(dt); UpdateSparks(dt); UpdateShards(dt);
+            UpdateCraters(dt); UpdateShards(dt);
             var F = fx; var cam = view.camPos; var seenP = new HashSet<Player>(); var seenW = new HashSet<Barrier>(); var seenL = new HashSet<Player>();
             foreach (var p in world.players)
             {
@@ -359,7 +351,7 @@ namespace NovaStriker.Game
                     if (p.onGround && System.Math.Abs(p.vx) > 0.4 && S.Rnd() < Mathf.Min(1, Mathf.Abs((float)p.vx) / 2.2f))
                     {
                         int bot = ny * nx >= 0 ? -1 : 1; double ex = cx - ny * bot * len / 2;
-                        Sparks(System.Math.Abs(ny) > 0.5 ? ex : p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.05, System.Math.Sign(p.vx), 1 + (System.Math.Abs(p.vx) > 1.5 ? 1 : 0), 0.75f);
+                        Sparks(p.slot, System.Math.Abs(ny) > 0.5 ? ex : p.x + p.facing * (p.w / 2 + 0.3), p.y + 0.05, System.Math.Sign(p.vx), 1 + (System.Math.Abs(p.vx) > 1.5 ? 1 : 0), 0.75f);
                     }
                     if (p.kinetic > 10 && S.Rnd() < (float)p.kinetic / 120)
                     {
@@ -379,7 +371,7 @@ namespace NovaStriker.Game
                     wedgeM.opacity = 0.32f + 0.08f * L;
                     for (int i = 0; i < 2 + L; i++) F.Burst(p.x + dir * (p.w / 2 + 0.4), p.y + 0.3 + S.Rnd() * p.h, S.Rnd() < 0.5f ? WHITE : BLUE, 1, 14 + 4 * L, 0.2f, 0.14f, dir: dir > 0 ? Mathf.PI : 0, spread: 0.12f);
                     if (p.onGround && S.Rnd() < 0.7f) F.Dust(p.x - dir * 0.3, p.y, 0.3f + 0.08f * L, new[] { dir > 0 ? Mathf.PI : 0 }, noRing: true, op: 0.45f);
-                    if (p.onGround) { Sparks(p.x + dir * (p.w / 2 + 0.25), p.y + 0.06, (float)dir, 3 + L, 1); if (S.Rnd() < 0.6f) Sparks(p.x - dir * 0.15, p.y + 0.04, (float)dir, 1, 0.7f); }
+                    if (p.onGround) { Sparks(p.slot, p.x + dir * (p.w / 2 + 0.25), p.y + 0.06, (float)dir, 3 + L, 1); if (S.Rnd() < 0.6f) Sparks(p.slot, p.x - dir * 0.15, p.y + 0.04, (float)dir, 1, 0.7f); }
                     else if (S.Rnd() < 0.6f) F.Burst(p.x + dir * (p.w / 2 + 0.3), p.y + 0.4 + S.Rnd() * 1.6f, S.Rnd() < 0.5f ? WHITE : PALE, 2, 6, 0.14f, 0.18f, dir: dir > 0 ? Mathf.PI : 0, spread: 1.6f, grav: 6);
                     double last = ghostTick.TryGetValue(p, out var l) ? l : -99;
                     if (rig != null && world.tick - last >= (L >= 2 ? 3 : 4)) { ghostTick[p] = world.tick; F.ghosts.Spawn(rig, S.Lin(BLUE) * (1.2f + 0.25f * L), 0.22f + 0.06f * L, 0.18f); }
@@ -532,39 +524,12 @@ namespace NovaStriker.Game
                 Sh.m.material.opacity = 0.95f * Mathf.Min(1, k * 1.8f); Sh.m.scale.setScalar(Sh.size * (0.6f + 0.4f * k));
             }
         }
-        // Sparks thrown back from a point scraping along the floor, `dir` the way he is moving
-        public void Sparks(double x, double y, float dir, float n, float k = 1)
+        // Sparks thrown back from a point scraping along the floor, `dir` the way he is moving: Nova's kind (Sparks),
+        // streaks with weight that bounce along the floor and light it while they last, in his hotter orange.
+        // `owner` keeps one light per player.
+        public void Sparks(int owner, double x, double y, float dir, float n, float k = 1)
         {
-            float a0 = dir > 0 ? Mathf.PI - 0.35f : 0.35f;
-            for (int i = 0; i < n; i++)
-            {
-                var Sp = spk[si]; si = (si + 1) % spk.Length;
-                float a = a0 + (S.Rnd() - 0.5f) * 0.9f, sp = (6 + S.Rnd() * 9) * k;
-                Sp.x = x; Sp.y = y; Sp.vx = Mathf.Cos(a) * sp; Sp.vy = Mathf.Sin(a) * sp; Sp.d = 0.1f + S.Rnd() * 0.55f;
-                Sp.life = Sp.max = 0.22f + S.Rnd() * 0.25f; Sp.c = S.Lin(SPARKS[(int)(S.Rnd() * SPARKS.Length) % SPARKS.Length]);
-                if (i % 2 == 0) fx.Burst(x, y, SPARKS[0], 1, sp * 0.8f, 0.2f, 0.25f, dir: a, spread: 0.3f, grav: 18, drag: 0.95f);
-            }
-            if (n >= 2) fx.Sprite(x, y + 0.05, "glow", "#ffb24a", 0.55f + 0.05f * n, 0.08f, 1.3f);
-        }
-        void UpdateSparks(float dt)
-        {
-            var cool = S.Lin("#8a1c00");
-            for (int i = 0; i < spk.Length; i++)
-            {
-                var Sp = spk[i];
-                if (Sp.life <= 0) { for (int q = 0; q < 4; q++) { spkMesh.pos[i * 4 + q] = Vector3.zero; spkMesh.col[i * 4 + q] = Color.clear; } continue; }
-                Sp.life -= dt; Sp.vy -= 22 * dt; Sp.vx *= Mathf.Pow(0.97f, dt * 60);
-                Sp.x += Sp.vx * dt; Sp.y += Sp.vy * dt;
-                double g = Level.GroundBelow(Sp.x, Sp.y + 0.3);
-                if (Sp.y < g && Sp.y > g - 0.3) { Sp.y = g; Sp.vy = System.Math.Abs(Sp.vy) * 0.35; Sp.vx *= 0.7; }
-                float k = Mathf.Max(0, Sp.life / Sp.max), spd = (float)JMath.Hypot(Sp.vx, Sp.vy);
-                var T = S.Dir(Sp.x, Sp.vx, Sp.vy).normalized; var f = Level.Frame(Sp.x); var Z = new Vector3((float)f.nx, 0, (float)f.nz).normalized; var X = Vector3.Cross(T, Z).normalized;
-                var c = S.W(Sp.x, Sp.y, Sp.d); float hw = 0.06f * (0.5f + 0.5f * k) / 2, hl = (0.06f + spd * 0.028f) / 2;
-                spkMesh.Set(i * 4, c - X * hw - T * hl); spkMesh.Set(i * 4 + 1, c + X * hw - T * hl); spkMesh.Set(i * 4 + 2, c + X * hw + T * hl); spkMesh.Set(i * 4 + 3, c - X * hw + T * hl);
-                var col = Color.Lerp(cool, Sp.c, Mathf.Min(1, k * 1.6f)); col.a = 1;
-                for (int q = 0; q < 4; q++) spkMesh.col[i * 4 + q] = col;
-            }
-            spkMesh.Upload();
+            sparks?.Emit(owner, x, y, n, dir > 0 ? Mathf.PI - 0.35f : 0.35f, 9 * k, 0.9f, SPARKS[1], light: Mathf.Min(1.4f, 0.5f + 0.08f * n));
         }
         // A crater in the floor under (x, y), `r` m across its hollow, sized down to fit the ledge it is on
         public void Crater(double x, double y, float r, float heat = 1)

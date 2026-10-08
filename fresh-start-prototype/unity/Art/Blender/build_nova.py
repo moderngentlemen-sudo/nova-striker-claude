@@ -1,7 +1,8 @@
 # Nova, built from his concept art (portrait, turnaround and action sheets): a young man with swept-back dark hair in
 # pearl-white armour over a navy bodysuit with glowing gold seams; a high collar, the gold four-point star on the
 # chest, rounded pauldrons, a round gold buckle, white thigh panels, knee pads, greaves and boots, and the long white
-# Sentinel Bracer on his right forearm. 1.85 m, facing -Y, arms in an A-pose.
+# Sentinel Bracer on his right forearm. 1.85 m, facing -Y, arms in an A-pose. A heroic build (nova_bulk): broad and
+# heavy-set, with bold, simple shapes and few triangles, in the manner of an animated game cinematic.
 # Run: blender -b -P build_nova.py -- <out-dir>   (writes nova.blend; render_turnaround.py makes the review sheet)
 import math, os, sys, bpy
 from mathutils import Vector, Matrix
@@ -35,6 +36,8 @@ UA, FA = 0.29, 0.26                         # upper arm and forearm lengths
 HX = 0.095                                  # hip joint
 KNEE, ANK = 0.50, 0.09
 
+LIMB = 1.25                                 # his heroic build: arms and legs this much thicker (and their armour to match)
+
 # ---- Bodysuit: a skinned stick figure (Skin modifier), smoothed ----
 V, E, R = [], [], []
 def vtx(p, r): V.append(tuple(p)); R.append(r); return len(V) - 1
@@ -49,6 +52,7 @@ pelvis = vtx((0, 0.005, 0.97), (0.15, 0.115))
 spine = chain([((0, 0.0, 1.07), (0.13, 0.1)), ((0, 0.0, 1.2), (0.155, 0.11)), ((0, 0.005, 1.33), (0.175, 0.12)),
                ((0, 0.01, 1.43), (0.15, 0.105))], pelvis)
 chain([((0, 0.0, 1.53), (0.052, 0.055)), ((0, -0.005, 1.6), (0.048, 0.05))], spine)
+limb0 = len(V)                               # (the arms and legs from here on: thickened for his heroic build below)
 for s in (1, -1):
     sh = chain([((s * 0.12, 0.01, 1.455), (0.075, 0.075)), (tuple(arm_pt(s, 0)), (0.068, 0.066))], spine)
     el = chain([(tuple(arm_pt(s, 0.15)), (0.063, 0.06)), (tuple(arm_pt(s, UA)), (0.05, 0.05)),
@@ -56,6 +60,7 @@ for s in (1, -1):
                 (tuple(arm_pt(s, UA + FA + 0.09)), (0.042, 0.022)), (tuple(arm_pt(s, UA + FA + 0.17)), (0.03, 0.016))], sh)
     chain([((s * HX, 0.0, 0.92), (0.085, 0.085)), ((s * 0.1, -0.005, 0.72), (0.075, 0.078)), ((s * 0.1, 0.0, KNEE), (0.055, 0.058)),
            ((s * 0.1, 0.012, 0.32), (0.055, 0.06)), ((s * 0.1, 0.0, ANK), (0.038, 0.04)), ((s * 0.1, -0.12, 0.035), (0.04, 0.025))], pelvis)
+R = [r if k < limb0 else (r[0] * LIMB, r[1] * LIMB) for k, r in enumerate(R)]
 body = mesh_obj('Nova_Body', V, [], NAVY, edges=E)
 sk = mod(body, 'SKIN', use_smooth_shade=True, branch_smoothing=0.6)
 for k, r in enumerate(R): body.data.skin_vertices[0].data[k].radius = r
@@ -148,8 +153,6 @@ if len(sp) == 8:
 for s in (1, -1):
     seam = project(ct, [(s * 0.035, 1.47), (s * 0.08, 1.43), (s * 0.13, 1.4), (s * 0.165, 1.33)], lift=0.003)
     tube(f'Nova_ChestSeam{s}', GOLD, seam, 0.0036)
-    tube(f'Nova_ChestLine{s}', GROOVE, project(ct, [(s * 0.02, 1.25), (s * 0.06, 1.23), (s * 0.12, 1.25), (s * 0.165, 1.29)], lift=0.002), 0.0022)
-    tube(f'Nova_ChestRib{s}', GROOVE, project(ct, [(s * 0.1, 1.44), (s * 0.115, 1.38), (s * 0.12, 1.3)], lift=0.002), 0.002)
     tube(f'Nova_CollarSeam{s}', GOLD, project(bvh(collar), [(s * 0.026, 1.545), (s * 0.026, 1.585), (s * 0.028, 1.62)], lift=0.002), 0.0024)
 
 # ---- Arms: pauldrons, forearm guard, gloves, and the Sentinel Bracer on the right ----
@@ -183,7 +186,7 @@ bracer = patch('Nova_Bracer', PEARL, None, (0.064, 0.072, 0.24), e=0.55, thick=0
 bt = bvh(bracer)
 tip = BC + axis * 0.235
 patch('Nova_BracerEmitter', GOLD, None, (0.028, 0.028, 0.01), res=(20, 8), thick=0, M=frame(tip + axis * 0.004, axis))
-for off, name in ((0.0, 'Nova_BracerSeam'), (0.03, 'Nova_BracerSeamL'), (-0.03, 'Nova_BracerSeamR')):
+for off, name in ((0.0, 'Nova_BracerSeam'),):
     pts = []
     for d in (-0.19, -0.1, 0.0, 0.1, 0.19):
         o = BC + axis * d + Vector((off, -0.3, 0))
@@ -202,7 +205,6 @@ for s in (1, -1):
         q = p.copy(); q.y -= 0.012 * max(0, -q.y) / 0.07; return q          # a shin ridge at the front
     patch(f'Nova_Greave{s}', PEARL, (s * 0.1, 0.004, 0.27), (0.06, 0.066, 0.2), v=(-75, 85), e=0.55, thick=0.008, res=(28, 16), shape=greave_shape, subsurf=1)
     tube(f'Nova_ThighSeam{s}', GOLD, [(s * 0.168, -0.035, 0.86), (s * 0.176, -0.04, 0.72), (s * 0.17, -0.035, 0.58)], 0.003)
-    tube(f'Nova_GreaveLine{s}', GROOVE, [(s * 0.1, -0.082, 0.42), (s * 0.1, -0.084, 0.3), (s * 0.1, -0.078, 0.16)], 0.0022)
     tube(f'Nova_GreaveStripe{s}', NAVY2, [(s * 0.158, -0.0, 0.41), (s * 0.161, 0.0, 0.3), (s * 0.155, 0.0, 0.2)], 0.007)
     def boot_shape(p, ss, t):
         q = p.copy(); q.z = max(q.z, -0.045); return q                      # a flat sole
@@ -231,6 +233,46 @@ for s_ in (1, -1):
     patch(f'Nova_HelmDisc{s_}', GOLDM, HC + Vector((s_ * 0.113, 0.01, 0.0)), (0.008, 0.03, 0.03), res=(16, 10), thick=0, subsurf=1)
     patch(f'Nova_HelmDiscGlow{s_}', GOLD, HC + Vector((s_ * 0.12, 0.01, 0.0)), (0.004, 0.014, 0.014), res=(12, 8), thick=0, subsurf=1)
     tube(f'Nova_HelmSeam{s_}', GOLD, [HC + Vector(v) for v in ((s_ * 0.09, -0.07, 0.065), (s_ * 0.11, -0.01, 0.05), (s_ * 0.112, 0.05, 0.03))], 0.0025)
+
+# ---- His heroic build: bake the body and armour to plain meshes at game resolution, then reshape them broader and
+# heavier (nova_bulk), with bigger pauldrons, gloves and boots: bold shapes that read at a glance, like a hero in an
+# animated cinematic. The face, hair and helmet keep their size ----
+HEADS = ('Nova_Head', 'Nova_Hair', 'Nova_Lock', 'Nova_Side', 'Nova_Eye', 'Nova_Iris', 'Nova_Brow', 'Nova_Ear', 'Nova_Nose', 'Nova_Mouth', 'Nova_Helm')
+def bake(o):
+    bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
+    if o.type == 'CURVE':
+        o.data.resolution_u = 3; o.data.bevel_resolution = 1; bpy.ops.object.convert(target='MESH')
+    else:
+        for m in list(o.modifiers):
+            if m.type == 'SUBSURF': m.levels = m.render_levels = 1
+            bpy.ops.object.modifier_apply(modifier=m.name)
+def scale_about(objs, c, k, kz=None):
+    for o in objs:
+        for v in o.data.vertices: d = v.co - c; v.co = c + Vector((d.x * k, d.y * k, d.z * (k if kz is None else kz)))
+def centre(o): return sum((v.co for v in o.data.vertices), Vector()) / max(1, len(o.data.vertices))
+built = [o for o in bpy.context.scene.collection.objects if o.type in ('MESH', 'CURVE') and not o.name.startswith(HEADS)]
+for o in built: bake(o)
+built = [bpy.data.objects[o.name] for o in built]
+for o in built:
+    for v in o.data.vertices: v.co = nova_bulk(v.co)
+    o.data.update()
+def scale_from_line(objs, a, d, k):           # thicker round a limb's axis (through a, along d), no longer
+    d = d.normalized()
+    for o in objs:
+        for v in o.data.vertices: c = a + d * (v.co - a).dot(d); v.co = c + (v.co - c) * k
+by = lambda *ns: [o for o in built if o.name.split('.')[0] in ns]
+for s in (1, -1):
+    a0, a1 = nova_bulk(arm_pt(s, 0)), nova_bulk(arm_pt(s, 1))
+    guards = by('Nova_ForearmGuard') if s == 1 else by('Nova_Bracer', 'Nova_BracerEmitter', 'Nova_BracerSeam')   # (left forearm, right forearm)
+    scale_from_line(guards, a0, a1 - a0, LIMB * 0.98)
+    legs = [o for o in built if o.name.split('.')[0] in [f'{n}{s}' for n in ('Nova_ThighPanel', 'Nova_ThighSeam', 'Nova_KneePad', 'Nova_KneeGem', 'Nova_Greave', 'Nova_GreaveStripe')]]
+    lx = nova_bulk(Vector((s * 0.1, 0, 0.5))).x
+    scale_from_line(legs, Vector((lx, 0, 0)), Vector((0, 0, 1)), LIMB * 0.98)
+for s in (1, -1):
+    named = lambda *ns: [o for o in built if o.name.split('.')[0] in [f'{n}{s}' for n in ns]]
+    p = named('Nova_Pauldron'); scale_about(named('Nova_Pauldron', 'Nova_PauldronLip', 'Nova_PauldronSeam'), centre(p[0]) + Vector((0, 0, -0.02)), 1.24)
+    g = named('Nova_Glove'); scale_about(named('Nova_Glove', 'Nova_GloveCuff', 'Nova_GloveThumb', 'Nova_Knuckle'), centre(g[0]), 1.2)
+    b = named('Nova_Boot'); c = centre(b[0]); c.z = 0; scale_about(named('Nova_Boot', 'Nova_Sole', 'Nova_BootCuff'), c, 1.1, 1.06)
 
 def group(name, prefixes):
     col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)

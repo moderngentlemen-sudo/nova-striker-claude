@@ -294,7 +294,7 @@ namespace NovaStriker.Game
                     var p = ev.p; var rig = RigOf(p); bool ramC = p.@char == "ram";
                     charge.Release(new ChargeFX.Rel { level = 4, attach = ev.attach, perfect = true, ax = p.aimX, ay = p.aimY, beam = true, cannon = ramC }, p, rig);
                     Fireball(p.x + p.aimX * 0.8, p.y + p.h * 0.62 + p.aimY * 0.8, ramC ? "#9fd0ff" : "#ffd27a", ramC ? 2.0f : 1.4f, 0.2f);
-                    if (ramC) { ram.Sparks(p.x - p.facing * 0.3, p.y + 0.06, -F(p.facing), 14, 1.1f); Dust(p.x, p.y, 0.8f, new[] { p.facing > 0 ? PI : 0 }, reach: 1); }
+                    if (ramC) { ram.Sparks(p.slot, p.x - p.facing * 0.3, p.y + 0.06, -F(p.facing), 14, 1.1f); Dust(p.x, p.y, 0.8f, new[] { p.facing > 0 ? PI : 0 }, reach: 1); }
                     break;
                 }
                 case "subSwitch": case "grenadeThrow": case "bounce": case "frag": case "cluster": case "chain": case "discThrow": case "discRecall": case "discCatch":

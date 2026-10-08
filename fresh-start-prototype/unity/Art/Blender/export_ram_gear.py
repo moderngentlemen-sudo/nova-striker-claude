@@ -7,11 +7,11 @@
 import json, os, sys, bpy, bmesh
 OUT = sys.argv[sys.argv.index('--') + 1]
 UV_TILE = 0.9
-for o in bpy.data.objects:                       # (game resolution: fewer curve and rounding segments)
-    if o.type == 'CURVE': o.data.resolution_u = 4; o.data.bevel_resolution = 2
+for o in bpy.data.objects:                       # (game resolution: few curve segments, crisp single chamfers)
+    if o.type == 'CURVE': o.data.resolution_u = 3; o.data.bevel_resolution = 1
     for m in getattr(o, 'modifiers', []):
-        if m.type == 'SUBSURF': m.levels = 1
-        if m.type == 'BEVEL': m.segments = min(m.segments, 2)
+        if m.type == 'SUBSURF': m.levels = 0
+        if m.type == 'BEVEL': m.segments = 1
 dg = bpy.context.evaluated_depsgraph_get()
 parts = {}
 for o in bpy.data.objects:

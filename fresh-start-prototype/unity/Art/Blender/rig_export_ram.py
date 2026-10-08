@@ -67,8 +67,10 @@ def apply_all(o):
     if o.type == 'CURVE':
         o.data.resolution_u = 3; o.data.bevel_resolution = 1; bpy.ops.object.convert(target='MESH')
     else:
-        for m in list(o.modifiers):
+        for m in list(o.modifiers):                # (crisp single chamfers on the plates: bold and cheap)
+            if m.type == 'SUBSURF' and o.name != 'Ram_Body': o.modifiers.remove(m); continue
             if m.type == 'SUBSURF': m.levels = 1
+            if m.type == 'BEVEL': m.segments = 1
             bpy.ops.object.modifier_apply(modifier=m.name)
 
 meshes = {'Ram_Body': [], 'Ram_FaceAndHair': [], 'Ram_Helmet': []}
@@ -91,12 +93,12 @@ for o in list(bpy.data.objects):
 # Each look within its triangle budget by simplifying only its large pieces (small details would vanish), then
 # joined into one mesh: the body and the face skinned to the skeleton, the helmet a rigid piece on the head bone
 # (so the game can knock it off whole)
-BUDGET = {'Ram_Body': 40000, 'Ram_FaceAndHair': 12000, 'Ram_Helmet': 9000}
+BUDGET = {'Ram_Body': 16000, 'Ram_FaceAndHair': 5000, 'Ram_Helmet': 4000}   # (bold, simple shapes: few triangles)
 def tri_count(o): return sum(len(p.vertices) - 2 for p in o.data.polygons)
 out = []
 for name, objs in meshes.items():
     if not objs: continue
-    big = [o for o in objs if tri_count(o) > 1500]
+    big = [o for o in objs if tri_count(o) > 600]
     small = sum(tri_count(o) for o in objs if o not in big); large = sum(tri_count(o) for o in big)
     if large and small + large > BUDGET[name]:
         r = max(0.05, (BUDGET[name] - small) / large)

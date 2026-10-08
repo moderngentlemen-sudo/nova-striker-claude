@@ -55,6 +55,10 @@ All run without Unity, from `SimTests/`:
     `export_ram_gear.py` writes each as `Models/ram_shield.json` or `ram_cannon.json`.
   - **Exports land in `Resources`:** write only the `.fbx` or `.json` there. `rig_export_*.py` also saves a
     `*_rigged.blend` beside its output, so export to a scratch folder and copy the file, or delete the `.blend`.
+  - **Style and budgets:** the owner asked for fewer triangles and the look of an animated game cinematic: bold,
+    simple shapes, crisp single chamfers, light wear. Nova is heavier-set than his first model (`nova_bulk`,
+    which his skeleton also goes through). Budgets: Nova about 26k triangles, RAM about 25k, the Rampart 4k, the
+    cannon 3k. Keep new pieces within them.
   - **`nova_lib.cyl` along the x axis:** until a fix to `frame`, such cylinders came out empty. RAM's joint
     discs and the gym's rails and edge pipes were missing until they were re-exported.
 - `typecheck/`: type-checks the C# against the Unity 6.3 libraries. It needs a one-time download of the Unity

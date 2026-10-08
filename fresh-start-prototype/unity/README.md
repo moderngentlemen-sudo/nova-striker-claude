@@ -139,6 +139,9 @@ default settings the simulation is still the prototype's (the parity tests run w
     with every move and aim angle and no animation clips.
   - **Materials:** they are the rig's own, so the gold seams pulse with his charge.
   - **Fallback:** if the model can't load, the built-in rig is drawn instead.
+  - **Style:** a heroic build (broad chest and shoulders, thick arms and legs, big pauldrons, gloves and boots)
+    with bold, simple shapes, in the manner of an animated game cinematic. About 26,000 triangles with the
+    helmet and face (`nova_bulk` in `Art/Blender/nova_lib.py`; budgets in `rig_export_nova.py`).
 - **Nova's helmet comes off at critical health** (Settings › *Nova's head* › *Full helmet*, the default).
   - **When:** at 25% health or less, or when he goes down, the helmet is knocked off. It flies up and back,
     tumbles, bounces and fades, and his face shows: a warning to the player.
@@ -209,8 +212,12 @@ default settings the simulation is still the prototype's (the parity tests run w
   - **Cannon:** the Breach Cannon over his right shoulder, with a blue muzzle ring.
   - **Shield:** the Rampart, a heavy stone-grey frame round a glowing hexagonal hard-light panel with a
     ram's-head emblem.
-  - **Wear:** his armour carries the "worn" texture set (scratches, chipped paint and grime, made by
-    `Art/Blender/make_textures.py`), on the rig and the model alike (`Look.Wear`).
+  - **Wear:** his armour carries the "worn" texture set (a few scratches and chips and a soft wash of grime,
+    kept light; made by `Art/Blender/make_textures.py`), on the rig and the model alike (`Look.Wear`).
+  - **Model style:** crisp single chamfers on his plates and few triangles: about 25,000 for the model, 4,000
+    for the Rampart and 3,000 for the Breach Cannon.
+  - **Sparks:** his shield, charge and impacts throw the same sparks as Nova's skates (`Sparks`): they bounce
+    along the floor and light it, in his hotter orange.
 - **RAM's 3D model** (the same *Character models* setting). The model is
   `Resources/NovaStriker/Models/ram_model.fbx` (`Art/Blender/build_ram.py`, then `rig_export_ram.py`). Like
   Nova's, it copies the rig's pose every frame and wears the rig's materials.

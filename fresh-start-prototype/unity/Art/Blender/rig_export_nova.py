@@ -6,6 +6,8 @@
 # Nova_Helmet is a rigid piece hung on the head bone, so the game can knock it off whole.
 import math, os, sys, bpy
 from mathutils import Vector
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from nova_lib import nova_bulk
 OUT = sys.argv[sys.argv.index('--') + 1]
 sc = bpy.context.scene
 
@@ -16,8 +18,8 @@ def arm_pt(side, d): return Vector((side * (SHX + math.sin(ARM) * d), 0.0, SH - 
 arm = bpy.data.armatures.new('Nova_Skeleton'); rig = bpy.data.objects.new('Nova_Rig', arm); sc.collection.objects.link(rig)
 bpy.context.view_layer.objects.active = rig; rig.select_set(True)
 bpy.ops.object.mode_set(mode='EDIT')
-def bone(name, head, tail, parent=None, connect=False):
-    b = arm.edit_bones.new(name); b.head = Vector(head); b.tail = Vector(tail)
+def bone(name, head, tail, parent=None, connect=False):   # (placed on his heavier build, as the mesh is: nova_bulk)
+    b = arm.edit_bones.new(name); b.head = nova_bulk(Vector(head)); b.tail = nova_bulk(Vector(tail))
     if parent: b.parent = arm.edit_bones[parent]; b.use_connect = connect
     return b
 bone('root', (0, 0, 0), (0, 0.15, 0))
@@ -79,10 +81,10 @@ for o in list(bpy.data.objects):
 
 # Bring each look within its triangle budget by simplifying only its large pieces (eyes, seams and other small
 # details would vanish if simplified), then join it into one mesh skinned to the skeleton
-BUDGET = {'Nova_Body': 30000, 'Nova_FaceAndHair': 18000, 'Nova_Helmet': 7000}
+BUDGET = {'Nova_Body': 15000, 'Nova_FaceAndHair': 7000, 'Nova_Helmet': 3500}   # (bold, simple shapes: few triangles)
 def tri_count(o): return sum(len(p.vertices) - 2 for p in o.data.polygons)
 for name, objs in meshes.items():
-    big = [o for o in objs if tri_count(o) > 1500]
+    big = [o for o in objs if tri_count(o) > 600]
     small = sum(tri_count(o) for o in objs if o not in big); large = sum(tri_count(o) for o in big)
     if large and small + large > BUDGET[name]:
         r = max(0.05, (BUDGET[name] - small) / large)

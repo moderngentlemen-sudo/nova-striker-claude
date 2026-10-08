@@ -82,15 +82,16 @@ with open(os.path.join(GAME, 'shadow.bytes'), 'wb') as f: f.write((sh * 255).ast
 try:
     from PIL import Image; Image.fromarray((sh * 255).astype(np.uint8)).save(os.path.join(PREV, 'shadow.png'))
 except ImportError: pass
-# Battle-worn metal (RAM): heavy scratches, chipped paint showing bright bare metal, scuffs and grime
+# Battle-worn metal (RAM), kept light, as an animated cinematic paints it: a few clean scratches and chips showing
+# bare metal, and a soft wash of grime, over paint that still reads as one colour
 peel = fbm(3, 48, 0.5); grime = fbm(5, 3, 0.6); chipN = fbm(4, 10, 0.55)
-h = 0.5 + 0.04 * (peel - 0.5)
-alb = 1 - 0.16 * np.clip(grime - 0.4, 0, 1) * 2
-r = 0.8 + 0.1 * (grime - 0.5)
-chips = np.clip((chipN - 0.68) / 0.08, 0, 1)                      # bare metal where the paint has chipped
-h -= 0.06 * chips; alb = alb * (1 - chips) + 1.35 * chips; r = r * (1 - chips) + 0.35 * chips
-scr = np.zeros((N, N)); lines(260, 80, 1, scr, 1.0); lines(40, 140, 2, scr, 1.0)
-h -= 0.07 * scr; r -= 0.4 * scr; alb += 0.25 * scr
+h = 0.5 + 0.03 * (peel - 0.5)
+alb = 1 - 0.07 * np.clip(grime - 0.4, 0, 1) * 2
+r = 0.8 + 0.06 * (grime - 0.5)
+chips = np.clip((chipN - 0.74) / 0.05, 0, 1)                      # bare metal where the paint has chipped
+h -= 0.05 * chips; alb = alb * (1 - chips) + 1.25 * chips; r = r * (1 - chips) + 0.4 * chips
+scr = np.zeros((N, N)); lines(70, 80, 1, scr, 1.0); lines(10, 140, 2, scr, 1.0)
+h -= 0.05 * scr; r -= 0.3 * scr; alb += 0.15 * scr
 save('worn', h, np.clip(alb, 0, 1.0), r)
 
 print('textures written')

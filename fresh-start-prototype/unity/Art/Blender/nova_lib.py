@@ -191,3 +191,16 @@ def edge_wear(m, colour_node=None, amount=0.6):
     if src: nt.links.new(src, mix.inputs[1])
     else: mix.inputs[1].default_value = bsdf.inputs['Base Color'].default_value[:]
     nt.links.new(k.outputs[0], mix.inputs[0]); nt.links.new(mix.outputs[0], bsdf.inputs['Base Color'])
+
+# ---- Nova's heroic build: broader and heavier than the first, slender model ----
+NOVA_H = 1.18                                         # everything below the neck, across and front to back
+def nova_bulk(p):
+    """Where a point of Nova's first model lands on his heavier build: wider and deeper all over, with extra breadth
+    through the chest and upper back (a V to the waist) that fades out toward the arms and the neck. The skeleton
+    (rig_export_nova.py) goes through the same function, so bones and mesh still meet."""
+    x, y, z = p
+    w = max(0.0, min(1.0, (0.24 - abs(x)) / 0.08))     # (the torso, not the arms)
+    k = NOVA_H * (1 + 0.12 * max(0.0, 1 - abs(z - 1.36) / 0.22) * w)
+    if z > 1.56: k = 1 + (k - 1) * max(0.0, 1 - (z - 1.56) / 0.08)   # (back to the head's own size above the collar)
+    return Vector((x * k, y * k, z))
+
