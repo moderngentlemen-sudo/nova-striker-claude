@@ -93,6 +93,10 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
+- **The next update is planned in [`docs/NEXT_UPDATE_PLAN.md`](docs/NEXT_UPDATE_PLAN.md):** graphics, effects
+  and particles with pause-menu options, clouds and birds, geometry optimisation, multi-tier levels, hazards,
+  depth lanes, dressing for the remaining stages, and enemy models. Follow it phase by phase.
+
 - **RAM's concept art** (the owner shared it in chat) shows a gunmetal mech-like tank with ram's horns and a
   T visor, and the hex-panel Rampart with a ram's-head emblem. The owner asked for futuristic horns with a use:
   they are now armoured sensor fins, with a sensor pod at each tip and an actuator disc at the temple. His charge shows the shield as a blue holographic
