@@ -12,7 +12,7 @@ rebuilt on Unity's renderer, audio and UI.
 
 | Part | How far it has been checked |
 |---|---|
-| Simulation (`Sim/`) | **Verified.** The JavaScript and the C# are run side by side with the same inputs and compared on every tick (see *Parity tests*). All scenarios match. |
+| Simulation (`Sim/`) | **Verified.** The JavaScript and the C# are run side by side with the same inputs and compared on every tick (see *Parity tests*). With the Unity-only level features off, all scenarios match. |
 | Sound and music engine | **Rendered offline.** Outside Unity it rendered the score at all three intensities, plus a run of sound effects, to WAV. Levels were sensible, with no NaNs, at about 20× real time. |
 | Everything else: view, effects, rigs, UI, input, editor setup | **Compiled, not run.** It compiles without errors against the Unity 6.3 engine assemblies, URP 17.3.0, Input System 1.17.0 and uGUI 2.0.0. It has **not** been run in the Unity editor. |
 
@@ -108,8 +108,51 @@ SimTests/       the parity harness (dotnet + node); ShieldTests; typecheck; RigP
 
 ## Unity-only additions
 
-These are in the Unity build only, not in the browser prototype. Each one is off by default, so with its
-default settings the simulation is still the prototype's (the parity tests run with the defaults).
+These are in the Unity build only, not in the browser prototype. Unity is now the main version of the game
+(Unreal Engine may follow), so gameplay no longer has to match the prototype and new options may be on by
+default. With the level features turned off, the simulation is still the prototype's.
+
+### The graphics and level update
+
+After pulling it, run *Nova Striker › Set Up Project* once: it adds new shaders and template materials.
+
+- **Cinematic effects** (Settings › *Effects*). Blasts, projectiles, impacts and debris are built from Unity
+  particle systems (`Game/View/Vfx/`).
+  - **Blasts:** fireballs, smoke, sparks and embers that bounce off the level, chunks of debris and shards,
+    a flash of light, a heat ripple and a scorch mark on the floor.
+  - **Projectiles:** glowing energy bolts with trails, muzzle flashes and impact bursts.
+  - **Presets:** *Cinematic*, *Balanced*, *Classic* (the original effects) or *Custom*. Custom lets you cycle
+    each option: explosions, projectiles, trails, particle density, debris, smoke, effect lights, heat
+    distortion, scorch marks and screen effects. Low graphics quality caps them all.
+  - **Screen effects:** chromatic aberration and a lens punch on big blasts, film grain, lens dirt, and a lens
+    flare from the sun.
+  - **Performance overlay** (Settings › *Effects*): particle, light and decal counts and the frame rate.
+- **Clouds and birds** (Settings › *Effects*):
+  - **Volumetric clouds:** lit clusters of puffs (`Cloud.shader`), kept at least 70 m behind the action so
+    they never drift into it.
+  - **Gulls:** white gulls modelled in Blender (`bird.json`) glide, flap, bank and scatter at explosions.
+- **Weather** (Settings › *Effects* › *Weather*; `Weather.cs`):
+  - **Storm Spire:** rain with splashes, lightning, storm clouds and mist.
+  - **Skyline Relay:** wind streaks, and distant airships and pods with blinking lights.
+  - **Helix Foundry:** steam, rising embers and heat haze.
+  - **Undercity:** drips, low haze, flickering neon and a damp sheen on the floor.
+  - **Concourse Lock:** sweeping floodlights and holo dust.
+- **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
+  and scuff marks fade where players land hard or slide.
+- **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.
+  Forward+ rendering lifts the limit on lights per object.
+- **Level features** (Settings › *Level features*, all on by default):
+  - **Multi-tier levels:** catwalks and upper decks with extra enemies.
+  - **Hazards:** steam vents that launch you, shock panels, slag, wind gusts and collapsing platforms.
+  - **Depth lanes:** in marked stretches the play area has three lanes (back, middle, front). Hop between
+    them with **B** and **M** on the keyboard, or click the left stick while holding it up or down. Attacks
+    only reach their own lane, except area attacks.
+  - The data and rules are in `Sim/LevelFeatures.cs`; `SimTests/LevelTests` tests them.
+
+**Known limits:** the AI teammates don't avoid hazards yet; scorch marks are flat quads rather than
+projected decals; distant landmarks have no level-of-detail models yet.
+
+### Earlier additions
 
 - **Nova's absorbing shield** (Settings › *Nova's LT move, Marksman kit* › *Absorbing shield*). It replaces
   his dodge on LT (Q or L). While held, a blue hard-light shield stands where he aims and blocks strikes, shots and
@@ -254,6 +297,9 @@ sh parity.sh 1500 "1 2"    # every zone × every character × alone and with thr
 ```
 
 It needs .NET 8 and Node 18 or later. It last reported every scenario matching.
+
+Now that Unity is the main version, this is informational: with the level features on, the runs differ from
+the prototype by design. With them off, every scenario still matches.
 
 ## Building a game you can run (zip or executable)
 

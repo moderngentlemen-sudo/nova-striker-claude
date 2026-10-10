@@ -91,6 +91,22 @@ The README's *Unity-only additions* has the full description.
 - **Quit game.** On the start card and in the pause menu (`UiMenus.cs`).
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
   not yet been tested on an HDR display.
+- **The graphics and level update** (`docs/NEXT_UPDATE_PLAN.md`). None of it has been seen in Unity yet.
+  - **Effects:** `Game/View/Vfx/`. `Vfx` owns the particle layers (`FxPool`), effect lights, quad decals and the
+    colliders particles bounce off (layer 9). `Fx.Cine.cs` reacts to events; `CineEvent` returning true replaces
+    the classic reaction. Effects read `FxCfg`, never the raw settings. Textures are PNG data in
+    `Resources/NovaStriker/Fx/*.png.bytes` (`Art/Blender/make_fx_textures.py`).
+  - **New shaders:** `Distort`, `Cloud`, `Bird`, plus the particle templates. Each needs a `TEMPLATES` row in
+    `NovaSetup` and the owner running *Set Up Project*.
+  - **Clouds and gulls:** `CloudLayer.cs` and `Birds.cs`, drawn with `Graphics.RenderMeshInstanced`. Keep
+    everything in the backdrop at least 70 m (clouds) or 60 m (birds) behind the play plane.
+  - **Weather and the world reacting:** `Weather.cs`, per zone, from the camera's place. `View.lamps` and
+    `View.neon` are the materials it flickers.
+  - **Level features:** `Sim/LevelFeatures.cs` (tiers, hazards, depth lanes), applied in
+    `Level.RestoreBoxes`. Extra boxes have ids of 10000 and up; `Level.Version` changes when boxes do. The view
+    side is `LevelFx.cs`. Lane keys are B and M, or L3 with the stick up or down. `ShieldTests` turns the
+    features off; `LevelTests` covers them. With them off, `parity.sh` still matches.
+  - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
 
 ## Open threads and ideas
 
