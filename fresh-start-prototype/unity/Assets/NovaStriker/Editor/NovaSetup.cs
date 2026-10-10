@@ -57,6 +57,9 @@ namespace NovaStriker.EditorTools
             ("Grade", "NovaStriker/Grade", false, false, false),
             ("Aegis", "NovaStriker/Aegis", false, false, false),
             ("Reflect", "NovaStriker/Reflect", false, false, false),
+            ("ParticleAdd", Templates.PARTICLE_UNLIT, true, false, false),
+            ("ParticleAlpha", Templates.PARTICLE_UNLIT, true, false, false),
+            ("ParticleLit", Templates.PARTICLE_LIT, true, false, false),
         };
         static void MakeTemplates()
         {
@@ -68,7 +71,8 @@ namespace NovaStriker.EditorTools
                 var m = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (m == null) { m = new Material(sh) { name = name }; AssetDatabase.CreateAsset(m, path); }
                 else m.shader = sh;
-                Templates.Configure(m, transparent, surface, coat);
+                if (name.StartsWith("Particle")) Templates.ConfigureParticle(m, name);
+                else Templates.Configure(m, transparent, surface, coat);
                 EditorUtility.SetDirty(m);
             }
         }
@@ -91,6 +95,8 @@ namespace NovaStriker.EditorTools
             asset.supportsHDR = true;
             asset.msaaSampleCount = 4;                  // (the prototype renders through a 4x multisampled target)
             asset.supportsCameraDepthTexture = true;
+            asset.supportsCameraOpaqueTexture = true;   // (heat haze and shockwave distortion sample it)
+            asset.maxAdditionalLightsCount = 8;         // (effect lights)
             asset.mainLightShadowmapResolution = 2048;
             asset.shadowDistance = 70;
             asset.shadowCascadeCount = 2;
@@ -117,6 +123,8 @@ namespace NovaStriker.EditorTools
                 data.postProcessData = AssetDatabase.LoadAssetAtPath<PostProcessData>("Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset");
                 AssetDatabase.CreateAsset(data, path);
             }
+            // Forward+: no per-object light limit, so effect lights reach everything near them
+            data.renderingMode = RenderingMode.ForwardPlus;
             // Rebuild the features: ambient occlusion (Ultra), then the grade
             foreach (var f in data.rendererFeatures.ToArray()) { if (f != null) Object.DestroyImmediate(f, true); }
             data.rendererFeatures.Clear();

@@ -44,6 +44,7 @@ namespace NovaStriker.Game
         readonly Light sun, rim;
         Ambience ambience; TMesh sunGlow;
         public Sparks sparks; PlanarReflection reflection;
+        public Vfx vfx;
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -117,6 +118,7 @@ namespace NovaStriker.Game
             foreach (var c in farClouds) ambience.AddCloud(c);
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
+            vfx = new Vfx(this);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
             Resize(Screen.width, Screen.height);
@@ -234,6 +236,8 @@ namespace NovaStriker.Game
                 Bake(Geo.Torus(R - 2.8f, 0.35f, 8, 48), glowMat, new Vector3(tx, y, tz), new Vector3(Mathf.PI / 2, 0, 0), cast: false);
         }
 
+        // How deep (toward the camera and away) a level box is drawn
+        public static float DepthFor(LevelBox b) => b.type == 'o' ? 2.6f : (b.tag == "panel" || b.tag == "column" || b.tag == "pillar") ? 1.8f : b.type == 'g' ? 3.2f : 4.4f;
         void BuildLevel()
         {
             var cap = TMat.Std(0xd9dfe7, 0.5f); var body = TMat.Std(0x5f7897, 0.5f); var dark = TMat.Std(0x46596f, 0.55f);   // (glossy: the sky city's sheen)
@@ -241,7 +245,6 @@ namespace NovaStriker.Game
             var gate = TMat.Std(0xff2e7e); gate.emissiveHex = 0xff2e7e; gate.emissiveIntensity = 1.6f; gate.transparent = true; gate.opacity = 0.45f; gate.depthWrite = false;
             // Surface detail (Look): riveted plating on the walls, grip deck on the tops, plating on the platforms
             Look.ApplySurface(body, "panel", 3); Look.ApplySurface(dark, "panel", 2.5f); Look.ApplySurface(cap, "floor", 2.2f, 0.5f);
-            float DepthFor(LevelBox b) => b.type == 'o' ? 2.6f : (b.tag == "panel" || b.tag == "column" || b.tag == "pillar") ? 1.8f : b.type == 'g' ? 3.2f : 4.4f;
             foreach (var b in Level.BOXES)
             {
                 if (b.type == 'd') continue;   // (breakable pieces have their own meshes: Breakables)
@@ -727,7 +730,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); GymDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); GymDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);

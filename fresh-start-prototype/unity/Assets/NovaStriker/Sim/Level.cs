@@ -217,6 +217,7 @@ namespace NovaStriker.Sim
         };
 
         public static readonly List<LevelBox> BOXES = new List<LevelBox>();
+        public static int Version;   // (bumped whenever BOXES changes, so the view can rebuild what it made from them)
         public static readonly double LEVEL_X0, LEVEL_X1;
         public static readonly Dictionary<string, bool> GATES = new Dictionary<string, bool> {
             ["L"] = false, ["R"] = false, ["L2"] = false, ["R2"] = false, ["F1"] = false, ["F2"] = false, ["U1"] = false, ["U2"] = false,

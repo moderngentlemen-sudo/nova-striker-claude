@@ -202,7 +202,7 @@ namespace NovaStriker.Game.Three
     // template is made on the spot from its shader.
     public static class Templates
     {
-        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade, aegis, reflect;
+        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade, aegis, reflect, pAdd, pAlpha, pLit;
         public static Material Lit => lit ??= Load("Lit", "Universal Render Pipeline/Lit", false, false);
         public static Material LitT => litT ??= Load("LitTransparent", "Universal Render Pipeline/Lit", true, false);
         public static Material Surf => surf ??= Load("LitSurface", "Universal Render Pipeline/Lit", false, true);
@@ -216,6 +216,35 @@ namespace NovaStriker.Game.Three
         public static Material Grade => grade ??= Load("Grade", "NovaStriker/Grade", false, false);
         public static Material Aegis => aegis ??= Load("Aegis", "NovaStriker/Aegis", false, false);
         public static Material Reflect => reflect ??= Load("Reflect", "NovaStriker/Reflect", false, false);
+        // Particle materials (URP's particle shaders): additive glow, alpha-blended, and lit (smoke that takes the sun)
+        public const string PARTICLE_UNLIT = "Universal Render Pipeline/Particles/Unlit", PARTICLE_LIT = "Universal Render Pipeline/Particles/Lit";
+        public static Material ParticleAdd => pAdd ??= LoadParticle("ParticleAdd", PARTICLE_UNLIT);
+        public static Material ParticleAlpha => pAlpha ??= LoadParticle("ParticleAlpha", PARTICLE_UNLIT);
+        public static Material ParticleLit => pLit ??= LoadParticle("ParticleLit", PARTICLE_LIT);
+        static Material LoadParticle(string name, string shader)
+        {
+            var m = Resources.Load<Material>("NovaStriker/" + name);
+            if (m != null) return m;
+            m = new Material(Shader.Find(shader)) { name = name };
+            ConfigureParticle(m, name);
+            return m;
+        }
+        // The keywords and blend state each particle template is saved with (shared with the editor setup): see-through,
+        // soft where it meets geometry (the depth texture), additive or alpha blended, double sided
+        public static void ConfigureParticle(Material m, string name)
+        {
+            bool additive = name == "ParticleAdd";
+            m.SetFloat("_Surface", 1); m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); m.SetOverrideTag("RenderType", "Transparent");
+            m.SetFloat("_ZWrite", 0); m.SetFloat("_Cull", 0);
+            m.SetFloat("_Blend", additive ? 2 : 0);
+            m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend", (float)(additive ? BlendMode.One : BlendMode.OneMinusSrcAlpha));
+            m.SetFloat("_SrcBlendAlpha", (float)(additive ? BlendMode.Zero : BlendMode.One)); m.SetFloat("_DstBlendAlpha", (float)(additive ? BlendMode.One : BlendMode.OneMinusSrcAlpha));
+            m.SetFloat("_SoftParticlesEnabled", 1); m.SetFloat("_SoftParticlesNearFadeDistance", 0); m.SetFloat("_SoftParticlesFarFadeDistance", 0.8f);
+            m.SetVector("_SoftParticleFadeParams", new Vector4(0, 1 / 0.8f, 0, 0)); m.EnableKeyword("_SOFTPARTICLES_ON");
+            m.SetVector("_CameraFadeParams", new Vector4(0, Mathf.Infinity, 0, 0));
+            m.renderQueue = (int)RenderQueue.Transparent;
+            m.enableInstancing = true;
+        }
 
         static Material Load(string name, string shader, bool transparent, bool surface, bool coat = false)
         {
