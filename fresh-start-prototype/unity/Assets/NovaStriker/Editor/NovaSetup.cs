@@ -131,6 +131,8 @@ namespace NovaStriker.EditorTools
             }
             // Forward+: no per-object light limit, so effect lights reach everything near them
             data.renderingMode = RenderingMode.ForwardPlus;
+            // Soft particles sample opaque depth during transparency, before the default late copy.
+            data.copyDepthMode = CopyDepthMode.AfterOpaques;
             // Rebuild the features: ambient occlusion (Ultra), then the grade
             foreach (var f in data.rendererFeatures.ToArray()) { if (f != null) Object.DestroyImmediate(f, true); }
             data.rendererFeatures.Clear();

@@ -1,7 +1,7 @@
 // Reflections on the deck (Settings: Reflections): a second camera mirrors the main one in the floor plane (y = 0)
 // and renders the scene into a texture each frame; thin sheets over the open sky's floors (Reflect shader) show it,
 // strongest at grazing angles, so the deck takes on the sheen of a polished sky city: characters, lights, the
-// white towers and the sky all mirrored in it. High renders it at half size, Ultra at full; Low has none.
+// High renders at quarter width/height, Ultra at half; Low has none. The distant backdrop is excluded.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -54,7 +54,7 @@ namespace NovaStriker.Game
             int div = q == "ultra" ? 2 : 4, w = Mathf.Max(64, Screen.width / div), h = Mathf.Max(64, Screen.height / div);
             if (rt == null || rtW != w || rtH != h)
             {
-                if (rt != null) rt.Release();
+                if (rt != null) { cam.targetTexture = null; rt.Release(); Object.Destroy(rt); }
                 rt = new RenderTexture(w, h, 24, RenderTextureFormat.DefaultHDR) { name = "deck-reflection" };
                 rtW = w; rtH = h; cam.targetTexture = rt;
                 Shader.SetGlobalTexture("_NovaReflectionTex", rt);

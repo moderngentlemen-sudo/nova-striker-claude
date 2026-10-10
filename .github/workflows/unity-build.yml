@@ -156,7 +156,7 @@ jobs:
 
       - name: Capture Linux player review
         if: matrix.name == 'Linux' && steps.secrets.outputs.ok == 'true'
-        timeout-minutes: 8
+        timeout-minutes: 12
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libgl1-mesa-dri libasound2t64 ffmpeg
@@ -164,7 +164,7 @@ jobs:
           player=$(find build/StandaloneLinux64 -name '*.x86_64' -type f -print -quit)
           test -n "$player"
           chmod +x "$player"
-          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 360s "$player" \
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 600s "$player" \
             -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
             -logFile "$GITHUB_WORKSPACE/review/player.log" \
             --nova-review "$GITHUB_WORKSPACE/review" --nova-commit "$GITHUB_SHA"

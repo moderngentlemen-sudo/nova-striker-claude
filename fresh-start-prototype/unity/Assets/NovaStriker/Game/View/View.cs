@@ -89,6 +89,7 @@ namespace NovaStriker.Game
             camera.allowHDR = true;
             var cd = camera.GetUniversalAdditionalCameraData();
             cd.renderPostProcessing = true; cd.renderShadows = true; cd.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            cd.requiresDepthTexture = true; cd.requiresColorTexture = true;
             cgo.AddComponent<AudioListener>();
 
             // Lights. Unity's light colours are sRGB (it linearises them); its intensities are radiance
