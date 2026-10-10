@@ -10,6 +10,8 @@
 *.csproj
 !SimTests/SimTests.csproj
 !SimTests/ShieldTests/ShieldTests.csproj
+!SimTests/LevelTests/LevelTests.csproj
+!SimTests/LayoutExport/LayoutExport.csproj
 *.sln
 *.pidb
 *.suo
@@ -22,6 +24,10 @@ SimTests/bin/
 SimTests/**/bin/
 SimTests/**/obj/
 SimTests/obj/
+SimTests/typecheck/unity/
+SimTests/typecheck/pkgs/
+SimTests/typecheck/out*/
+Art/Review/
 
 # Made on each computer by Nova Striker > Set Up Project (or by Unity itself), so they stay out of the repository:
 # the templates, pipeline and scene are rebuilt from code, and Unity writes its own settings and .meta files

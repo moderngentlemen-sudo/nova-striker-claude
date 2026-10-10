@@ -90,5 +90,6 @@ static class P {
       Check(p.lane == 0 && p.laneT == 0 && LevelFeatures.Same(p, Enemies.CreateEnemy("swarmer", 54, 0)), "lanes off: no hops, everything reaches everything");
     }
     Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
+    Environment.ExitCode = fails == 0 ? 0 : 1;
   }
 }

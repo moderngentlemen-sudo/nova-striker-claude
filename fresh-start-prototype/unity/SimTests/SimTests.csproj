@@ -10,7 +10,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS0649;CS0414</NoWarn>
     <!-- (ShieldTests is its own project) -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);ShieldTests/**;typecheck/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);ShieldTests/**;LevelTests/**;LayoutExport/**;typecheck/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Assets/NovaStriker/Sim/**/*.cs" />

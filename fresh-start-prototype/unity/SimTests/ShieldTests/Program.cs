@@ -115,5 +115,6 @@ static class P {
       Check(stun, "sentinel + stun option: perfect parry stuns");
     }
     Console.WriteLine(fails == 0 ? "ALL PASS" : $"{fails} FAILED");
+    Environment.ExitCode = fails == 0 ? 0 : 1;
   }
 }
