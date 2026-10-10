@@ -1,10 +1,10 @@
 # Graphics update build
 
-Work branch: `nova-striker-unity-sol-6-1`. Built code commit: `60428826e7d4c8727465f79698d3a6d738132521`. Engine: Unity 6000.3.25f1; URP 17.3.0. [Run 38057267941](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38057267941) passes the simulation/asset checks and actual Windows/macOS setup/build/upload steps. Linux remained in setup for over twenty minutes; this documentation checkpoint starts a fresh runner with unchanged game source. The final Linux build and rendered review are pending. Full release acceptance is separate.
+Work branch: `nova-striker-unity-sol-6-1`. Built commit: `4d116a7c5c69cf3e1be461427fa236dcfda46ced`; its game source matches `60428826e7d4c8727465f79698d3a6d738132521` (the intervening commit changes documentation only). Engine: Unity 6000.3.25f1; URP 17.3.0. [Run 38058817385](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385) passes the simulation/asset checks, actual Windows/macOS/Linux setup/build/upload steps and the complete Linux graphical review. Full release acceptance is separate. This documentation-only follow-up does not change the built game source.
 
 ## Launch the Windows player
 
-1. [Download **NovaStriker-Windows**](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38057267941/artifacts/11671449416) while signed into GitHub.
+1. [Download **NovaStriker-Windows**](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385/artifacts/11672701536) while signed into GitHub.
 2. Extract the download. It contains `NovaStriker-Windows.zip`; extract that archive too.
 3. Open the extracted folder and double-click **NovaStriker.exe**. Keep `NovaStriker_Data`, `UnityPlayer.dll` and the other supplied files beside it. A Unity editor install is not required.
 4. Click or press a key/gamepad button to join. Press **H** (gamepad View) for controls. **Esc/P** (gamepad Menu) opens pause/settings.
@@ -15,14 +15,18 @@ Work branch: `nova-striker-unity-sol-6-1`. Built code commit: `60428826e7d4c8727
 
 | Artifact | Link | Check |
 |---|---|---|
-| Windows | [Player download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38057267941/artifacts/11671449416) | Actual Unity player build; both ZIPs pass integrity checks; required executable/data/assemblies present |
-| macOS | [Player download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38057267941/artifacts/11672043883) | Actual Unity player build; native gameplay smoke test remains open |
-| Linux | Pending exact-run artifact | Await actual setup/build/capture results |
-| Unity captures/logs | Pending exact-run artifact | Await the full 44-still, motion, surface, persistence and resource review |
+| Windows | [Player download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385/artifacts/11672701536) | Actual Unity player build; both ZIPs pass integrity checks; required executable/data/assemblies present |
+| macOS | [Player download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385/artifacts/11672212318) | Actual Unity player build; native gameplay smoke test remains open |
+| Linux | [Player download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385/artifacts/11672591769) | Actual Unity player build; automated graphical smoke suite passes |
+| Unity captures/logs | [Review download](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38058817385/artifacts/11673115595) | 44 named stills, 86 motion frames, four short clips, focused surface probe, resource counts and second-launch settings check |
 
-Artifacts require repository access and expire on **2026-11-09**. Windows archive SHA256: `2009b7136a890922bc8c067e0e60ef713358e165b4d605231af646d35f4edbca`. Its [archive check](checks/windows-6042882-verification.json) confirms valid inner/outer ZIPs and all required player files. All **132 level checks and 21 shield checks** pass; the trace project builds and runtime assets validate. Exact final Linux reports will be recorded alongside these checks.
+Artifacts require repository access and expire on **2026-11-09**. Windows archive SHA256: `db571b20cfcde6dcf947e0ab2d31f924e8d11a47c4f00d3373d0e5390b5b9009`. Its [archive check](checks/windows-4d116a7-verification.json) confirms valid inner/outer ZIPs and all required player files. All **132 level checks and 21 shield checks** pass; the trace project builds and runtime assets validate. See [exact job/artifact records](checks/ci-4d116a7.json), [runtime report](checks/review-4d116a7.json), [focused surface report](checks/surface-4d116a7.json), [settings reload](checks/settings-reload-4d116a7.json) and [limited visual inspection](checks/visual-review-4d116a7.json).
 
-The capture workflow uses 960×540 OpenGLCore on llvmpipe, a software renderer. Its results establish limited rendered/runtime evidence. They do not establish 1080p/60 fps or a completed native Windows/macOS playthrough.
+The actual logs contain zero shader failures and runtime exceptions. The production projectile mark changes 121 visible pixels in the full suite and 166 in the focused probe, above the unchanged 24-pixel minimum. Full-suite floor/wall prototypes change 673/25 darkened pixels. Three native projectors are active. Valid Custom settings survive a second launch. Inspected latest charge/release/pause/Classic, chain, cloud and contact images provide limited visual evidence; earlier six-zone/enemy inspections are retained in the status history.
+
+After bounded first use, ten reset samples stabilize at 708 materials, 2513 meshes and 18 lights. Three complete character cycles repeat their retained counts exactly. Peak decorative particles/effect lights/weather lights are 1727/8/3, within their High caps. The backdrop volume renders 376 frames at 24 steps; 29 spatial LOD groups are present. These results do not substitute for every live effect trigger or the full four-character combat stress matrix.
+
+The capture machine uses an AMD EPYC 7763 CPU, 15989 MB RAM and llvmpipe LLVM 20.1.2 software GPU, OpenGLCore, 960×540 and High graphics. CPU/GPU timings were unavailable (zero), allocations unavailable (-1); mixed capture p95 was 1174.35 ms, with 832 draw calls, 130 SetPass calls and 1285224 triangles including repeated passes. This is not a fixed 60-second benchmark. No 1080p/60 fps or completed native Windows/macOS playthrough is claimed.
 
 ## Open the source in Unity
 

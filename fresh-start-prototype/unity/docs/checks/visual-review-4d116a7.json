@@ -1,0 +1,58 @@
+{
+  "date_utc": "2026-10-10",
+  "built_commit": "4d116a7c5c69cf3e1be461427fa236dcfda46ced",
+  "game_source_commit": "60428826e7d4c8727465f79698d3a6d738132521",
+  "run": 38058817385,
+  "review_artifact": 11673115595,
+  "review_zip_sha256": "d3248d26aaeb9e516751fd4d0f9dcfdc641a303f29806485620951bf0e9c82fa",
+  "review_zip_bytes": 88422235,
+  "review_zip_crc": "pass",
+  "inspected_images": [
+    "nova_beam_charge",
+    "nova_beam_release",
+    "nova_beam_paused",
+    "nova_beam_classic",
+    "ram_beam_charge",
+    "ram_beam_release",
+    "chain_lightning",
+    "cloud_volume",
+    "projectile_wall_impact_before",
+    "projectile_wall_impact"
+  ],
+  "sampled_motion_frames": [
+    "energy/nova/000",
+    "energy/nova/019"
+  ],
+  "findings": [
+    "Nova gold charge cage and 3D release core/filaments are visible; ground and wall lighting agree with the blast colour.",
+    "RAM blue-white charge/release and blue ground illumination are visible.",
+    "Nova pause retains geometry and Classic has a visibly distinct ribbon style.",
+    "The controlled production chain links enemies with branching paths, body sparks/arcs and local ground lighting.",
+    "Native abrasion is visible on the collision side at the front-lane contact in the frozen before/after pair.",
+    "The volume cloud view retains player/platform silhouettes in front; this single view is not full route/FOV approval."
+  ],
+  "encoded_clips": {
+    "nova-energy.mp4": {
+      "frames": 20,
+      "fps": 10
+    },
+    "ram-energy.mp4": {
+      "frames": 20,
+      "fps": 10
+    },
+    "chain-energy.mp4": {
+      "frames": 6,
+      "fps": 10
+    },
+    "skyline-motion.mp4": {
+      "frames": 40,
+      "fps": 10
+    }
+  },
+  "limits": [
+    "Controlled production trigger/state captures are not a keyboard/gamepad playthrough.",
+    "Six-zone/enemy art inspections are historical unchanged-source evidence; every latest frame was not independently re-approved.",
+    "All live event/material/animation states, full traversal/local multiplayer and all backdrop camera/teleport conditions remain open.",
+    "Software OpenGL at 960x540 does not establish target-GPU 1080p/60fps or owner-editor compatibility."
+  ]
+}

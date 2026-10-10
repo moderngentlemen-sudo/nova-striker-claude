@@ -1,0 +1,383 @@
+{
+  "run": 38057267941,
+  "commit": "60428826e7d4c8727465f79698d3a6d738132521",
+  "branch": "nova-striker-unity-sol-6-1",
+  "conclusion": "cancelled",
+  "jobs": [
+    {
+      "id": 114228193549,
+      "name": "Simulation and asset checks",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 38057267941,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run deterministic tests and validate exports",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        }
+      ]
+    },
+    {
+      "id": 114228286149,
+      "name": "Build Windows",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 38057267941,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check the Unity licence secrets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Free disk space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache the Library folder",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Prepare the project with Unity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Build with Unity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Zip the build",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Upload",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Capture Linux player review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10
+        },
+        {
+          "name": "Upload player review evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11
+        },
+        {
+          "name": "Post Cache the Library folder",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        }
+      ]
+    },
+    {
+      "id": 114228286206,
+      "name": "Build Linux",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "run_id": 38057267941,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check the Unity licence secrets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Free disk space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache the Library folder",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Prepare the project with Unity",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "number": 6
+        },
+        {
+          "name": "Build with Unity",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Zip the build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Upload",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9
+        },
+        {
+          "name": "Capture Linux player review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10
+        },
+        {
+          "name": "Upload player review evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Post Cache the Library folder",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        }
+      ]
+    },
+    {
+      "id": 114228286209,
+      "name": "Build macOS",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 38057267941,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check the Unity licence secrets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Free disk space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache the Library folder",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Prepare the project with Unity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Build with Unity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Zip the build",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Upload",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Capture Linux player review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10
+        },
+        {
+          "name": "Upload player review evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11
+        },
+        {
+          "name": "Post Cache the Library folder",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11672043883,
+      "name": "NovaStriker-macOS",
+      "size_in_bytes": 53165417,
+      "url": "https://api.github.com/repos/moderngentlemen-sudo/nova-striker-claude/actions/artifacts/11672043883",
+      "archive_download_url": "https://api.github.com/repos/moderngentlemen-sudo/nova-striker-claude/actions/artifacts/11672043883/zip",
+      "expired": false,
+      "created_at": "2026-10-10T13:58:48Z",
+      "expires_at": "2026-11-09T13:58:46Z",
+      "updated_at": "2026-10-10T13:58:48Z",
+      "digest": "sha256:6c1faefdf00cbcd95691ef7cfa5905ed04c8bc6228e4bc56309436093086c9bc",
+      "workflow_run": {
+        "id": 38057267941,
+        "repository_id": 1394667500,
+        "head_repository_id": 1394667500,
+        "head_branch": "nova-striker-unity-sol-6-1",
+        "head_sha": "60428826e7d4c8727465f79698d3a6d738132521"
+      }
+    },
+    {
+      "id": 11671449416,
+      "name": "NovaStriker-Windows",
+      "size_in_bytes": 43901523,
+      "url": "https://api.github.com/repos/moderngentlemen-sudo/nova-striker-claude/actions/artifacts/11671449416",
+      "archive_download_url": "https://api.github.com/repos/moderngentlemen-sudo/nova-striker-claude/actions/artifacts/11671449416/zip",
+      "expired": false,
+      "created_at": "2026-10-10T13:57:47Z",
+      "expires_at": "2026-11-09T13:57:46Z",
+      "updated_at": "2026-10-10T13:57:47Z",
+      "digest": "sha256:2009b7136a890922bc8c067e0e60ef713358e165b4d605231af646d35f4edbca",
+      "workflow_run": {
+        "id": 38057267941,
+        "repository_id": 1394667500,
+        "head_repository_id": 1394667500,
+        "head_branch": "nova-striker-unity-sol-6-1",
+        "head_sha": "60428826e7d4c8727465f79698d3a6d738132521"
+      }
+    }
+  ],
+  "note": "Linux was cancelled after prolonged Unity setup by the next documentation checkpoint. Windows/macOS artifacts are verified. This is not a Linux pass."
+}

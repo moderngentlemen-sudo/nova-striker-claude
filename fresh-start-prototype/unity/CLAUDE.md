@@ -7,6 +7,7 @@ Notes for whoever continues this work.
 - **Work only on `nova-striker-unity-sol-6-1` for this copy.** The owner's branch instruction supersedes the inherited source-branch rule.
 - **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. The core implementation and Blender source review are present. Read GRAPHICS_UPDATE_STATUS.md for exact checks and remaining release gates.
 - **Delivered build:** read [`docs/BUILD_DELIVERY.md`](docs/BUILD_DELIVERY.md) for the exact built commit, downloads and actual results. Keep older diagnostic runs separate. Owner's 6.6 compatibility, full playthroughs and reference-GPU profiling remain distinct checks.
+  - Final automated delivery: run `38058817385`, built commit `4d116a7`, game source `6042882`. All three real desktop builds and the 44-capture Linux review pass, including native contact pixels, settings reload and stable reset/swap counts. Latest beam/chain/cloud/contact images have limited visual review. Full manual release gates remain in GRAPHICS_UPDATE_STATUS.md.
 - **Leave the source branch `nova-striker-unity-claude` unchanged.**
 - **Leave alone** `nova-striker-unity-astra` (the owner's separate copy) and `claude/wizardly-wozniak-r0q6no`.
 - **Pull requests:** don't open one unless asked.
