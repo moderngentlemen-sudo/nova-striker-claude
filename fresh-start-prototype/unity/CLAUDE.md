@@ -4,7 +4,9 @@ Notes for whoever continues this work.
 
 ## Branches
 
-- **Work only on `nova-striker-unity-claude`.**
+- **Work only on `nova-striker-unity-sol-6-1` for this copy.** The owner's branch instruction supersedes the inherited source-branch rule.
+- **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. This branch currently contains the plan, not its subsequent implementation.
+- **Leave the source branch `nova-striker-unity-claude` unchanged.**
 - **Leave alone** `nova-striker-unity-astra` (the owner's separate copy) and `claude/wizardly-wozniak-r0q6no`.
 - **Pull requests:** don't open one unless asked.
 
@@ -113,7 +115,7 @@ The README's *Unity-only additions* has the full description.
 
 ## Open threads and ideas
 
-- **The next update is planned in [`docs/NEXT_UPDATE_PLAN.md`](docs/NEXT_UPDATE_PLAN.md):** graphics, effects
+- **The earlier design is recorded in [`docs/NEXT_UPDATE_PLAN.md`](docs/NEXT_UPDATE_PLAN.md); execute [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md) on this branch:** graphics, effects
   and particles with pause-menu options, clouds and birds, geometry optimisation, multi-tier levels, hazards,
   depth lanes, dressing for the remaining stages, and enemy models. Follow it phase by phase.
 

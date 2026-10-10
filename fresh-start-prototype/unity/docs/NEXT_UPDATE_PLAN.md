@@ -1,5 +1,7 @@
 # Nova Striker Unity: the next update (graphics, effects and level features)
 
+> Historical design reference. On `nova-striker-unity-sol-6-1`, use [GRAPHICS_UPDATE_EXECUTION_PLAN.md](GRAPHICS_UPDATE_EXECUTION_PLAN.md) for current branch rules, remaining work, checks and acceptance criteria. Much of this original plan already has an implementation. Do not execute its source-branch checkout/push commands or assume its proposed formats match current code.
+
 A plan to execute phase by phase. It is written for an engineer (or coding agent) working in this repository with
 no memory of earlier sessions. Follow it closely and in order. Where a step says "verify", run the check
 and read the output before moving on.

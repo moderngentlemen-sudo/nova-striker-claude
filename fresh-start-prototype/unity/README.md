@@ -1,5 +1,7 @@
 # Nova Striker: Unity port of Version 13
 
+**Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The plan is prepared; its implementation and Unity validation remain future work. Unity is the primary platform and browser parity is informational.
+
 This is a port of the Version 13 browser prototype in `../game` to Unity 6.3 with URP. It keeps the
 prototype's scope: an isolated, hypothetical fresh-start track. The characters are procedural placeholder
 rigs, and all sound and music is synthesized placeholder audio.
