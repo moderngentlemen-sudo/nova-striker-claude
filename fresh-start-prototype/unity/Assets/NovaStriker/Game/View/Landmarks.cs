@@ -61,6 +61,7 @@ namespace NovaStriker.Game
             var windowMap = WindowTex();
             var windows = TMat.Std(0xffffff, 0.8f); windows.map = windowMap; windows.emissiveHex = 0xffffff; windows.emissiveMap = windowMap; windows.emissiveIntensity = 1.3f;
             var neon = Glow(0xff7ad9, 0xff4fc8, 2.2f); var cyan = Glow(0x7fe3ff, 0x4fd6ff, 2.0f);
+            view.neon.Add((neon, 2.2f)); view.neon.Add((cyan, 2.0f));
             var train = Glow(0xe9edf3, 0x4fd6ff, 0.15f); train.roughness = 0.35f;
             // Surface detail (Look): plating on the steelwork and the reactor core, rusted plate, poured concrete
             Look.ApplySurface(steel, "panel", 3.5f); Look.ApplySurface(rust, "panel", 3, 0.9f); Look.ApplySurface(core, "panel", 4, 0.5f); Look.ApplySurface(concrete, "concrete", 4, 0.6f);

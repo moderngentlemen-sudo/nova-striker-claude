@@ -18,7 +18,7 @@ namespace NovaStriker.Game
         static readonly Vector2 WIND = new Vector2(2.2f, 0.6f);   // m/s along the route (x) and back from the camera (the cookie's drift)
         const float COOKIE_SIZE = 70;                              // m across one tile of cloud shadow
 
-        sealed class Cloth { public Mesh mesh; public Vector3[] rest, pos; public float w, h, phase, amp; }
+        sealed class Cloth { public Mesh mesh; public Vector3[] rest, pos; public float w, h, phase, amp, gust; public Vector3 at; }
         readonly List<Cloth> cloths = new List<Cloth>();
         readonly List<(TMesh s, float speed)> clouds = new List<(TMesh, float)>();
         readonly List<(TMesh m, float dx)> beams = new List<(TMesh, float)>();
@@ -98,10 +98,13 @@ namespace NovaStriker.Game
             var mesh = Geo.Copy(Geo.Plane(w, h, 10, 8));
             var m = new TMesh(mesh, mat) { cast = true, receive = true };
             m.position.set(x + w / 2, y, z); view.scene.add(m);
-            var c = new Cloth { mesh = mesh, rest = mesh.vertices, w = w, h = h, phase = S.Rnd() * 10, amp = amp };
+            var c = new Cloth { mesh = mesh, rest = mesh.vertices, w = w, h = h, phase = S.Rnd() * 10, amp = amp, at = new Vector3(x + w / 2, y, z) };
             c.pos = (Vector3[])c.rest.Clone();
             cloths.Add(c);
         }
+
+        // Someone dashed past a three.js point: the cloths within 3 m of it whip for a moment
+        public void Gust(Vector3 at, float k) { foreach (var C in cloths) if ((C.at - at).sqrMagnitude < 9 + C.w * C.w * 0.25f) C.gust = Mathf.Max(C.gust, k); }
 
         // Something big went off: the nearest flocks scatter, climbing and beating their wings faster for a few seconds
         public void Startle(float strength = 1) { foreach (var F in flocks) F.startle = Mathf.Min(1.5f, F.startle + strength); gulls.Startle(strength); }
@@ -146,11 +149,13 @@ namespace NovaStriker.Game
             float gust = 0.75f + 0.25f * Mathf.Sin(t * 0.7f) + 0.15f * Mathf.Sin(t * 1.9f);
             foreach (var C in cloths)
             {
+                C.gust = Mathf.Max(0, C.gust - dt * 1.2f);
+                float whip = 1 + 2.2f * C.gust;
                 for (int i = 0; i < C.rest.Length; i++)
                 {
                     var r = C.rest[i]; float s = Mathf.Clamp01((r.x + C.w / 2) / C.w), v = r.y / C.h;
                     float wave = Mathf.Sin(s * 5.5f - t * 6.5f + C.phase + v * 1.2f) * 0.6f + Mathf.Sin(s * 9f - t * 10f + C.phase * 1.7f) * 0.25f;
-                    float d = C.amp * gust * 0.16f * Mathf.Pow(s, 1.2f) * wave;
+                    float d = C.amp * gust * whip * 0.16f * Mathf.Pow(s, 1.2f) * wave;
                     C.pos[i] = new Vector3(r.x - Mathf.Abs(d) * 0.25f, r.y + 0.04f * s * Mathf.Sin(t * 3 + C.phase), r.z + d);
                 }
                 C.mesh.vertices = C.pos; C.mesh.RecalculateNormals(); C.mesh.RecalculateBounds();

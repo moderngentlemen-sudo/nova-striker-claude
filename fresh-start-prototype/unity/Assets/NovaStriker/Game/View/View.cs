@@ -42,7 +42,11 @@ namespace NovaStriker.Game
         double camTick = -1; Cam camPrev, camCur;
 
         readonly Light sun, rim;
-        Ambience ambience; TMesh sunGlow;
+        public Ambience ambience; TMesh sunGlow;
+        Weather weather;
+        // the deck's lamps and the Undercity's neon (Weather flickers them) and the deck tops' material (its damp sheen)
+        public readonly List<(TMat m, float k)> lamps = new List<(TMat, float)>(), neon = new List<(TMat, float)>();
+        public TMat floor;
         public Sparks sparks; PlanarReflection reflection;
         public Vfx vfx; PostFx post; LevelFx levelFx;
         readonly List<TMesh> farClouds = new List<TMesh>();
@@ -119,7 +123,7 @@ namespace NovaStriker.Game
             foreach (var c in farClouds) ambience.AddCloud(c);
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
-            vfx = new Vfx(this); levelFx = new LevelFx(this);
+            vfx = new Vfx(this); levelFx = new LevelFx(this); weather = new Weather(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
@@ -255,7 +259,7 @@ namespace NovaStriker.Game
         void BuildLevel()
         {
             var cap = TMat.Std(0xd9dfe7, 0.5f); var body = TMat.Std(0x5f7897, 0.5f); var dark = TMat.Std(0x46596f, 0.55f);   // (glossy: the sky city's sheen)
-            var trim = TMat.Std(0x7fe3ff); trim.emissiveHex = 0x4fd6ff; trim.emissiveIntensity = 2.0f;
+            var trim = TMat.Std(0x7fe3ff); trim.emissiveHex = 0x4fd6ff; trim.emissiveIntensity = 2.0f; lamps.Add((trim, 2.0f)); floor = cap;
             var gate = TMat.Std(0xff2e7e); gate.emissiveHex = 0xff2e7e; gate.emissiveIntensity = 1.6f; gate.transparent = true; gate.opacity = 0.45f; gate.depthWrite = false;
             // Surface detail (Look): riveted plating on the walls, grip deck on the tops, plating on the platforms
             Look.ApplySurface(body, "panel", 3); Look.ApplySurface(dark, "panel", 2.5f); Look.ApplySurface(cap, "floor", 2.2f, 0.5f);
@@ -298,7 +302,7 @@ namespace NovaStriker.Game
         {
             var white = TMat.Std(0xf1f4f7, 0.5f); var navy = TMat.Std(0x2b4f7e, 0.6f);
             var leafA = TMat.Std(0x5fb36a, 0.9f); var leafB = TMat.Std(0x3f8f58, 0.9f);
-            var lamp = TMat.Std(0x9ff0ff); lamp.emissiveHex = 0x5fe0ff; lamp.emissiveIntensity = 2.2f;
+            var lamp = TMat.Std(0x9ff0ff); lamp.emissiveHex = 0x5fe0ff; lamp.emissiveIntensity = 2.2f; lamps.Add((lamp, 2.2f));
             var cloth = new[] { 0x2fb5c9u, 0x2b5d9bu, 0xf1f4f7u }.Select(c => { var m = TMat.Std(c, 0.8f); m.side = Side.Double; return m; }).ToArray();
             void Add(Mesh geo, TMat mat, float x, float y, float z, bool cast = true, Vector3? scale = null) => Bake(geo, mat, new Vector3(x, y, z), default, scale, cast);
             var potGeo = Geo.RoundedBox(1.4f, 0.9f, 1.4f, 2, 0.2f); var leafGeo = Geo.Icosahedron(0.75f, 1);
@@ -589,6 +593,7 @@ namespace NovaStriker.Game
             string T = ev.type;
             if (T == "boxChip" || T == "boxBreak" || T == "liftBounce") breakables.OnEvent(ev);
             if (T == "laneHop" || T.StartsWith("hazard")) levelFx.OnEvent(ev);
+            weather.OnEvent(ev);
             if (T == "boxBreak") trauma = Mathf.Min(1, trauma + (ev.box.tag == "pillar" ? 0.4f : ev.box.tag == "glass" ? 0.12f : 0.2f));
             // Shockwaves from the heaviest blows (an impact frame adds its own in StartImpact)
             if (T == "boxBreak" && ev.box.tag == "pillar") Shockwave(ev.x, ev.y, 0.7f);
@@ -750,7 +755,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);
