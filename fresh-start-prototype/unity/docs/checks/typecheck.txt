@@ -1,0 +1,4 @@
+Pinned Unity 6000.3.25f1 / URP 17.3.0
+Editor: NovaStriker.Sim ok; NovaStriker.Game ok; NovaStriker.Editor ok.
+Player: NovaStriker.Sim ok; NovaStriker.Game ok.
+Shader/import checks belong to licensed CI, not this approximation.

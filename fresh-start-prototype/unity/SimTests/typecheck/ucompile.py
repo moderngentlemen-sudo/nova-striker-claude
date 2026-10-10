@@ -156,3 +156,7 @@ def build(name, stack=()):
 
 for n in ['Unity.Mathematics', 'Unity.Burst', 'Unity.Collections', 'UnityEngine.UI', 'UnityEditor.UI'] + sorted(asm):
     build(n)
+
+# Package editor failures are expected in this lightweight checker; project failures must fail the process.
+project_failures = failed.intersection(only or {n for n in asm if n.startswith("NovaStriker.")})
+if project_failures: sys.exit(1)

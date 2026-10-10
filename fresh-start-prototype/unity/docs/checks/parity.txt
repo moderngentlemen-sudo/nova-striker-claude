@@ -1,0 +1,3 @@
+Informational legacy comparison, new level features enabled: 0 match / 128 differ.
+Initial mismatch: added hazardWarn events at tick 1.
+Unity deterministic level tests are the new gameplay authority.

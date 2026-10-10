@@ -5,7 +5,7 @@ Notes for whoever continues this work.
 ## Branches
 
 - **Work only on `nova-striker-unity-sol-6-1` for this copy.** The owner's branch instruction supersedes the inherited source-branch rule.
-- **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. This branch currently contains the plan, not its subsequent implementation.
+- **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. The core implementation and Blender source review are present. Read GRAPHICS_UPDATE_STATUS.md for exact checks and remaining release gates.
 - **Leave the source branch `nova-striker-unity-claude` unchanged.**
 - **Leave alone** `nova-striker-unity-astra` (the owner's separate copy) and `claude/wizardly-wozniak-r0q6no`.
 - **Pull requests:** don't open one unless asked.
@@ -34,6 +34,7 @@ All run without Unity, from `SimTests/`:
   match the browser prototype, and new options may default on.
 - `bash parity.sh`: the C# simulation against the JavaScript prototype, tick by tick. Informational only now: it
   will differ once Unity's gameplay moves on. Use it to spot unintended simulation changes during graphics work.
+- `cd LevelTests && dotnet run`: 70 deterministic checks for lanes, collision masks, projectiles, hazards, resets, combinations and tier waypoints. Failures must return nonzero.
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
@@ -93,7 +94,7 @@ The README's *Unity-only additions* has the full description.
 - **Quit game.** On the start card and in the pause menu (`UiMenus.cs`).
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
   not yet been tested on an HDR display.
-- **The graphics and level update** (`docs/NEXT_UPDATE_PLAN.md`). None of it has been seen in Unity yet.
+- **The graphics and level update** (`docs/NEXT_UPDATE_PLAN.md`). Its source checks and Blender renders are recorded in GRAPHICS_UPDATE_STATUS.md; only actual player evidence can establish Unity review.
   - **Effects:** `Game/View/Vfx/`. `Vfx` owns the particle layers (`FxPool`), effect lights, quad decals and the
     colliders particles bounce off (layer 9). `Fx.Cine.cs` reacts to events; `CineEvent` returning true replaces
     the classic reaction. Effects read `FxCfg`, never the raw settings. Textures are PNG data in
@@ -101,17 +102,17 @@ The README's *Unity-only additions* has the full description.
   - **New shaders:** `Distort`, `Cloud`, `Bird`, plus the particle templates. Each needs a `TEMPLATES` row in
     `NovaSetup` and the owner running *Set Up Project*.
   - **Clouds and gulls:** `CloudLayer.cs` and `Birds.cs`, drawn with `Graphics.RenderMeshInstanced`. Keep
-    everything in the backdrop at least 70 m (clouds) or 60 m (birds) behind the play plane.
+    entire cloud/bird bounds behind the visible curved-route envelope, not just their centres. Clouds are lit impostors; the legacy key is still `volumetric`.
   - **Weather and the world reacting:** `Weather.cs`, per zone, from the camera's place. `View.lamps` and
     `View.neon` are the materials it flickers.
   - **Level features:** `Sim/LevelFeatures.cs` (tiers, hazards, depth lanes), applied in
     `Level.RestoreBoxes`. Extra boxes have ids of 10000 and up; `Level.Version` changes when boxes do. The view
     side is `LevelFx.cs`. Lane keys are B and M, or L3 with the stick up or down. `ShieldTests` turns the
-    features off; `LevelTests` covers them. With them off, `parity.sh` still matches.
+    features off; `LevelTests` covers them. Browser parity is informational; deterministic level tests are the authority for these rules.
   - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
     Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
-  - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
+  - **Limits:** complete AI traversal is pending despite deterministic tier waypoints and hazard avoidance; decals are quads; true cloud volumes and landmark LODs remain open.
 
 ## Open threads and ideas
 

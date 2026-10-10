@@ -1,6 +1,6 @@
 # Nova Striker: Unity port of Version 13
 
-**Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The plan is prepared; its implementation and Unity validation remain future work. Unity is the primary platform and browser parity is informational.
+**Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The core update is implemented. See [current verification status](docs/GRAPHICS_UPDATE_STATUS.md), [effect coverage](docs/VFX_COVERAGE.md) and [Blender review sheets](docs/art-review/). Unity runtime acceptance is tracked separately from source compilation. Unity is the primary platform and browser parity is informational.
 
 This is a port of the Version 13 browser prototype in `../game` to Unity 6.3 with URP. It keeps the
 prototype's scope: an isolated, hypothetical fresh-start track. The characters are procedural placeholder
@@ -14,9 +14,9 @@ rebuilt on Unity's renderer, audio and UI.
 
 | Part | How far it has been checked |
 |---|---|
-| Simulation (`Sim/`) | **Verified.** The JavaScript and the C# are run side by side with the same inputs and compared on every tick (see *Parity tests*). With the Unity-only level features off, all scenarios match. |
+| Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 70 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
 | Sound and music engine | **Rendered offline.** Outside Unity it rendered the score at all three intensities, plus a run of sound effects, to WAV. Levels were sensible, with no NaNs, at about 20× real time. |
-| Everything else: view, effects, rigs, UI, input, editor setup | **Compiled, not run.** It compiles without errors against the Unity 6.3 engine assemblies, URP 17.3.0, Input System 1.17.0 and uGUI 2.0.0. It has **not** been run in the Unity editor. |
+| View, effects, rigs, UI, input, editor setup | **Assembly checked** against pinned Unity 6000.3.25f1 / URP 17.3.0. Licensed CI builds all desktop targets and captures a Linux player review. Exact build, shader and runtime results are recorded in the status file; they are not inferred from this type-check. |
 
 Expect a first pass in the editor to turn up visual problems that compiling cannot catch: a mirrored axis
 somewhere, a colour that is too bright, a shader keyword that is missing. The code is laid out so these are
@@ -128,10 +128,10 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     distortion, scorch marks and screen effects. Low graphics quality caps them all.
   - **Screen effects:** chromatic aberration and a lens punch on big blasts, film grain, lens dirt, and a lens
     flare from the sun.
-  - **Performance overlay** (Settings › *Effects*): particle, light and decal counts and the frame rate.
+  - **Performance overlay** (Settings › *Effects*): aggregate particle/light counts, CPU/GPU frame timing where supported, p95 time, draw/SetPass/triangle counters and managed memory.
 - **Clouds and birds** (Settings › *Effects*):
-  - **Volumetric clouds:** lit clusters of puffs (`Cloud.shader`), kept at least 70 m behind the action so
-    they never drift into it.
+  - **Lit cloud impostors:** clusters of shaded puffs (`Cloud.shader`), kept at least 70 m behind the action so
+    the full puff bounds stay outside the local curved-route backdrop envelope. True ray-marched volume rendering is still incomplete.
   - **Gulls:** white gulls modelled in Blender (`bird.json`) glide, flap, bank and scatter at explosions.
 - **Weather** (Settings › *Effects* › *Weather*; `Weather.cs`):
   - **Storm Spire:** rain with splashes, lightning, storm clouds and mist.
@@ -139,10 +139,11 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   - **Helix Foundry:** steam, rising embers and heat haze.
   - **Undercity:** drips, low haze, flickering neon and a damp sheen on the floor.
   - **Concourse Lock:** sweeping floodlights and holo dust.
+- **New stage kits:** Blender-built glass/holo concourse hardware, wet tower grating/shutters, skyline relay dishes/gantries, foundry furnaces/pipes/cranes, and undercity fire escapes/neon/transit pieces. Layouts come from the simulation exporter; meshes are instanced in 48 m cells.
 - **Enemy and boss models** (Settings › *Effects* › *Enemy models*). All nine enemy types and both bosses are
   modelled in Blender (`Art/Blender/build_enemy_*.py`, exported by `export_enemy.py` to
   `Models/enemy_<type>.json`). `EnemyModels.cs` puts them on the enemies' rigs, so they move, flash when hit and
-  lose armour as before.
+  lose armour as before. All eleven have reduced distance/Low LODs; changing the model option rebuilds existing enemies.
 - **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
   and scuff marks fade where players land hard or slide.
 - **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.
@@ -155,8 +156,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     only reach their own lane, except area attacks.
   - The data and rules are in `Sim/LevelFeatures.cs`; `SimTests/LevelTests` tests them.
 
-**Known limits:** the AI teammates don't avoid hazards yet; scorch marks are flat quads rather than
-projected decals; distant landmarks have no level-of-detail models yet.
+**Known limits:** tier waypoints and hazard avoidance are headless checked, but complete human/bot traversal and keyboard/gamepad testing remain required. Clouds are lit impostors; scorch marks use surface quads; projected wall decals and landmark LODs remain open. Software-rendered CI captures do not establish a 60 fps desktop result or compatibility with the owner’s 6000.6.2f1 editor.
 
 ### Earlier additions
 

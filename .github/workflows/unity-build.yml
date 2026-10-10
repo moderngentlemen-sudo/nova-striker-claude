@@ -26,9 +26,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  checks:
+    name: Simulation and asset checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run deterministic tests and validate exports
+        working-directory: fresh-start-prototype/unity
+        run: |
+          dotnet run --project SimTests/ShieldTests/ShieldTests.csproj
+          dotnet run --project SimTests/LevelTests/LevelTests.csproj
+          dotnet build SimTests/SimTests.csproj --nologo
+          python3 SimTests/validate_assets.py
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
+    needs: checks
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -44,12 +60,13 @@ jobs:
         id: secrets
         env:
           EMAIL: ${{ secrets.UNITY_EMAIL }}
+          PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           LICENSE: ${{ secrets.UNITY_LICENSE }}
           SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
-          if [ -z "$EMAIL" ] || { [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; }; then
-            echo "::warning::The Unity licence secrets are not set (UNITY_EMAIL, UNITY_PASSWORD and UNITY_LICENSE or UNITY_SERIAL), so the build is skipped. See the comment at the top of .github/workflows/unity-build.yml."
-            echo "ok=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ] || { [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; }; then
+            echo "::error::Unity licence configuration is missing. A skipped player build cannot pass this workflow."
+            exit 1
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
@@ -136,3 +153,36 @@ jobs:
           path: NovaStriker-${{ matrix.name }}.zip
           retention-days: 30
           compression-level: 0
+
+      - name: Capture Linux player review
+        if: matrix.name == 'Linux' && steps.secrets.outputs.ok == 'true'
+        timeout-minutes: 8
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libgl1-mesa-dri libasound2t64 ffmpeg
+          mkdir -p review
+          player=$(find build/StandaloneLinux64 -name '*.x86_64' -type f -print -quit)
+          test -n "$player"
+          chmod +x "$player"
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 1280x720x24' timeout 360s "$player" \
+            -force-glcore -screen-fullscreen 0 -screen-width 1280 -screen-height 720 \
+            -logFile "$GITHUB_WORKSPACE/review/player.log" \
+            --nova-review "$GITHUB_WORKSPACE/review" --nova-commit "$GITHUB_SHA"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('review/runtime.json').read_text())
+          assert not r['errors'], r['errors']
+          assert len(r['captures']) == 24, r['captures']
+          assert r['particles'] <= r['particleCap'], r
+          print('Player review:',r['unity'],r['gpu'],len(r['captures']),'captures')
+          PY
+          ffmpeg -hide_banner -loglevel warning -y -framerate 10 -i review/motion/%03d.png -c:v libx264 -pix_fmt yuv420p review/skyline-motion.mp4
+      - name: Upload player review evidence
+        if: always() && matrix.name == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaStriker-Linux-review
+          path: review/
+          if-no-files-found: warn
+          retention-days: 30
