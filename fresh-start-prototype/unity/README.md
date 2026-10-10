@@ -137,6 +137,10 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   - **Helix Foundry:** steam, rising embers and heat haze.
   - **Undercity:** drips, low haze, flickering neon and a damp sheen on the floor.
   - **Concourse Lock:** sweeping floodlights and holo dust.
+- **Enemy and boss models** (Settings › *Effects* › *Enemy models*). All nine enemy types and both bosses are
+  modelled in Blender (`Art/Blender/build_enemy_*.py`, exported by `export_enemy.py` to
+  `Models/enemy_<type>.json`). `EnemyModels.cs` puts them on the enemies' rigs, so they move, flash when hit and
+  lose armour as before.
 - **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
   and scuff marks fade where players land hard or slide.
 - **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.

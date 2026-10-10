@@ -106,6 +106,9 @@ The README's *Unity-only additions* has the full description.
     `Level.RestoreBoxes`. Extra boxes have ids of 10000 and up; `Level.Version` changes when boxes do. The view
     side is `LevelFx.cs`. Lane keys are B and M, or L3 with the stick up or down. `ShieldTests` turns the
     features off; `LevelTests` covers them. With them off, `parity.sh` still matches.
+  - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
+    `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
+    Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
   - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
 
 ## Open threads and ideas
