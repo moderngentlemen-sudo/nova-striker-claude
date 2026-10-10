@@ -15,6 +15,7 @@ namespace NovaStriker.Game
         readonly View view;
         TObj root;
         int built = -1;
+        double emissionClock;
         sealed class HazView { public Hazard h; public TObj g; public TMesh part, beam, plate; public TMat glow; public float shake; }
         readonly List<HazView> hazards = new List<HazView>();
         readonly List<(LevelBox b, TObj g)> collapses = new List<(LevelBox, TObj)>();
@@ -151,6 +152,12 @@ namespace NovaStriker.Game
         {
             if (built != Level.Version) Build();
             var V = view.vfx;
+            emissionClock += dt * 60;
+            int steps = Mathf.Min(8, (int)emissionClock); emissionClock -= steps;
+            bool advancing = ParticleBudget.Advancing;
+            try {
+                if(steps == 0) ParticleBudget.Advancing = false;
+                for(int sample=0;sample<Mathf.Max(1,steps);sample++) {
             foreach (var (b, g) in collapses) g.visible = b.y1 > -500;
             foreach (var hv in hazards)
             {
@@ -176,7 +183,7 @@ namespace NovaStriker.Game
                         // down fast while on, back up through the idle stretch
                         double c = ((long)world.tick + h.phase) % h.period; float up;
                         if (on) up = 1 - Mathf.Clamp01((float)(c - (h.period - h.on)) / Mathf.Max(1, h.on * 0.65f)); else if (warning) up = 1; else { float k = (float)(c / System.Math.Max(1, h.period - h.warn - h.on)); up = Mathf.Clamp01(k * 1.4f); }
-                        float jitter = warning ? (Random.value - 0.5f) * 0.04f : 0;
+                        float jitter = warning ? Mathf.Sin((float)world.tick * 2.41f) * 0.02f : 0;
                         hv.part.position.copy(W(xm + jitter, h.y0 + 0.6 + up * (h.y1 - h.y0 - 0.6), 0));
                         break;
                     }
@@ -203,6 +210,8 @@ namespace NovaStriker.Game
             foreach (var hz in Level.HAZARDS)
                 if (hz.kind == "collapse" && hz.state == "warn" && Random.value < 0.5f)
                     V.smokeDark.Emit(W(hz.x0 + Random.value * (hz.x1 - hz.x0), hz.y0, (Random.value - 0.5f) * 2), Vector3.down, 0.3f, 0.8f, new Color(1, 1, 1, 0.5f));
+                }
+            } finally { ParticleBudget.Advancing = advancing; }
         }
     }
 }

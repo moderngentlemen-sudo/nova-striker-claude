@@ -31,6 +31,7 @@ namespace NovaStriker.Game
 
         // light motes and birds
         const int MOTES = 150, FLOCKS = 3, BIRDS = 9;
+        int activeMotes;
         DynMesh motes, birds;
         readonly Vector3[] mote = new Vector3[MOTES]; readonly float[] moteK = new float[MOTES];
         sealed class Flock { public float a, speed, rx, rz, cy, cz, dx, startle; public Vector3[] off = new Vector3[BIRDS]; public float[] flap = new float[BIRDS]; }
@@ -48,6 +49,7 @@ namespace NovaStriker.Game
             for (int i = 0; i < MOTES; i++) { int v = i * 4, k = i * 6; quads[k] = v; quads[k + 1] = v + 2; quads[k + 2] = v + 1; quads[k + 3] = v + 1; quads[k + 4] = v + 2; quads[k + 5] = v + 3; }
             var mm = new TMat(TMat.Kind.Basic) { map = view.fx.tex.glow, vertexColors = true, transparent = true, depthWrite = false, blending = Blending.Additive, side = Side.Double };
             motes = new DynMesh(MOTES * 4, quads, mm, true, true, "motes"); view.scene.add(motes.obj);
+            ParticleBudget.Register(() => motes.visible ? activeMotes : 0);
             for (int i = 0; i < MOTES; i++)
             {
                 mote[i] = new Vector3(-20 + S.Rnd() * 40, 0.4f + S.Rnd() * 8, -11 + S.Rnd() * 14); moteK[i] = S.Rnd() * 10;
@@ -56,7 +58,7 @@ namespace NovaStriker.Game
             // birds: small dark silhouettes, two wings each, in loose flocks circling far out over the city
             var bt = new int[FLOCKS * BIRDS * 6];
             for (int i = 0; i < FLOCKS * BIRDS; i++) { int v = i * 4, k = i * 6; bt[k] = v; bt[k + 1] = v + 1; bt[k + 2] = v + 2; bt[k + 3] = v; bt[k + 4] = v + 3; bt[k + 5] = v + 1; }
-            var bm = new TMat(TMat.Kind.Basic) { colorHex = 0x55657a, side = Side.Double };
+            var bm = new TMat(TMat.Kind.Basic) { colorHex = 0xe5e8e6, side = Side.Double };
             birds = new DynMesh(FLOCKS * BIRDS * 4, bt, bm, false, false, "birds"); view.scene.add(birds.obj);
             for (int f = 0; f < FLOCKS; f++)
             {
@@ -171,9 +173,11 @@ namespace NovaStriker.Game
             float glow = sky * (0.12f + 0.88f * cover);
             motes.visible = glow > 0.01f;
             if (!motes.visible) return;
+            activeMotes=Mathf.RoundToInt(MOTES*FxCfg.Amount);
             Vector3 right = cam.transform.right, up = cam.transform.up; right.z = -right.z; up.z = -up.z;   // (into three.js space)
             for (int i = 0; i < MOTES; i++)
             {
+                if(i>=activeMotes){for(int k=0;k<4;k++){motes.Set(i*4+k,Vector3.zero);motes.col[i*4+k]=Color.clear;}continue;}
                 var p = mote[i];
                 p.x += (WIND.x * 0.35f + Mathf.Sin(t * 0.7f + moteK[i]) * 0.15f) * dt; p.y += Mathf.Sin(t * 0.9f + moteK[i] * 1.3f) * 0.12f * dt;
                 if (p.x > camX + 22) p.x -= 44; if (p.x < camX - 22) p.x += 44;
@@ -189,8 +193,11 @@ namespace NovaStriker.Game
 
         void UpdateBirds(float dt, float camX)
         {
-            birds.visible = sky > 0.05f && SETTINGS.birds == "classic";
+            birds.visible = sky > 0.05f && (SETTINGS.birds == "classic" || (SETTINGS.birds == "realistic" && !gulls.HasModel));
             if (!birds.visible) return;
+            var frame = Level.Frame(camX);var origin=new Vector3((float)frame.px,0,(float)frame.pz);var tangent=new Vector3((float)frame.tx,0,(float)frame.tz);var normal=new Vector3((float)frame.nx,0,(float)frame.nz);
+            float envelope=0;for(double x=camX-80;x<=camX+80;x+=2)envelope=Mathf.Max(envelope,Vector3.Dot(origin-S.W(x,0,-2.8),normal));
+            Vector3 Place(Vector3 point)=>origin+tangent*(point.x-camX)+Vector3.up*point.y+normal*Mathf.Min(-72-envelope,point.z);
             for (int f = 0; f < FLOCKS; f++)
             {
                 var F = flocks[f]; F.startle = Mathf.Max(0, F.startle - dt * 0.4f);
@@ -205,8 +212,8 @@ namespace NovaStriker.Game
                     var o = F.off[k] * (1 + st * 1.6f) + new Vector3(Mathf.Sin(t * 0.5f + k), Mathf.Sin(t * 0.7f + k * 1.7f) * 0.6f, Mathf.Cos(t * 0.4f + k)) * 0.8f;
                     var c = centre + o; float span = 0.8f, lift = Mathf.Sin(F.flap[k]) * 0.35f;
                     int v = (f * BIRDS + k) * 4;
-                    birds.Set(v, c + heading * 0.18f); birds.Set(v + 1, c - heading * 0.25f);
-                    birds.Set(v + 2, c + wing * span + Vector3.up * lift - heading * 0.12f); birds.Set(v + 3, c - wing * span + Vector3.up * lift - heading * 0.12f);
+                    birds.Set(v, Place(c + heading * 0.18f)); birds.Set(v + 1, Place(c - heading * 0.25f));
+                    birds.Set(v + 2, Place(c + wing * span + Vector3.up * lift - heading * 0.12f)); birds.Set(v + 3, Place(c - wing * span + Vector3.up * lift - heading * 0.12f));
                 }
             }
             birds.Upload();

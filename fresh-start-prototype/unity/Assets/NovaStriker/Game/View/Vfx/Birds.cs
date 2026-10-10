@@ -22,6 +22,7 @@ namespace NovaStriker.Game
         readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
         readonly View view;
         float t;
+        public bool HasModel => mesh != null && mat != null && mat.shader.isSupported;
 
         public Birds(View view)
         {
@@ -66,7 +67,7 @@ namespace NovaStriker.Game
 
         public void Update(float dt, double camX, float sky)
         {
-            if (mesh == null || SETTINGS.birds != "realistic" || sky < 0.05f) return;
+            if (!HasModel || SETTINGS.birds != "realistic" || sky < 0.05f) return;
             t += dt;
             var f = Level.Frame(camX);
             var P = new Vector3((float)f.px, 0, (float)f.pz); var T = new Vector3((float)f.tx, 0, (float)f.tz).normalized; var Nn = new Vector3((float)f.nx, 0, (float)f.nz).normalized;

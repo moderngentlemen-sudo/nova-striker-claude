@@ -562,7 +562,7 @@ namespace NovaStriker.Game
             else RenderSettings.reflectionIntensity = 0;
             RenderSettings.ambientProbe = sh;
             bool low = SETTINGS.quality == "low";
-            if (SETTINGS.reducedScreenEffects) { trauma = 0; impact = null; pendingImpact = null; }
+            if (SETTINGS.reducedScreenEffects) { trauma = 0; punch = 0; bloomKick = 0; impact = null; pendingImpact = null; }
             grade.SetFloat("_Exposure", Sx.exposure);
             // (Low quality draws without the grade, as the prototype does: tone mapping only)
             grade.SetVector("_Lift", low ? Vector3.zero : Sx.lift); grade.SetVector("_Gamma", low ? Vector3.one : Sx.gamma); grade.SetVector("_Gain", low ? Vector3.one : Sx.gain);
@@ -570,12 +570,13 @@ namespace NovaStriker.Game
         }
 
         // A blast's kick: a bloom swell (and Phase 4's screen effects), and the flocks scatter
-        public void Kick(float k) { bloomKick = Mathf.Max(bloomKick, k); post?.Kick(k); }
+        public void Kick(float k) { if (SETTINGS.reducedScreenEffects) return; bloomKick = Mathf.Max(bloomKick, k); post?.Kick(k); }
         public void Startle(float k) => ambience?.Startle(k);
 
         // A shockwave: a ring that bends the picture outward from a big hit (Grade.shader, at most four)
         public void Shockwave(double x, double y, float strength = 1, float dur = 0.5f)
         {
+            if (!FxCfg.Distortion) return;
             ambience?.Startle(strength);
             if (SETTINGS.quality == "low" || !SETTINGS.shake) return;
             var s = ScreenOf(x, y);
@@ -585,6 +586,7 @@ namespace NovaStriker.Game
         }
         void UpdateWaves(float dt)
         {
+            if (!FxCfg.Distortion) waves.Clear();
             waves.RemoveAll(wv => (wv.t += dt) >= wv.dur);
             for (int i = 0; i < 4; i++)
             {
@@ -770,7 +772,7 @@ namespace NovaStriker.Game
             UpdateImpact(dt, world);
             // Low quality: no outlines, no reflections, no surface relief, no shadows, no bloom
             bool low = SETTINGS.quality == "low";
-            if (SETTINGS.reducedScreenEffects) { trauma = 0; impact = null; pendingImpact = null; }
+            if (SETTINGS.reducedScreenEffects) { trauma = 0; punch = 0; bloomKick = 0; impact = null; pendingImpact = null; }
             if (lowLook != low) { lowLook = low; Look.ShowOutlines(!low); Look.SurfaceRelief(!low); }
             sun.shadows = low ? LightShadows.None : LightShadows.Soft;
             UpdateWaves(dt);

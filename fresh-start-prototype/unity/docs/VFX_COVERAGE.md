@@ -20,7 +20,7 @@ Policy: CineEvent's replacement cases suppress classic reactions. Persistent cha
 
 Settings: Cinematic/Balanced/Classic/Custom, independent explosion/projectile style, smoke/debris/lights/distortion/decals/screen, clouds/birds/weather/models. Custom snapshots effective preset values before editing. Reduced screen effects removes shake/impact/flash/distortion decoration. Warning machinery stays visible. Particle caps aggregate native and legacy systems including weather: 6000/3000/1200; weather/smoke yield capacity first. Persistent projectile meshes, ribbons, hazard geometry, clouds/birds and UI are separate geometry, not particles; they remain in draw/triangle telemetry. Ambient weather lights are separate from the bounded transient impact-light pool (maximum three floodlights plus one lightning light); GPU profiling remains pending.
 
-Both modern and classic projectile emission advance at 60 steps/second with an eight-step catch-up limit. Weather is time-scaled. Some older aura and hazard decorative emissions still use render-frame probability; the 30/60/120 fps comparison remains an open acceptance item.
+Both modern and classic projectile emission advance at 60 steps/second with an eight-step catch-up limit. Weather is time-scaled. Hazard emission also advances at 60 steps/second; some older aura decorative emissions still use render-frame probability; the 30/60/120 fps comparison remains an open acceptance item.
 
 ## Literal event inventory
 

@@ -15,7 +15,7 @@ namespace NovaStriker.Game {
   }
   IEnumerator Settle(int frames=60) {for(int i=0;i<frames;i++)yield return null;}
   IEnumerator Capture(string name, bool counted = true) {
-   yield return new WaitForEndOfFrame();var texture=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(reviewFolder,name+".png"),texture.EncodeToPNG());Destroy(texture);if(counted)review.captures.Add(name);
+   yield return new WaitForEndOfFrame();var texture=new Texture2D(Screen.width,Screen.height,TextureFormat.RGB24,false);texture.ReadPixels(new Rect(0,0,Screen.width,Screen.height),0,0,false);texture.Apply(false);File.WriteAllBytes(Path.Combine(reviewFolder,name+".png"),texture.EncodeToPNG());Destroy(texture);if(counted)review.captures.Add(name);
   }
   IEnumerator ReviewScenes() {
    SETTINGS.levelTiers=true;SETTINGS.levelHazards=true;SETTINGS.depthLanes=true;SETTINGS.quality="high";SETTINGS.fxPreset="cinematic";SETTINGS.clouds="volumetric";SETTINGS.birds="realistic";SETTINGS.enemyModels=true;SETTINGS.aiTeammates=3;
