@@ -13,7 +13,7 @@ using static NovaStriker.Sim.Cfg;
 
 namespace NovaStriker.Game
 {
-    public sealed class GameMain : MonoBehaviour
+    public sealed partial class GameMain : MonoBehaviour
     {
         World world;
         View view;
@@ -64,6 +64,7 @@ namespace NovaStriker.Game
                     sound.jet(p, false); world.RemovePlayer(p.slot);
                 },
             });
+            StartReviewIfRequested();
         }
 
         void SetPaused(bool on)
@@ -173,7 +174,7 @@ namespace NovaStriker.Game
             music.Update(dt, started ? world : null, halted);
             sound.Update(started && !halted ? world : null);   // charge hums and wall-slide grind
             haptics.Update(world, started && !halted);
-            view.Render(world, halted ? 1 : Mathf.Min(1, (float)(acc / DT)), dt);
+            view.Render(world, halted ? 1 : Mathf.Min(1, (float)(acc / DT)), halted ? 0 : dt);
             ui.Update(dt, world, view, fps);
         }
 

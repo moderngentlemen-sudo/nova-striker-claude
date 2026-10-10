@@ -12,12 +12,14 @@ namespace NovaStriker.Game
     {
         public readonly ParticleSystem ps;
         ParticleSystem.EmitParams ep;
-        public FxLayer(ParticleSystem ps) { this.ps = ps; ep = new ParticleSystem.EmitParams(); }
+        public FxLayer(ParticleSystem ps) { this.ps = ps; ParticleBudget.Register(ps); ep = new ParticleSystem.EmitParams(); }
         public int Count => ps.particleCount;
 
         // One particle at a three.js point, moving at v (three.js space, m/s)
         public void Emit(Vector3 at, Vector3 v, float size, float life, Color c, float rot = 0, float spin = 0)
         {
+            if (NovaStriker.Sim.Cfg.SETTINGS.reducedScreenEffects && ps.name == "fx flash") return;
+            if (!ParticleBudget.Admit()) return;
             ep.position = Th.P(at); ep.velocity = Th.P(v);
             ep.startSize = size; ep.startLifetime = life; ep.startColor = c;
             ep.rotation = rot * Mathf.Rad2Deg; ep.angularVelocity = spin * Mathf.Rad2Deg;
@@ -25,6 +27,8 @@ namespace NovaStriker.Game
         }
         public void Emit3D(Vector3 at, Vector3 v, Vector3 size, float life, Color c, Vector3 rot, Vector3 spin)
         {
+            if (NovaStriker.Sim.Cfg.SETTINGS.reducedScreenEffects && ps.name == "fx flash") return;
+            if (!ParticleBudget.Admit()) return;
             ep.position = Th.P(at); ep.velocity = Th.P(v);
             ep.startSize3D = size; ep.startLifetime = life; ep.startColor = c;
             ep.rotation3D = rot * Mathf.Rad2Deg; ep.angularVelocity3D = spin * Mathf.Rad2Deg;

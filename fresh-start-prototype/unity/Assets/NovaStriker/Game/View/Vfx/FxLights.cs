@@ -28,7 +28,7 @@ namespace NovaStriker.Game
         // A flash at a three.js point: colour, peak intensity, range (m), life (s)
         public void Flash(Vector3 at, Color c, float intensity, float range, float life)
         {
-            int max = FxCfg.MaxLights;
+            int max = Mathf.Max(0, FxCfg.MaxLights - Sparks.ActiveLights);
             if (max <= 0) return;
             if (Active >= max) { int oldest = 0; float best = -1; for (int i = 0; i < N; i++) if (ls[i].l.enabled && ls[i].t / ls[i].life > best) { best = ls[i].t / ls[i].life; oldest = i; } next = oldest; }
             else for (int i = 0; i < N; i++) { int j = (next + i) % N; if (!ls[j].l.enabled) { next = j; break; } }
@@ -40,8 +40,10 @@ namespace NovaStriker.Game
 
         public void Update(float dt)
         {
+            int allowed = Mathf.Max(0, FxCfg.MaxLights - Sparks.ActiveLights);
             foreach (var x in ls)
             {
+                if (x.l.enabled && allowed-- <= 0) x.l.enabled = false;
                 if (!x.l.enabled) continue;
                 x.t += dt;
                 float u = x.t / x.life;

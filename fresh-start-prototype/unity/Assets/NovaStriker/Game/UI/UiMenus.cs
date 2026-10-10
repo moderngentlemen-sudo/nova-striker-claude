@@ -59,7 +59,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "volume", label = "Sound effects volume", range = new[] { 0f, 1, 0.05f } },
             new SettingDef { key = "music", label = "Music volume", range = new[] { 0f, 1, 0.05f } },
             new SettingDef { key = "fxPreset", label = "Effects preset", opts = O("cinematic", "Cinematic: everything", "balanced", "Balanced: lighter on the GPU", "classic", "Classic: the original effects", "custom", "Custom: the settings below") },
-            new SettingDef { key = "fxExplosions", label = "Explosions (Custom preset)", opts = O("volumetric", "Volumetric: fire, smoke, embers, debris", "plasma", "Plasma: energy implosion and burst", "stylised", "Stylised: crisp toon puffs", "classic", "Classic") },
+            new SettingDef { key = "fxExplosions", label = "Explosions (Custom preset)", opts = O("volumetric", "Layered: fire, smoke, embers, debris", "plasma", "Plasma: energy implosion and burst", "stylised", "Stylised: crisp toon puffs", "classic", "Classic") },
             new SettingDef { key = "fxProjectiles", label = "Projectiles (Custom preset)", opts = O("energy", "Energy: glowing cores and trails", "tracer", "Tracer: bright streaks", "classic", "Classic") },
             new SettingDef { key = "fxTrails", label = "Projectile trails (Custom preset)", opts = O("long", "Long", "short", "Short", "off", "Off") },
             new SettingDef { key = "fxDensity", label = "Particle density (Custom preset)", opts = O("high", "High", "medium", "Medium", "low", "Low") },
@@ -67,10 +67,11 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "fxSmoke", label = "Smoke (Custom preset)", opts = O("rich", "Rich", "light", "Light", "off", "Off") },
             new SettingDef { key = "fxLights", label = "Light from shots and blasts (Custom preset)", @bool = true },
             new SettingDef { key = "fxDistortion", label = "Heat haze and shockwave distortion (Custom preset)", @bool = true },
-            new SettingDef { key = "fxDecals", label = "Scorch marks and scuffs (Custom preset)", @bool = true },
+            new SettingDef { key = "fxDecals", label = "Surface marks: pooled floor quads", @bool = true },
+            new SettingDef { key = "reducedScreenEffects", label = "Reduced shake, flashing and distortion", @bool = true },
             new SettingDef { key = "fxScreen", label = "Screen effects (Custom preset)", opts = O("cinematic", "Cinematic: lens dirt, grain, aberration kicks", "clean", "Clean") },
             new SettingDef { key = "weather", label = "Weather and atmosphere", @bool = true },
-            new SettingDef { key = "clouds", label = "Clouds", opts = O("volumetric", "Volumetric, lit by the sun", "classic", "Classic") },
+            new SettingDef { key = "clouds", label = "Clouds", opts = O("volumetric", "Lit cloud clusters (impostors)", "classic", "Classic", "off", "Off") },
             new SettingDef { key = "birds", label = "Birds", opts = O("realistic", "Realistic gulls", "classic", "Classic", "off", "Off") },
             new SettingDef { key = "enemyModels", label = "Enemy 3D models (where available)", @bool = true },
             new SettingDef { key = "perfOverlay", label = "Frame time readout", @bool = true },
@@ -81,7 +82,7 @@ namespace NovaStriker.Game.UI
         // The pause menu's sections, in order, and which settings go in each (the rest are Game)
         static readonly string[] SECTIONS = { "Game", "Level features", "Effects", "Graphics", "Controls", "Audio" };
         static string SectionOf(string key) =>
-            key.StartsWith("fx") || key == "weather" || key == "clouds" || key == "birds" || key == "enemyModels" || key == "perfOverlay" ? "Effects"
+            key.StartsWith("fx") || key == "weather" || key == "clouds" || key == "birds" || key == "enemyModels" || key == "perfOverlay" || key == "reducedScreenEffects" ? "Effects"
             : key == "levelTiers" || key == "levelHazards" || key == "depthLanes" ? "Level features"
             : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
             : key == "aimAssist" || key == "lockOn" || key == "lockMode" || key == "dashCharge" || key == "haptics" || key == "hapticStrength" || key == "p1Aim" ? "Controls"
@@ -155,9 +156,10 @@ namespace NovaStriker.Game.UI
         };
 
         static FieldInfo Field(string key) => typeof(Settings).GetField(key);
-        static object GetSetting(string key) => Field(key).GetValue(SETTINGS);
+        static object GetSetting(string key) => key switch { "fxExplosions" => FxCfg.Explosions, "fxProjectiles" => FxCfg.Projectiles, "fxTrails" => FxCfg.Trails, "fxDensity" => FxCfg.Density, "fxSmoke" => FxCfg.Smoke, "fxDebris" => FxCfg.Debris, "fxLights" => FxCfg.Lights, "fxDistortion" => FxCfg.Distortion, "fxDecals" => FxCfg.Decals, "fxScreen" => FxCfg.Screen, _ => Field(key).GetValue(SETTINGS) };
         static void SetSetting(string key, object v)
         {
+            if (key.StartsWith("fx") && key != "fxPreset" && SETTINGS.fxPreset != "custom") FxCfg.CaptureCustom();
             var f = Field(key);
             if (f.FieldType == typeof(double)) f.SetValue(SETTINGS, Convert.ToDouble(v, System.Globalization.CultureInfo.InvariantCulture));
             else if (f.FieldType == typeof(bool)) f.SetValue(SETTINGS, Convert.ToBoolean(v));
@@ -229,6 +231,7 @@ namespace NovaStriker.Game.UI
                 if (quitArmed > 0) { QuitGame(); return; }
                 quitArmed = 3; quitBtn.GetComponentInChildren<Text>().text = "PRESS AGAIN TO QUIT"; Btn.SetOn(quitBtn, true);
             });
+            pause.Para("Level features apply on the next zone load or checkpoint reset. Low graphics caps particles, lights, distortion and surface marks.", 13, Pal.muted);
             pause.Para("<b>Controller:</b> D-pad or left stick to move · left/right changes a list or slider · A to select · B to resume · LB top · RB settings", 13, Pal.muted);
             playerList = W.Rect(pause.content, "players");
             var pl = playerList.gameObject.AddComponent<VerticalLayoutGroup>(); pl.spacing = 6; pl.childControlWidth = pl.childControlHeight = true; pl.childForceExpandHeight = false;

@@ -31,6 +31,7 @@ namespace NovaStriker.Game
         public Vector3 camPos;   // (three.js space)
         public float alpha = 1, time, hitPause;
         public readonly Dictionary<Player, Rig> rigs = new Dictionary<Player, Rig>();
+        bool? enemyModelSetting;
         readonly Dictionary<Enemy, EnemyRig> enemyRigs = new Dictionary<Enemy, EnemyRig>();
         public readonly Fx fx;
         public Breakables breakables;
@@ -43,7 +44,7 @@ namespace NovaStriker.Game
 
         readonly Light sun, rim;
         public Ambience ambience; TMesh sunGlow;
-        Weather weather;
+        Weather weather; StageDressing stageDressing;
         // the deck's lamps and the Undercity's neon (Weather flickers them) and the deck tops' material (its damp sheen)
         public readonly List<(TMat m, float k)> lamps = new List<(TMat, float)>(), neon = new List<(TMat, float)>();
         public TMat floor;
@@ -122,6 +123,7 @@ namespace NovaStriker.Game
             ambience = new Ambience(this, sun, sunGlow);
             foreach (var c in farClouds) ambience.AddCloud(c);
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
+            stageDressing = new StageDressing();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
             vfx = new Vfx(this); levelFx = new LevelFx(this); weather = new Weather(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
@@ -255,7 +257,7 @@ namespace NovaStriker.Game
         }
 
         // How deep (toward the camera and away) a level box is drawn
-        public static float DepthFor(LevelBox b) => b.type == 'o' ? 2.6f : (b.tag == "panel" || b.tag == "column" || b.tag == "pillar") ? 1.8f : b.type == 'g' ? 3.2f : 4.4f;
+        public static float DepthFor(LevelBox b) => b.type == 'o' || b.type == 'g' || b.tag == "panel" || b.tag == "column" || b.tag == "pillar" ? 4.8f : 5.6f;
         void BuildLevel()
         {
             var cap = TMat.Std(0xd9dfe7, 0.5f); var body = TMat.Std(0x5f7897, 0.5f); var dark = TMat.Std(0x46596f, 0.55f);   // (glossy: the sky city's sheen)
@@ -270,7 +272,7 @@ namespace NovaStriker.Game
                 float depth = DepthFor(b), hgt = (float)(b.y1 - b.y0);
                 var segs = new List<(double, double)>();
                 bool curved = Level.CurvedSpan(b.x0, b.x1);
-                if (!curved) segs.Add((b.x0, b.x1));
+                if (!curved) { int n = Mathf.Max(1, (int)System.Math.Ceiling((b.x1 - b.x0) / 24)); for (int i = 0; i < n; i++) segs.Add((b.x0 + (b.x1 - b.x0) * i / n, b.x0 + (b.x1 - b.x0) * (i + 1) / n)); }
                 else { int n = (int)System.Math.Ceiling((b.x1 - b.x0) / 0.9); for (int i = 0; i < n; i++) segs.Add((b.x0 + (b.x1 - b.x0) * i / n, b.x0 + (b.x1 - b.x0) * (i + 1) / n)); }
                 foreach (var (x0, x1) in segs)
                 {
@@ -348,6 +350,7 @@ namespace NovaStriker.Game
 
         // ---- Entities ----
         static void DisposeRig(TObj root) => root.destroy();
+        static void DisposeEnemyRig(TObj root) { var materials = new HashSet<TMat>(); root.traverse(o => { if (o is TMesh mesh && !o.outline && mesh.material != null) materials.Add(mesh.material); }); root.destroy(); foreach (var mat in materials) mat.DestroyIfUnused(); }
 
         void SyncEntities(World world, float a, float dt)
         {
@@ -399,7 +402,11 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 seenE.Add(e);
-                if (!enemyRigs.TryGetValue(e, out var R)) { R = EnemyRigs.Build(e.type); EnemyModels.Apply(R); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
+                if (enemyModelSetting != SETTINGS.enemyModels) { foreach (var old in enemyRigs.Values) DisposeEnemyRig(old.root); enemyRigs.Clear(); enemyModelSetting = SETTINGS.enemyModels; }
+                bool lowModel = SETTINGS.quality == "low" || Vector3.Distance(camera.transform.position, Th.P(S.W(e.x, e.y, LevelFeatures.Depth(e)))) > (e.boss ? 65 : 45);
+                enemyRigs.TryGetValue(e, out var R);
+                if (R != null && R.modelLow != lowModel) { DisposeEnemyRig(R.root); enemyRigs.Remove(e); R = null; }
+                if (R == null) { R = EnemyRigs.Build(e.type); EnemyModels.Apply(R, lowModel); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
                 double x = e.prevX + (e.x - e.prevX) * a, y = e.prevY + (e.y - e.prevY) * a;
                 R.root.position.copy(S.W(x, y, LevelFeatures.Depth(e)));
                 R.root.rotation.y = S.YawAt(x);
@@ -412,7 +419,7 @@ namespace NovaStriker.Game
                 if (R.tag != null) R.tag.visible = e.tagged > 0 && !e.dead;
                 StunMarker(R, e, t);
             }
-            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeRig(enemyRigs[e].root); enemyRigs.Remove(e); }
+            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeEnemyRig(enemyRigs[e].root); enemyRigs.Remove(e); }
 
             foreach (var (mesh, tag) in gateMeshes)
             {
@@ -555,6 +562,7 @@ namespace NovaStriker.Game
             else RenderSettings.reflectionIntensity = 0;
             RenderSettings.ambientProbe = sh;
             bool low = SETTINGS.quality == "low";
+            if (SETTINGS.reducedScreenEffects) { trauma = 0; impact = null; pendingImpact = null; }
             grade.SetFloat("_Exposure", Sx.exposure);
             // (Low quality draws without the grade, as the prototype does: tone mapping only)
             grade.SetVector("_Lift", low ? Vector3.zero : Sx.lift); grade.SetVector("_Gamma", low ? Vector3.one : Sx.gamma); grade.SetVector("_Gain", low ? Vector3.one : Sx.gain);
@@ -592,7 +600,7 @@ namespace NovaStriker.Game
             fx.OnEvent(ev, world);
             string T = ev.type;
             if (T == "boxChip" || T == "boxBreak" || T == "liftBounce") breakables.OnEvent(ev);
-            if (T == "laneHop" || T.StartsWith("hazard")) levelFx.OnEvent(ev);
+            if (T == "laneHop" || T == "laneBlocked" || T.StartsWith("hazard")) levelFx.OnEvent(ev);
             weather.OnEvent(ev);
             if (T == "boxBreak") trauma = Mathf.Min(1, trauma + (ev.box.tag == "pillar" ? 0.4f : ev.box.tag == "glass" ? 0.12f : 0.2f));
             // Shockwaves from the heaviest blows (an impact frame adds its own in StartImpact)
@@ -752,15 +760,17 @@ namespace NovaStriker.Game
             }
             if (Screen.width != w || Screen.height != h) Resize(Screen.width, Screen.height);
             SyncEntities(world, a, dt);
+            stageDressing.Draw(camera);
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
-            ambience.Update(dt, camera.transform.position.x);
+            ambience.Update(dt, (float)camX);
             reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);
             // Low quality: no outlines, no reflections, no surface relief, no shadows, no bloom
             bool low = SETTINGS.quality == "low";
+            if (SETTINGS.reducedScreenEffects) { trauma = 0; impact = null; pendingImpact = null; }
             if (lowLook != low) { lowLook = low; Look.ShowOutlines(!low); Look.SurfaceRelief(!low); }
             sun.shadows = low ? LightShadows.None : LightShadows.Soft;
             UpdateWaves(dt);

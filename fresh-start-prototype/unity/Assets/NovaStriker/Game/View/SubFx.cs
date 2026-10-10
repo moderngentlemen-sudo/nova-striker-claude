@@ -14,7 +14,7 @@ namespace NovaStriker.Game
         static string GOLD => CHARS["nova"].energy;
         const string PHASE = "#cfeeff", SLOW = "#9fdcff";
         readonly Fx fx; readonly TObj scene; float t;
-        sealed class Bolt { public Strip glow, core; public float life, max = 1; public List<(double x, double y)> pts = new List<(double, double)>(); public float level; }
+        sealed class Bolt { public Strip glow, core; public float life, max = 1; public List<(double x, double y)> pts = new List<(double, double)>(); public float level; public double depth; }
         readonly List<Bolt> bolts = new List<Bolt>();
         readonly Color chainTint;
         readonly Mesh coreGeo, discGeo; readonly TMat coreMat, discMat; readonly Texture2D discTex;
@@ -89,7 +89,7 @@ namespace NovaStriker.Game
                     F.Sprite(ev.x, ev.y, "ring", "#ffe7b0", r * 2.2f, 0.28f, 0.15f); F.Sprite(ev.x, ev.y, "star", "#ffffff", 1.4f, 0.14f, 1.3f);
                     for (int i = 0; i < 24; i++)
                     {
-                        float a = S.Rnd() * Mathf.PI * 2, rr = r * (0.7f + S.Rnd() * 0.4f); var w = S.W(ev.x + Mathf.Cos(a) * rr, ev.y + Mathf.Sin(a) * rr, 0.2);
+                        float a = S.Rnd() * Mathf.PI * 2, rr = r * (0.7f + S.Rnd() * 0.4f); var w = fx.W(ev.x + Mathf.Cos(a) * rr, ev.y + Mathf.Sin(a) * rr, 0.2);
                         var P = F.Particle(w, S.Rnd() < 0.4f ? "#ffffff" : GOLD, 0.2f, 0.3f); P.v = S.Dir(ev.x, -Mathf.Cos(a) * rr * 3.4f, -Mathf.Sin(a) * rr * 3.4f); P.drag = 0.96f;
                     }
                     break;
@@ -129,7 +129,7 @@ namespace NovaStriker.Game
             var F = fx; Bolt b = bolts.Find(q => q.life <= 0);
             if (b == null) { b = bolts[0]; foreach (var q in bolts) if (q.life < b.life) b = q; }
             b.pts.Clear(); foreach (var q in ev.pts) b.pts.Add((q.x, q.y));
-            b.level = (float)ev.level; b.life = b.max = 0.2f + 0.05f * b.level + (ev.perfect ? 0.08f : 0);
+            b.depth = ev.depth ?? 0; b.level = (float)ev.level; b.life = b.max = 0.2f + 0.05f * b.level + (ev.perfect ? 0.08f : 0);
             string c = SUB_LOOK["chain"].tint; var s0 = ev.pts[0];
             F.Sprite(s0.x, s0.y, "star", "#fff6cc", 0.5f + 0.1f * b.level, 0.1f, 1.4f);
             for (int i = 1; i < ev.pts.Count; i++)
@@ -151,7 +151,7 @@ namespace NovaStriker.Game
                 for (int j = i > 0 ? 1 : 0; j <= m && o.Count < 72; j++)
                 {
                     double u = (double)j / m, amp = j == 0 || j == m ? 0 : (0.16 + 0.05 * b.level) * System.Math.Sin(System.Math.PI * u) * (S.Rnd() * 2 - 1) * System.Math.Min(1.6, len / 2);
-                    o.Add(S.W(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp, 0.25));
+                    o.Add(S.W(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp, b.depth + 0.25));
                 }
             }
             return o;
@@ -177,7 +177,7 @@ namespace NovaStriker.Game
                 seen.Add(w);
                 if (!wells.TryGetValue(w, out var M)) M = MakeWell(w);
                 double x = w.px + (w.x - w.px) * alpha, y = w.py + (w.y - w.py) * alpha;
-                M.g.position.copy(S.W(x, y, 0.2));
+                M.g.position.copy(S.W(x, y, w.lane * LevelFeatures.LANE_W + 0.2));
                 if (w.phase == "orb")
                 {
                     M.core.scale.setScalar(0.13f); M.glow.scale.setScalar(0.9f + 0.15f * Mathf.Sin(t * 30)); M.disc.visible = M.rim.visible = M.halo.visible = false;
@@ -194,7 +194,7 @@ namespace NovaStriker.Game
                 M.halo.scale.setScalar((float)w.r * 2 * open); M.halo.material.rotation = t * 0.6f;
                 for (int i = 0; i < 3 + L; i++)
                 {
-                    float a = S.Rnd() * Mathf.PI * 2, r = (float)w.r * (0.55f + S.Rnd() * 0.45f); var wp = S.W(x + Mathf.Cos(a) * r, y + Mathf.Sin(a) * r, 0.2);
+                    float a = S.Rnd() * Mathf.PI * 2, r = (float)w.r * (0.55f + S.Rnd() * 0.45f); var wp = S.W(x + Mathf.Cos(a) * r, y + Mathf.Sin(a) * r, w.lane * LevelFeatures.LANE_W + 0.2);
                     var P = F.Particle(wp, S.Rnd() < 0.3f ? "#ffffff" : GOLD, 0.14f, 0.4f);
                     float s = r * 2.4f; P.v = S.Dir(x, -Mathf.Cos(a) * s - Mathf.Sin(a) * s * 0.8f, -Mathf.Sin(a) * s + Mathf.Cos(a) * s * 0.8f); P.drag = 0.97f;
                 }
@@ -222,7 +222,7 @@ namespace NovaStriker.Game
                 if (e.dead) continue;
                 if (e.shockT > 0 && S.Rnd() < 0.55f)
                 {
-                    var w = S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, 0.3);
+                    var w = S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3);
                     var P = F.Particle(w, S.Rnd() < 0.5f ? "#ffffff" : SUB_LOOK["chain"].tint, 0.14f, 0.12f); P.v = new Vector3((S.Rnd() - 0.5f) * 6, (S.Rnd() - 0.5f) * 6, 0); P.drag = 0.8f;
                 }
                 if (e.wellT > 0 && S.Rnd() < 0.5f) F.Burst(e.x, e.y + e.h * 0.5, GOLD, 1, 2.5f, 0.16f, 0.3f);
@@ -234,9 +234,9 @@ namespace NovaStriker.Game
                         s = Three.Sprite.Make(new TMat(TMat.Kind.Sprite) { map = fx.tex.ring, colorCss = SLOW, blending = Blending.Additive, depthWrite = false, opacity = 0.7f });
                         s.RenderOrder = 5; scene.add(s); auras[e] = s;
                     }
-                    s.position.copy(S.W(e.x, e.y + e.h * 0.5, 0.35)); s.scale.setScalar((float)System.Math.Max(e.w, e.h) * 1.35f);
+                    s.position.copy(S.W(e.x, e.y + e.h * 0.5, LevelFeatures.Depth(e) + 0.35)); s.scale.setScalar((float)System.Math.Max(e.w, e.h) * 1.35f);
                     s.material.rotation = -t * 1.2f; s.material.opacity = 0.65f * Mathf.Min(1, (float)e.slowT / 20);
-                    if (S.Rnd() < 0.3f) { var P = F.Particle(S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, 0.3), SLOW, 0.12f, 0.8f); P.v = new Vector3(0, 0.35f, 0); P.drag = 1; }
+                    if (S.Rnd() < 0.3f) { var P = F.Particle(S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3), SLOW, 0.12f, 0.8f); P.v = new Vector3(0, 0.35f, 0); P.drag = 1; }
                 }
             }
             foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(auras)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); auras.Remove(kv.Key); }

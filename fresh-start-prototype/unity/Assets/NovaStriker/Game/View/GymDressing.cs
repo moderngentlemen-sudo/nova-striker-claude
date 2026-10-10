@@ -40,7 +40,8 @@ namespace NovaStriker.Game
             foreach (var L in kit.place)
             {
                 if (!byAsset.TryGetValue(L.asset, out var list)) continue;
-                var pos = S.W(L.x, L.y, L.dz); var rot = new Vector3(0, S.YawAt(L.x) + L.yaw * Mathf.Deg2Rad, 0);
+                float depth = L.asset.StartsWith("DeckFace") ? L.dz + 0.6f : L.dz;
+                var pos = S.W(L.x, L.y, depth); var rot = new Vector3(0, S.YawAt(L.x) + L.yaw * Mathf.Deg2Rad, 0);
                 bool cast = !FLAT.Contains(L.asset);
                 foreach (var (m, mat) in list) view.Bake(m, mat, pos, rot, new Vector3(L.sx, L.sy, L.sz), cast && mat.kind != TMat.Kind.Basic && !mat.transparent);
             }
@@ -59,13 +60,15 @@ namespace NovaStriker.Game
         }
 
         static readonly Dictionary<string, TMat> mats = new Dictionary<string, TMat>();
-        static TMat MatFor(string name)
+        public static TMat MatFor(string name)
         {
             if (mats.TryGetValue(name, out var t)) return t;
             TMat Paint(string c, float rough, float metal, float tile = 2.5f) => Look.ApplySurface(new TMat { colorCss = c, roughness = rough, metalness = metal }, "paint", tile, 0.6f);
             TMat Glow(string c, float k) => new TMat { colorCss = c, emissiveCss = c, emissiveIntensity = k, roughness = 0.3f };
             t = name switch
             {
+                "Kit_Heat" => Glow("#ff813b", 2),
+                "Kit_Neon" => Glow("#ce5cff", 2),
                 "Kit_Hull" => Paint("#e9eef3", 0.3f, 0.1f),
                 "Kit_HullB" => Paint("#dce3eb", 0.34f, 0.1f),
                 "Kit_HullDark" => Paint("#3d4f66", 0.4f, 0.2f),

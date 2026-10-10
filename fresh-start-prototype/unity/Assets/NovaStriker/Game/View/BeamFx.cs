@@ -49,7 +49,7 @@ namespace NovaStriker.Game
             foreach (var g in p.beam.segs)
             {
                 double len = JMath.Hypot(g.x1 - g.x0, g.y1 - g.y0); int n = System.Math.Max(1, (int)System.Math.Ceiling(len / 0.7));
-                for (int i = pts.Count > 0 ? 1 : 0; i <= n && pts.Count < Strip.MAXP; i++) pts.Add(S.W(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, 0.2));
+                for (int i = pts.Count > 0 ? 1 : 0; i <= n && pts.Count < Strip.MAXP; i++) pts.Add(S.W(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, LevelFeatures.Depth(p) + 0.2));
             }
         }
 

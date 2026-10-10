@@ -31,7 +31,7 @@ namespace NovaStriker.Game
         public void Stamp(double x, double y, float size, string tex = "scorch", float life = 10, float opacity = 0.9f, float depth = 0, float rot = 0)
         {
             if (FxCfg.MaxDecals <= 0) return;
-            double floor = Level.GroundBelow(x, y + 0.4);
+            double floor = Level.GroundBelow(x, y + 0.4, Mathf.Clamp(Mathf.RoundToInt(depth / (float)LevelFeatures.LANE_W), -1, 1));
             if (double.IsNegativeInfinity(floor) || y - floor > 1.2) return;   // (in the air: nothing to mark)
             int max = Mathf.Min(N, FxCfg.MaxDecals);
             var d = ds[next % max]; next = (next + 1) % max;
@@ -46,6 +46,7 @@ namespace NovaStriker.Game
         {
             foreach (var d in ds)
             {
+                if (!FxCfg.Decals) { d.m.visible = false; continue; }
                 if (!d.m.visible) continue;
                 d.t += dt;
                 if (d.t >= d.life) { d.m.visible = false; continue; }

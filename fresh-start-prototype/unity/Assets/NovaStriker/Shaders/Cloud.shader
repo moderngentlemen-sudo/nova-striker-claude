@@ -53,12 +53,12 @@ Shader "NovaStriker/Cloud"
                 float3 right = normalize(UNITY_MATRIX_V[0].xyz), up = normalize(UNITY_MATRIX_V[1].xyz);
                 float3 ws = centre + right * v.positionOS.x * sx + up * v.positionOS.y * sy;
                 o.positionCS = TransformWorldToHClip(ws);
-                float h = hash(floor(centre * 0.37));
+                float h = hash(float3(sx, sy, sx + sy));
                 float variant = floor(h * 3.999);
                 o.uv = v.uv * 0.5 + float2(fmod(variant, 2.0), floor(variant / 2.0)) * 0.5;
                 o.right = right; o.up = up; o.back = normalize(GetCameraPositionWS() - centre);
                 o.fog = ComputeFogFactor(o.positionCS.z);
-                o.shade = 0.88 + 0.24 * hash(centre.zxy);
+                o.shade = 0.88 + 0.24 * hash(float3(sy, sx, sx * sy));
                 return o;
             }
             half4 frag(Varyings i) : SV_Target

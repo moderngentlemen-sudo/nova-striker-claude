@@ -14,7 +14,7 @@ namespace NovaStriker.Game
     public sealed class Birds
     {
         [System.Serializable] sealed class BirdJson { public float[] p, n, c, uv2; public int[] i; }
-        sealed class Bird { public Vector3 off, prev, dir = Vector3.right; public float phase, amp, timer, roll, scale; public bool flapping; }
+        sealed class Bird { public Vector3 off, prev, dir = Vector3.right; public float phase, amp, timer, roll, scale; public bool flapping, initialized; }
         sealed class Flock { public float a, speed, ru, rd, cu, ch, cd, startle; public Bird[] birds; }
         readonly Flock[] flocks = new Flock[3];
         readonly Mesh mesh; readonly Material mat;
@@ -35,7 +35,7 @@ namespace NovaStriker.Game
                 var F = flocks[f] = new Flock { a = R(0, 6.3f), speed = R(0.05f, 0.09f), ru = R(28, 50), rd = R(10, 22), cu = -40 + f * 40 + R(-10, 10), ch = R(16, 34), cd = 80 + f * 35 };
                 F.birds = new Bird[7 + f * 2];
                 for (int k = 0; k < F.birds.Length; k++)
-                    F.birds[k] = new Bird { off = new Vector3(R(-7, 7), R(-2, 2), R(-5, 5)), phase = R(0, 6.3f), timer = R(0, 3), flapping = rnd.NextDouble() < 0.4, scale = R(2.2f, 2.8f) };
+                    F.birds[k] = new Bird { off = new Vector3(R(-7, 7), R(-2, 2), R(-5, 5)), phase = R(0, 6.3f), timer = R(0, 3), flapping = rnd.NextDouble() < 0.4, scale = R(0.9f, 1.05f) };
             }
         }
 
@@ -45,6 +45,8 @@ namespace NovaStriker.Game
             if (src == null) return null;
             BirdJson b;
             try { b = JsonUtility.FromJson<BirdJson>(src.text); } catch { return null; }
+            if (b?.p == null || b.n == null || b.c == null || b.uv2 == null || b.i == null || b.p.Length % 3 != 0 || b.n.Length != b.p.Length || b.c.Length != b.p.Length || b.uv2.Length != b.p.Length / 3 * 2 || b.i.Length % 3 != 0) return null;
+            foreach (var index in b.i) if (index < 0 || index >= b.p.Length / 3) return null;
             int nv = b.p.Length / 3;
             var pos = new Vector3[nv]; var nrm = new Vector3[nv]; var col = new Color[nv]; var uv2 = new Vector2[nv];
             for (int k = 0; k < nv; k++)
@@ -56,7 +58,7 @@ namespace NovaStriker.Game
             var tri = new int[b.i.Length];
             for (int k = 0; k < tri.Length; k += 3) { tri[k] = b.i[k]; tri[k + 1] = b.i[k + 2]; tri[k + 2] = b.i[k + 1]; }   // (and the winding)
             var m = new Mesh { name = "gull" };
-            m.vertices = pos; m.normals = nrm; m.colors = col; m.SetUVs(1, uv2); m.triangles = tri; m.RecalculateBounds();
+            m.vertices = pos; m.normals = nrm; m.colors = col; m.SetUVs(1, uv2); m.triangles = tri; m.RecalculateBounds(); var bnd = m.bounds; bnd.Expand(new Vector3(0.2f, 1.5f, 0.2f)); m.bounds = bnd;
             return m;
         }
 
@@ -64,10 +66,13 @@ namespace NovaStriker.Game
 
         public void Update(float dt, double camX, float sky)
         {
-            if (mesh == null || SETTINGS.birds != "realistic" || sky < 0.05f || dt <= 0) return;
+            if (mesh == null || SETTINGS.birds != "realistic" || sky < 0.05f) return;
             t += dt;
             var f = Level.Frame(camX);
             var P = new Vector3((float)f.px, 0, (float)f.pz); var T = new Vector3((float)f.tx, 0, (float)f.tz).normalized; var Nn = new Vector3((float)f.nx, 0, (float)f.nz).normalized;
+            float envelope = 0;
+            for (double x = camX - 80; x <= camX + 80; x += 2)
+                envelope = Mathf.Max(envelope, Vector3.Dot(P - S.W(x, 0, -2.8), Nn));
             int n = 0;
             foreach (var F in flocks)
             {
@@ -78,9 +83,13 @@ namespace NovaStriker.Game
                 foreach (var B in F.birds)
                 {
                     var o = B.off * (1 + st * 1.4f) + new Vector3(Mathf.Sin(t * 0.5f + B.phase), Mathf.Sin(t * 0.7f + B.phase * 1.7f) * 0.6f, Mathf.Cos(t * 0.4f + B.phase)) * 0.9f;
-                    var pos = P + T * (u + o.x) + Vector3.up * (h + o.y) - Nn * Mathf.Max(60, d + o.z);
+                    var pos = P + T * (u + o.x) + Vector3.up * (h + o.y) - Nn * Mathf.Max(72 + envelope + mesh.bounds.extents.magnitude * B.scale, d + o.z);
                     // heading and bank from its motion
-                    var v = (pos - B.prev) / dt; B.prev = pos;
+                    // Heading uses flock-local motion, so camera relocation cannot spin the gull.
+                    var local = new Vector3(u + o.x, h + o.y, -d - o.z);
+                    var delta = B.initialized ? local - B.prev : Vector3.zero;
+                    B.prev = local; B.initialized = true;
+                    var v = dt > 0 ? (T * delta.x + Vector3.up * delta.y + Nn * delta.z) / dt : Vector3.zero;
                     if (v.sqrMagnitude > 0.01f && v.sqrMagnitude < 1e4f)
                     {
                         var nd = Vector3.Slerp(B.dir, v.normalized, 1 - Mathf.Exp(-dt * 4));
@@ -105,7 +114,9 @@ namespace NovaStriker.Game
             }
             mpb.SetVectorArray("_Flap", flaps);
             var rp = new RenderParams(mat) { matProps = mpb, shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false, worldBounds = new Bounds(view.camera.transform.position, Vector3.one * 1200) };
-            Graphics.RenderMeshInstanced(rp, mesh, 0, mats, n);
+            rp.layer = 8;
+            if (SystemInfo.supportsInstancing) Graphics.RenderMeshInstanced(rp, mesh, 0, mats, n);
+            else for (int i = 0; i < n; i++) { mpb.SetVector("_Flap", flaps[i]); Graphics.DrawMesh(mesh, mats[i], mat, 8, null, 0, mpb); }
         }
     }
 }

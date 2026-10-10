@@ -47,6 +47,7 @@ namespace NovaStriker.Game
         public Fx(TObj scene, Dictionary<Player, Rig> rigs)
         {
             this.scene = scene; this.rigs = rigs;
+            ParticleBudget.Register(() => { int n = 0; foreach (var p in parts) if (p != null && p.life > 0) n++; foreach (var p in sparts) if (p != null && p.life > 0) n++; return n; }, excess => { int dropped = 0; foreach (var p in sparts) if (p != null && p.life > 0 && dropped < excess) { p.life = 0; dropped++; } foreach (var p in parts) if (p != null && p.life > 0 && dropped < excess) { p.life = 0; dropped++; } return dropped; });
             tex.glow = CanvasTex(64, (g, s) =>
             {
                 var r = g.createRadialGradient(s / 2f, s / 2f, 0, s / 2f, s / 2f, s / 2f);
@@ -137,9 +138,10 @@ namespace NovaStriker.Game
         public void Smoke(double x, double y, string color, float n = 6, float speed = 2, float size = 0.6f, float life = 0.6f,
             float depth = 0.15f, float? dir = null, float spread = 1, float drag = 0.92f, float grav = -0.6f, float grow = 1.8f, float op = 0.5f)
         {
-            var c = S.Lin(color); var w = S.W(x, y, depth); var f = Level.Frame(x);
+            var c = S.Lin(color); var w = W(x, y, depth); var f = Level.Frame(x);
             for (int i = 0; i < n; i++)
             {
+                if (FxCfg.Smoke == "off" || !ParticleBudget.Admit(true)) break;
                 var P = sparts[si]; int idx = si; si = (si + 1) % SN;
                 float a = dir.HasValue ? dir.Value + (S.Rnd() - 0.5f) * (spread == 0 ? 1 : spread) : S.Rnd() * Mathf.PI * 2;
                 float sp = speed * (0.4f + S.Rnd() * 0.8f);
@@ -155,6 +157,7 @@ namespace NovaStriker.Game
             for (int i = 0; i < SN; i++)
             {
                 var P = sparts[i];
+                if (FxCfg.Smoke == "off") P.life = 0;
                 if (P.life <= 0) { sAlpha[i] = 0; continue; }
                 P.life -= dt; P.v *= Mathf.Pow(P.drag, dt * 60); P.v.y -= P.grav * dt;
                 sPos[i] += P.v * dt;
@@ -164,9 +167,11 @@ namespace NovaStriker.Game
         }
 
         // One particle at a world-space point (three.js space); the caller sets its velocity, drag and gravity
+        readonly Part denied = new Part();
         public Part Particle(Vector3 v, Color lin, float size, float life)
         {
-            var P = parts[pi]; int idx = pi; pi = (pi + 1) % N;
+            if (!ParticleBudget.Admit()) return denied;
+                var P = parts[pi]; int idx = pi; pi = (pi + 1) % N;
             pPos[idx] = v; pCol[idx] = lin;
             P.life = P.max = life; P.size = size; P.drag = 0.9f; P.grav = 0; P.v = Vector3.zero;
             return P;
@@ -180,7 +185,7 @@ namespace NovaStriker.Game
             Ring it = null;
             foreach (var q in rings) if (q.life <= 0) { it = q; break; }
             if (it == null) { it = rings[0]; foreach (var q in rings) if (q.life < it.life) it = q; }
-            it.m.position.copy(S.W(x, y + 0.05, 0)); it.m.material.colorLin = lin;
+            it.m.position.copy(W(x, y + 0.05, 0)); it.m.material.colorLin = lin;
             it.life = life; it.max = life; it.r0 = r0; it.r1 = r1; it.op = opacity; it.m.scale.setScalar(r0); it.m.visible = true;
         }
         void UpdateRings(float dt)
@@ -225,9 +230,10 @@ namespace NovaStriker.Game
             => Burst(x, y, S.Lin(color), n, speed, size, life, dir, spread, drag, grav);
         public void Burst(double x, double y, Color c, float n = 10, float speed = 5, float size = 0.35f, float life = 0.35f, float? dir = null, float spread = 1, float drag = 0.9f, float grav = 0)
         {
-            var w = S.W(x, y, 0); var f = Level.Frame(x);
+            var w = W(x, y, 0); var f = Level.Frame(x);
             for (int i = 0; i < n; i++)
             {
+                if (!ParticleBudget.Admit()) break;
                 var P = parts[pi]; int idx = pi; pi = (pi + 1) % N;
                 float a = dir.HasValue ? dir.Value + (S.Rnd() - 0.5f) * (spread == 0 ? 1 : spread) : S.Rnd() * Mathf.PI * 2;
                 float sp = speed * (0.4f + S.Rnd() * 0.8f);
@@ -248,7 +254,7 @@ namespace NovaStriker.Game
             if (it == null) { it = sprites[0]; foreach (var q in sprites) if (q.life < it.life) it = q; }
             if (it.normal) { it.s.material.blending = Blending.Additive; it.normal = false; }
             it.s.material.map = Tex(texName); it.s.material.colorLin = lin; it.s.material.rotation = rot;
-            it.s.position.copy(S.W(x, y, depth)); it.life = it.max = life; it.grow = grow; it.@base = size; it.sx = sx; it.s.visible = true;
+            it.s.position.copy(W(x, y, depth)); it.life = it.max = life; it.grow = grow; it.@base = size; it.sx = sx; it.s.visible = true;
             return it;
         }
         // A slash mark: a long thin glint across a hit, at an angle
@@ -262,6 +268,7 @@ namespace NovaStriker.Game
             var c = S.Lin(color);
             for (int i = 0; i < n; i++)
             {
+                if (!ParticleBudget.Admit()) break;
                 var P = parts[pi]; int idx = pi; pi = (pi + 1) % N;
                 P.v = new Vector3((S.Rnd() - 0.5f) * speed, S.Rnd() * speed, (S.Rnd() - 0.5f) * speed);
                 pPos[idx] = v; pCol[idx] = c;
@@ -301,7 +308,7 @@ namespace NovaStriker.Game
         // ---- Per-frame update ----
         public void Update(float dt, World world, View view)
         {
-            this.view = view;
+            this.view = view; renderDt = dt;
             UpdateRings(dt);
             UpdateSmoke(dt);
             UpdateGhosts(world, view);
@@ -324,6 +331,7 @@ namespace NovaStriker.Game
             BossDamage(world);
             UpdateBooms(dt);
             SyncProjectiles(world, view.alpha);
+            foreach (var pr in new List<Projectile>(projectileClock.Keys)) if (pr.dead || !world.projectiles.Contains(pr)) projectileClock.Remove(pr);
             SyncBarriers(world);
             SyncLasers(world);
             SyncShockwaves(world);

@@ -23,6 +23,7 @@ namespace NovaStriker.Game
         public string type;
         public EnemyParts parts = new EnemyParts();
         public float lean, bob, phase;
+        public bool modelLow;
         // set by the view
         public TMesh tag; public TObj dizzy; public List<(TMesh s, TMesh back)> stars;
     }

@@ -78,7 +78,8 @@ namespace NovaStriker.Game
             r.sharedMaterial = FxPool.Mat(Templates.ParticleAdd, FxTex.Get("spark"), white);
             r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.04f; r.lengthScale = 1.5f;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
-            var sub = l.ps.subEmitters; sub.enabled = true;
+            ParticleBudget.Register(sp);
+            var sub = l.ps.subEmitters; sub.enabled = false; // explicit parent admission; collision splashes disabled to avoid unbudgeted births
             sub.AddSubEmitter(sp, ParticleSystemSubEmitterType.Collision, ParticleSystemSubEmitterProperties.InheritNothing);
             l.ps.Play();
             dropTint[name] = tint;
@@ -173,6 +174,8 @@ namespace NovaStriker.Game
 
         public void Update(float dt, World world, float camX, float camY)
         {
+            ParticleBudget.Ambient = true;
+            try {
             t += dt;
             bool on = SETTINGS.weather;
             string z = on ? Level.ZoneAt(camX).id : "";
@@ -189,11 +192,12 @@ namespace NovaStriker.Game
             }
             UpdateBolt(dt);
             UpdateCraft(dt, camX);
+            } finally { ParticleBudget.Ambient = false; }
         }
 
         void Enter(string z)
         {
-            zone = z;
+            zone = z; rain.ps.Clear(); drips.ps.Clear(); acc.Clear();
             foreach (var c in craft) c.o.visible = z == "skyline";
             foreach (var f in floods) f.l.enabled = z == "arena";
             if (z != "tower") { bolt.enabled = false; boltLine.enabled = false; boltT = -1; }

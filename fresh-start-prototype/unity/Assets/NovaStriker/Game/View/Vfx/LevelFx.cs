@@ -20,19 +20,26 @@ namespace NovaStriker.Game
         readonly List<(LevelBox b, TObj g)> collapses = new List<(LevelBox, TObj)>();
         readonly TMat metal = TMat.Std(0x55606e, 0.45f, 0.6f), grate = TMat.Std(0x2c333d, 0.6f, 0.5f), pale = TMat.Std(0xc9d1da, 0.5f, 0.3f);
         TMat trim, warn;
+        readonly Dictionary<(float,float,float), Mesh> boxCache = new Dictionary<(float,float,float), Mesh>();
+        Mesh BoxMesh(float w,float h,float d) { var key=(w,h,d); if (!boxCache.TryGetValue(key,out var m)) boxCache[key]=m=Geo.Box(w,h,d); return m; }
 
         public LevelFx(View view) { this.view = view; }
 
         Vector3 W(double x, double y, float dz = 0) => S.W(x, y, dz);
         TMesh Box(TObj into, float w, float h, float d, TMat m, double x, double y, float dz = 0)
         {
-            var mesh = new TMesh(Geo.Box(w, h, d), m) { cast = true, receive = true };
+            var mesh = new TMesh(BoxMesh(w, h, d), m) { cast = true, receive = true };
             mesh.position.copy(W(x, y, dz)); mesh.rotation.y = S.YawAt(x); into.add(mesh); return mesh;
         }
 
         void Build()
         {
-            root?.destroy(); hazards.Clear(); collapses.Clear();
+            if (root != null) {
+                var materials = new HashSet<TMat>(); var meshes = new HashSet<Mesh>();
+                root.traverse(o => { if (o is TMesh m) { if (m.material != metal && m.material != grate && m.material != pale) materials.Add(m.material); if (!boxCache.ContainsValue(m.geometry)) meshes.Add(m.geometry); } });
+                root.destroy(); foreach (var m in materials) if (m != null) Object.Destroy(m.m); foreach (var m in meshes) if (m != null) Object.Destroy(m);
+            }
+            hazards.Clear(); collapses.Clear();
             root = Group.Make(name: "level features"); view.scene.add(root);
             trim = TMat.Std(0x7fe3ff); trim.emissiveHex = 0x4fd6ff; trim.emissiveIntensity = 2f;
             warn = TMat.Std(0xffb02e); warn.emissiveCss = AMBER; warn.emissiveIntensity = 0.6f;
@@ -43,8 +50,8 @@ namespace NovaStriker.Game
                 double xm = (b.x0 + b.x1) / 2; float w = (float)(b.x1 - b.x0);
                 var g = Group.Make(); root.add(g);
                 bool crumble = b.tag == "collapse";
-                Box(g, w, 0.22f, 2.6f, crumble ? pale : grate, xm, b.y1 - 0.11f);
-                Box(g, w, 0.06f, 0.06f, crumble ? warn : trim, xm, b.y1 - 0.25f, 1.3f);
+                Box(g, w, 0.22f, View.DepthFor(b), crumble ? pale : grate, xm, b.y1 - 0.11f);
+                Box(g, w, 0.06f, 0.06f, crumble ? warn : trim, xm, b.y1 - 0.25f, View.DepthFor(b) / 2);
                 Box(g, w * 0.96f, 0.12f, 0.12f, metal, xm, b.y1 - 0.3f, -1.1f);
                 if (crumble) collapses.Add((b, g));
             }
@@ -58,12 +65,12 @@ namespace NovaStriker.Game
                 switch (h.kind)
                 {
                     case "vent":
-                        Box(hv.g, w + 0.3f, 0.12f, 2.4f, metal, xm, h.y0 + 0.02f);
+                        Box(hv.g, w + 0.3f, 0.12f, 4.8f, metal, xm, h.y0 + 0.02f);
                         for (int k = 0; k < 4; k++) Box(hv.g, w - 0.2f, 0.04f, 0.18f, hv.glow, xm, h.y0 + 0.09f, -0.75f + k * 0.5f);
                         break;
                     case "shock":
                         hv.glow.emissiveCss = "#7fd7ff";
-                        hv.plate = Box(hv.g, w, 0.05f, 3.2f, hv.glow, xm, h.y0 + 0.03f);
+                        hv.plate = Box(hv.g, w, 0.05f, 4.8f, hv.glow, xm, h.y0 + 0.03f);
                         Box(hv.g, w + 0.2f, 0.04f, 3.4f, grate, xm, h.y0 + 0.005f);
                         break;
                     case "laser":
@@ -75,23 +82,24 @@ namespace NovaStriker.Game
                         break;
                     }
                     case "crusher":
-                        hv.part = Box(hv.g, w, 1.2f, 2.6f, metal, xm, h.y1);
+                        hv.part = Box(hv.g, w, 1.2f, 4.8f, metal, xm, h.y1);
                         Box(hv.g, 0.5f, 6, 0.5f, grate, xm, h.y1 + 3.6f);
-                        Box(hv.g, w + 0.4f, 0.06f, 2.8f, hv.glow, xm, h.y0 + 0.02f);   // the warning plate it lands on
+                        Box(hv.g, w + 0.4f, 0.06f, 4.8f, hv.glow, xm, h.y0 + 0.02f);   // the warning plate it lands on
                         break;
                     case "slag":
                     {
                         var slag = TMat.Std(0xff6a1a, 0.3f); slag.emissiveHex = 0xff5a10; slag.emissiveIntensity = 2.6f;
-                        hv.plate = Box(hv.g, w, 0.08f, 3.0f, slag, xm, h.y0 + 0.04f);
+                        hv.plate = Box(hv.g, w, 0.08f, 4.8f, slag, xm, h.y0 + 0.04f);
                         Box(hv.g, w + 0.4f, 0.2f, 3.4f, grate, xm, h.y0 - 0.05f);
                         break;
                     }
                     case "lightning":
-                        Box(hv.g, w, 0.04f, w, hv.glow, xm, h.y0 + 0.02f, -0.6f);
+                        Box(hv.g, w, 0.04f, 4.8f, hv.glow, xm, h.y0 + 0.02f);
                         Box(hv.g, 0.12f, 3.2f, 0.12f, metal, xm, h.y0 + 1.6f, -2.2f);   // a lightning rod at the back
                         break;
                     case "debris":
-                        Box(hv.g, w, 0.04f, 2.2f, hv.glow, xm, h.y0 + 0.02f);
+                        Box(hv.g, w, 0.04f, 4.8f, hv.glow, xm, h.y0 + 0.02f);
+                        hv.part = Box(hv.g, w * 0.85f, 0.7f, 4.8f, metal, xm, h.y1);
                         Box(hv.g, w + 0.6f, 0.4f, 2.6f, grate, xm, h.y1 + 0.2f);       // the loose ceiling grid above
                         break;
                     case "wind":
@@ -117,6 +125,7 @@ namespace NovaStriker.Game
             var V = view.vfx; if (V == null) return;
             switch (ev.type)
             {
+                case "laneBlocked": view.fx.PopText(ev.x, ev.y + 1.8, "LANE BLOCKED", AMBER, 0.65f); break;
                 case "laneHop":
                 {
                     var b = (Body)ev.owner; if (b == null) break;
@@ -125,7 +134,7 @@ namespace NovaStriker.Game
                     for (int i = 0; i < 4; i++) V.streak.Emit(W(ev.x, ev.y + 1, (float)LevelFeatures.Depth(b)), new Vector3(0, 0, (float)(ev.n * 6)) + Random.insideUnitSphere, 0.06f, 0.15f, new Color(2, 2.4f, 3, 1));
                     break;
                 }
-                case "hazardHit": view.fx.Impact(ev.x, ev.y, ev.kind == "shock" ? "#9fe7ff" : ev.kind == "slag" ? "#ff8a3a" : AMBER, 1.1f); break;
+                case "hazardHit": { double previous=view.fx.effectDepth; view.fx.effectDepth=ev.depth??0; view.fx.Impact(ev.x, ev.y, ev.kind == "shock" ? "#9fe7ff" : ev.kind == "slag" ? "#ff8a3a" : AMBER, 1.1f); view.fx.effectDepth=previous; break; }
                 case "hazardOn":
                     if (ev.kind == "lightning")
                     {
@@ -134,8 +143,6 @@ namespace NovaStriker.Game
                         V.lights.Flash(at + Vector3.up * 4, new Color(0.75f, 0.85f, 1f), 14, 30, 0.35f);
                         view.fx.Blast(ev.x, ev.y + 0.2, 1.2f, "#cfe6ff", 1, "plasma"); V.decals.Stamp(ev.x, ev.y, 1.8f, "scorch", 8);
                     }
-                    else if (ev.kind == "crusher") { view.fx.Impact(ev.x, ev.y + 0.3, "#ffffff", 1.4f); view.Kick(0.5f); }
-                    else if (ev.kind == "debris") view.fx.Blast(ev.x, ev.y + 0.3, 0.9f, "#c9d1da", 0.6f, "stylised");
                     break;
             }
         }
@@ -168,7 +175,7 @@ namespace NovaStriker.Game
                     {
                         // down fast while on, back up through the idle stretch
                         double c = ((long)world.tick + h.phase) % h.period; float up;
-                        if (on) up = 0; else if (warning) up = 1; else { float k = (float)(c / System.Math.Max(1, h.period - h.warn - h.on)); up = Mathf.Clamp01(k * 1.4f); }
+                        if (on) up = 1 - Mathf.Clamp01((float)(c - (h.period - h.on)) / Mathf.Max(1, h.on * 0.65f)); else if (warning) up = 1; else { float k = (float)(c / System.Math.Max(1, h.period - h.warn - h.on)); up = Mathf.Clamp01(k * 1.4f); }
                         float jitter = warning ? (Random.value - 0.5f) * 0.04f : 0;
                         hv.part.position.copy(W(xm + jitter, h.y0 + 0.6 + up * (h.y1 - h.y0 - 0.6), 0));
                         break;
@@ -181,6 +188,8 @@ namespace NovaStriker.Game
                         if (warning && Random.value < 0.25f) V.glow.Emit(W(xm, h.y0 + 0.1, -0.6f), Vector3.zero, w * 1.6f, 0.15f, new Color(1.2f, 0.8f, 0.3f, 1));
                         break;
                     case "debris":
+                        hv.part.visible = on;
+                        if (on) { double c = ((long)world.tick + h.phase) % h.period; float drop = Mathf.Clamp01((float)(c-(h.period-h.on))/Mathf.Max(1,h.on*0.65f)); hv.part.position.copy(W(xm, h.y1+(h.y0+0.35-h.y1)*drop)); }
                         if (warning && Random.value < 0.4f) V.smokeDark.Emit(W(xm + (Random.value - 0.5f) * w, h.y1, (Random.value - 0.5f) * 1.6f), Vector3.down * 2, 0.25f, 1.2f, new Color(1, 1, 1, 0.5f));
                         if (on && Random.value < 0.7f) V.debris.Emit3D(W(xm + (Random.value - 0.5f) * w, h.y1, (Random.value - 0.5f) * 1.2f), Vector3.down * 14, Vector3.one * (0.15f + Random.value * 0.2f), 1.5f, new Color(0.6f, 0.62f, 0.66f, 1), Random.insideUnitSphere * 3, Random.insideUnitSphere * 8);
                         break;

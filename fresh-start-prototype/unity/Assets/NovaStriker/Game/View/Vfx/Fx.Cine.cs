@@ -4,6 +4,7 @@
 // top. Explosions come in three styles: Volumetric (flash, fireball, lit smoke, embers, a shock ring, debris and a
 // scorch mark), Plasma (an implosion that bursts into rings and motes) and Stylised (crisp two-tone toon puffs).
 using System.Collections.Generic;
+using System.Linq;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
 using UnityEngine;
@@ -20,35 +21,42 @@ namespace NovaStriker.Game
         static Color Hdr(string css, float k) { var c = S.Lin(css) * k; c.a = 1; return c; }
         static Color Hdr(Color lin, float k) { var c = lin * k; c.a = 1; return c; }
 
+        static readonly HashSet<string> blastEvents = new HashSet<string> { "kill", "enemyBlast", "blast", "splash", "bossSlam", "armorBreak", "chargeCrash", "breachBlast", "rocketJump", "poundLand", "ramSlam", "quake", "cluster", "bossDown", "boxBreak", "frag", "rivetBlast" };
         // ---- Events ----
         // True when the classic reaction should be skipped
         bool CineEvent(Ev ev, World world)
         {
-            if (V == null || FxCfg.Classic) return false;
+            if (V == null || (FxCfg.Classic && FxCfg.Projectiles == "classic")) return false;
+            bool classicBlast = FxCfg.Explosions == "classic";
+            if (classicBlast && blastEvents.Contains(ev.type)) return false;
             string own = ev.owner is Player op ? CHARS[op.@char].energy : ev.p != null ? CHARS[ev.p.@char].energy : HOSTILE;
             switch (ev.type)
             {
                 // replaced
-                case "kill": Shatter(ev.x, ev.y, ev.e); return true;
+                case "kill": if (ev.e != null && ev.e.boss) return true; Shatter(ev.x, ev.y, ev.e); return true;
+                case "frag": case "rivetBlast": Blast(ev.x, ev.y, Or(ev.r, 1.5), own, 1); return true;
                 case "enemyBlast": Blast(ev.x, ev.y + 0.3, Or(ev.r, 1.8), HOSTILE, 1); return true;
                 case "blast": Blast(ev.x, ev.y, Or(ev.r, 1.5), ATTACH_LOOK["arc"].tint, 0.7f + 0.15f * Or(ev.level, 1)); return true;
                 case "splash": if (ev.r > 1.2) Blast(ev.x, ev.y, F(ev.r) * 0.75f, NOVA_GOLD, 0.45f); else Impact(ev.x, ev.y, NOVA_GOLD, 0.7f); return true;
                 case "bossSlam": Slam(ev.x, ev.y, ev.big ? 1.3f : 0.8f, HOSTILE); return true;
                 case "armorBreak": Shards(ev.x, ev.y + 0.4, 14, new Color(0.92f, 0.93f, 0.96f), 7); Flash(ev.x, ev.y + 0.4, HOSTILE, 1.4f, 0.12f); return true;
-                case "chargeCrash": { var e = ev.e; double x = e.x + e.facing * 0.8; Debris(x, e.y + 0.9, 10, new Color(0.85f, 0.87f, 0.9f), 6); Flash(x, e.y + 0.9, "#ffffff", 1.4f, 0.1f); DustWave(x, e.y, 0.7f); return true; }
+                case "chargeCrash": { var e = ev.e; double x = ev.x + e.facing * 0.8; Debris(x, ev.y + 0.9, 10, new Color(0.85f, 0.87f, 0.9f), 6); Flash(x, ev.y + 0.9, "#ffffff", 1.4f, 0.1f); DustWave(x, ev.y, 0.7f); return true; }
                 // added on top of the classic reaction
                 case "hit":
                 {
+                    if (FxCfg.Projectiles == "classic") break;
                     float d = Or(ev.dmg, 1);
                     Impact(ev.x, ev.y, own, (ev.heavy ? 1.3f : 0.7f) + Mathf.Min(1, d * 0.08f));
-                    if (ev.heavy || d >= 6) V.lights.Flash(S.W(ev.x, ev.y, 0.3), Hdr(own, 1), 3, 4, 0.18f);
+                    if (ev.heavy || d >= 6) V.lights.Flash(W(ev.x, ev.y, 0.3), Hdr(own, 1), 3, 4, 0.18f);
                     break;
                 }
-                case "playerHit": Impact(ev.x, ev.y, "#ffffff", 0.8f); break;
-                case "projWall": Impact(ev.x, ev.y, ev.pr != null ? TrailColor(ev.pr) : "#ffffff", 0.6f); break;
-                case "deflect": case "ricochet": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); break;
+                case "playerHit": Impact(ev.x, ev.y, "#ffffff", 0.8f); return true;
+                case "projWall": Impact(ev.x, ev.y, ev.pr != null ? TrailColor(ev.pr) : "#ffffff", 0.6f); return true;
+                case "deflect": case "ricochet": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); return true;
                 case "guardBreak": Shards(ev.x, ev.y, 10, new Color(1, 0.6f, 0.8f), 6); Flash(ev.x, ev.y, "#ffffff", 1.6f, 0.12f); break;
                 case "shot": Muzzle(ev, own); break;
+                case "tracer": Muzzle(ev, ECHO_ORANGE); return true;
+                case "enemyShot": { var e=ev.e; if(e!=null) {var shot=new Ev{x=e.x+e.facing*e.w*0.55,y=e.y+e.h*0.65,cannon=ev.heavy};Muzzle(shot,HOSTILE);} return true; }
                 case "breachBlast": Blast(ev.x, ev.y, Or(ev.r, 1.6), CHARS["ram"].energy, 0.9f); break;
                 case "rocketJump": Blast(ev.x, ev.y, 1.3f, CHARS["fix"].energy, 0.6f); break;
                 case "poundLand": Slam(ev.x, ev.y, 0.6f + 0.25f * Or(ev.level, 1), own); break;
@@ -62,15 +70,16 @@ namespace NovaStriker.Game
                 case "ultFinisher": case "teamFinisher": Blast(ev.x, ev.y, 3.5f, own, 1.5f, "plasma"); break;
                 case "boxBreak": BoxDebris(ev); break;
                 case "land":
-                    if (ev.p != null && (ev.hard || ev.fall > 6)) V.decals.Stamp(ev.p.x, ev.p.y, 1.1f, "scuff", 6, 0.6f, 0, Random.value * 6.3f);
+                    if (ev.p != null && (ev.hard || ev.fall > 6)) V.decals.Stamp(ev.p.x, ev.p.y, 1.1f, "scuff", 6, 0.6f, (float)effectDepth, Random.value * 6.3f);
                     break;
-                case "slide": if (ev.p != null && Random.value < 0.3f) V.decals.Stamp(ev.p.x, ev.p.y, 0.9f, "scuff", 5, 0.45f, 0, Random.value * 0.4f - 0.2f); break;
+                case "slide": if (ev.p != null && Random.value < 0.3f) V.decals.Stamp(ev.p.x, ev.p.y, 0.9f, "scuff", 5, 0.45f, (float)effectDepth, Random.value * 0.4f - 0.2f); break;
             }
             return false;
         }
 
         // ---- Building blocks ----
-        static Vector3 W(double x, double y, float depth = 0) => S.W(x, y, depth);
+        public double effectDepth;
+        public Vector3 W(double x, double y, double depth = 0) => S.W(x, y, effectDepth + depth);
 
         void Flash(double x, double y, string css, float size, float life) => V.flash.Emit(W(x, y, 0.4f), Vector3.zero, size, life, Hdr(css, 4));
 
@@ -116,7 +125,7 @@ namespace NovaStriker.Game
             if (FloorUnder(x, y, 1.2) != null)
             {
                 DustWave(x, y, Mathf.Min(1.4f, 0.4f + r * 0.25f));
-                if (style != "plasma") V.decals.Stamp(x, y, r * 1.3f, "scorch", 10, 0.85f, 0, Random.value * 6.3f);
+                if (style != "plasma") V.decals.Stamp(x, y, r * 1.3f, "scorch", 10, 0.85f, (float)effectDepth, Random.value * 6.3f);
             }
             if (FxCfg.Debris != "off" && style != "plasma") Debris(x, y + 0.2, 4 + r * 3 * p, new Color(0.5f, 0.52f, 0.56f), 5 + r * 2);
             view.Kick(Mathf.Min(1.2f, 0.25f + 0.2f * r * p));
@@ -183,7 +192,7 @@ namespace NovaStriker.Game
         // A heavy landing or slam: a blast low to the floor, a wave of dust both ways and thrown debris
         void Slam(double x, double y, float k, string css)
         {
-            Blast(x, y + 0.2, 1.4f * k, css, 0.8f * k);
+            Blast(x, y + 0.2, 1.4f * k, css, 0.8f * k, "plasma");
             DustWave(x, y, 0.8f + 0.4f * k);
             Debris(x, y + 0.3, 8 * k, new Color(0.55f, 0.57f, 0.6f), 7 * k);
         }
@@ -219,6 +228,7 @@ namespace NovaStriker.Game
 
         void Shards(double x, double y, float n, Color c, float speed)
         {
+            if (FxCfg.Debris == "off") return;
             int m = Count(n);
             for (int i = 0; i < m; i++)
             {
@@ -265,9 +275,21 @@ namespace NovaStriker.Game
         static readonly HashSet<string> EXPLOSIVE = new HashSet<string> { "grenade", "bomblet", "mortar", "missile", "sentryRocket" };
 
         // Each frame for each projectile in flight: a bright halo and a trail (Energy), or a streak (Tracer)
+        readonly Dictionary<Projectile, double> projectileClock = new Dictionary<Projectile, double>();
+        float renderDt;
         void CineProjectile(Projectile pr, Vector3 at, Vector3 dir)
         {
-            if (V == null || FxCfg.Projectiles == "classic") return;
+            if (V == null) return;
+            projectileClock.TryGetValue(pr, out var clock); clock += renderDt * 60;
+            int steps = Mathf.Min(8, (int)clock); projectileClock[pr] = clock - steps;
+            for (int step = 0; step < steps; step++) {
+                var position = at - S.Dir(pr.x, pr.vx, pr.vy) * (step / 60f);
+                if (FxCfg.Projectiles == "classic") LegacyProjectileStep(pr, pr.x - pr.vx * (step / 60.0), pr.y - pr.vy * (step / 60.0), position);
+                else CineProjectileStep(pr, position, dir);
+            }
+        }
+        void CineProjectileStep(Projectile pr, Vector3 at, Vector3 dir)
+        {
             string kind = pr.deflected ? (pr.reflected ? "reflected" : "deflected") : pr.kind ?? "std";
             var c = S.Lin(TrailColor(pr));
             float trail = FxCfg.Trails == "long" ? 0.32f : FxCfg.Trails == "short" ? 0.14f : 0;
@@ -276,12 +298,12 @@ namespace NovaStriker.Game
             {
                 // a hot streak stretched along its flight
                 V.streak.Emit(at, vel * 0.35f, kind == "pellet" ? 0.05f : 0.09f, 0.06f + trail * 0.25f, Hdr(c, kind == "hotRivet" ? 5 : 3.5f));
-                if (kind == "hotRivet" && Random.value < 0.4f && FxCfg.Smoke != "off") V.smokeDark.Emit(at, Vector3.up * 0.5f, 0.25f, 0.6f, new Color(1, 1, 1, 0.35f));
+                if (trail > 0 && kind == "hotRivet" && Random.value < 0.4f && FxCfg.Smoke != "off") V.smokeDark.Emit(at, Vector3.up * 0.5f, 0.25f, 0.6f, new Color(1, 1, 1, 0.35f));
                 return;
             }
             if (EXPLOSIVE.Contains(kind))
             {
-                if (pr.rest) return;
+                if (pr.rest || trail == 0) return;
                 V.fire.Emit(at - dir * 0.2f, -vel * 0.1f + Rnd3() * 0.3f, 0.3f, 0.18f, Hdr(new Color(1, 0.75f, 0.45f), 2));
                 if (FxCfg.Smoke != "off" && Random.value < 0.8f) V.smoke.Emit(at - dir * 0.3f, Rnd3() * 0.3f + Vector3.up * 0.3f, 0.35f, 0.8f + Random.value * 0.6f, new Color(0.8f, 0.8f, 0.82f, 0.6f), Random.value * 6.3f);
                 return;

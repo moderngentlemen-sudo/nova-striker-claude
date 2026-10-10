@@ -22,6 +22,7 @@ namespace NovaStriker.Game
         public Sparks(TObj scene, Camera cam)
         {
             this.cam = cam;
+            ParticleBudget.Register(() => { int n = 0; foreach (var p in ps) if (p != null && p.life > 0) n++; return n; }, excess => { int dropped = 0; foreach (var p in ps) if (p != null && p.life > 0 && dropped < excess) { p.life = 0; dropped++; } return dropped; });
             for (int i = 0; i < N; i++) ps[i] = new P();
             var tris = new int[N * 6];
             for (int i = 0; i < N; i++) { int v = i * 4, k = i * 6; tris[k] = v; tris[k + 1] = v + 2; tris[k + 2] = v + 1; tris[k + 3] = v + 1; tris[k + 4] = v + 2; tris[k + 5] = v + 3; }
@@ -46,6 +47,7 @@ namespace NovaStriker.Game
             int count = Mathf.Max(1, Mathf.RoundToInt(n * (0.6f + Random.value * 0.8f)));
             for (int i = 0; i < count; i++)
             {
+                if (!ParticleBudget.Admit()) break;
                 var p = ps[next]; next = (next + 1) % N;
                 float a = dir + (Random.value - 0.5f) * spread, sp = speed * (0.5f + Random.value * 0.8f);
                 p.x = x; p.y = y; p.dz = (Random.value - 0.5f) * 0.3f; p.floor = floor; p.bounces = 0;
@@ -53,7 +55,7 @@ namespace NovaStriker.Game
                 p.life = p.max = 0.45f + Random.value * 0.6f; p.size = 0.02f + Random.value * 0.02f;
                 p.c = c * (2.5f + Random.value * 2f);   // (bright enough to bloom)
             }
-            Light(owner, x, y, light * Mathf.Min(1.5f, 0.4f + count * 0.12f));
+            if (FxCfg.Lights) Light(owner, x, y, light * Mathf.Min(1.5f, 0.4f + count * 0.12f));
         }
 
         void Light(int owner, double x, double y, float k)
@@ -65,8 +67,10 @@ namespace NovaStriker.Game
             lights[slot].transform.position = Th.P(S.W(x, y + 0.15, 0.2));
         }
 
+        public static int ActiveLights;
         public void Update(float dt)
         {
+            ActiveLights = 0; foreach (var light in lights) if (light.enabled) ActiveLights++;
             t += dt;
             var camPos = cam.transform.position;
             for (int i = 0; i < N; i++)
@@ -98,7 +102,7 @@ namespace NovaStriker.Game
             for (int i = 0; i < LIGHTS; i++)
             {
                 lightK[i] *= Mathf.Exp(-dt * 7);
-                var l = lights[i]; bool on = lightK[i] > 0.02f;
+                var l = lights[i]; bool on = FxCfg.Lights && lightK[i] > 0.02f;
                 if (l.enabled != on) l.enabled = on;
                 if (on) l.intensity = lightK[i] * 2.4f * (0.75f + 0.25f * Mathf.Sin(t * 47 + i * 2.1f) * Mathf.Sin(t * 31 + i));
                 else lightOwner[i] = -1;

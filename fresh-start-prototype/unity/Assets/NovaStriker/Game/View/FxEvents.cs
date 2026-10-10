@@ -19,6 +19,9 @@ namespace NovaStriker.Game
 
         public void OnEvent(Ev ev, World world)
         {
+            double previousDepth = effectDepth; effectDepth = ev.depth ?? 0;
+            try {
+            VfxEventCatalog.Observe(ev.type);
             string pc = ev.p != null ? CHARS[ev.p.@char].energy : "#ffffff";
             if (CineEvent(ev, world)) return;   // (the cinematic effects: Fx.Cine.cs)
             switch (ev.type)
@@ -27,9 +30,11 @@ namespace NovaStriker.Game
                 {
                     var op = ev.owner as Player;
                     string col = op != null ? CHARS[op.@char].energy : "#ffffff"; float d = Or(ev.dmg, 1);
+                    if (FxCfg.Projectiles == "classic") {
                     Burst(ev.x, ev.y, col, (ev.heavy ? 18 : 9) + Mathf.Min(14, d * 2), (ev.heavy ? 9 : 6) + Mathf.Min(5, d * 0.5f), ev.heavy ? 0.5f : 0.35f, 0.3f);
                     if (ev.heavy || d >= 4) Sprite(ev.x, ev.y, "ring", col, 0.6f + Mathf.Min(1, d * 0.1f), 0.22f, 3);
                     if (ev.tier != 0) Sprite(ev.x, ev.y, "ring", "#ffffff", 1 + F(ev.tier) * 0.5f, 0.25f, 3.5f);
+                    }
                     if (op != null && ev.source == "melee")
                     {
                         if (op.@char == "echo")
@@ -47,6 +52,8 @@ namespace NovaStriker.Game
                 case "guardBreak": Burst(ev.x, ev.y, "#ffffff", 22, 10, 0.5f, 0.45f); Sprite(ev.x, ev.y, "ring", "#ffffff", 1.2f, 0.3f, 3); break;
                 case "armorBreak": Burst(ev.x, ev.y + 0.4, "#e6e9f0", 26, 11, 0.55f, 0.6f, grav: 14); Sprite(ev.x, ev.y, "ring", HOSTILE, 1.5f, 0.35f, 3); break;
                 case "armorHit": Burst(ev.x, ev.y, "#b9c3d6", 5, 4, 0.25f, 0.2f); break;
+                case "enemyShot": if (ev.e != null) Sprite(ev.e.x+ev.e.facing*ev.e.w*0.55,ev.e.y+ev.e.h*0.65,"star",HOSTILE,ev.heavy?1.2f:0.65f,0.08f,1.2f); break;
+                case "tracer": Sprite(ev.x,ev.y,"star",ECHO_ORANGE,0.6f,0.07f,1.2f); break;
                 case "spinStun": Sprite(ev.x, ev.y + 0.5, "star", ECHO_ORANGE, 0.8f, 0.45f, 1.3f); Burst(ev.x, ev.y, ECHO_ORANGE, 10, 4, 0.3f, 0.5f); break;
                 case "stagger": Sprite(ev.x, ev.y + 0.6, "star", "#fff4c2", 0.9f, 0.5f, 1.4f); Burst(ev.x, ev.y + 0.5, "#fff4c2", 12, 4, 0.3f, 0.6f); break;
                 case "kill":
@@ -333,6 +340,7 @@ namespace NovaStriker.Game
                     break;
                 }
             }
+            } finally { effectDepth = previousDepth; }
         }
         public Rig RigOf(Player p) => p != null && rigs.TryGetValue(p, out var r) ? r : null;
 
@@ -341,7 +349,7 @@ namespace NovaStriker.Game
         void Snipe(Ev ev)
         {
             var p = ev.p; var rig = RigOf(p); float f = F(ev.f); bool full = ev.full;
-            var at = charge.Muzzle(p, rig); var end = S.W(ev.x1, ev.y1, 0.25);
+            var at = charge.Muzzle(p, rig); var end = W(ev.x1, ev.y1, 0.25);
             charge.Release(new ChargeFX.Rel { level = 1 + Mathf.Round(f * 2), rifle = true, mark = full, ax = ev.ax, ay = ev.ay }, p, rig);
             var line = charge.Line(full ? "#ffffff" : "#ffc070", 0.025f + 0.035f * f + (full ? 0.02f : 0));
             charge.Span(line, at, end); charge.AddFlash(line, full ? 0.3f : 0.16f, 1);
@@ -359,7 +367,7 @@ namespace NovaStriker.Game
             {
                 var dir = S.Dir(ev.x0, ev.ax, ev.ay).normalized;
                 foreach (var u in new[] { 0.18, 0.45, 0.72 })
-                    if (u * len > 1) charge.ShockRing(S.W(ev.x0 + ev.ax * len * u, ev.y0 + ev.ay * len * u, 0.25), dir, "#fff1d6", 0.3f, 0.9f, 0.28f, 1.5f);
+                    if (u * len > 1) charge.ShockRing(W(ev.x0 + ev.ax * len * u, ev.y0 + ev.ay * len * u, 0.25), dir, "#fff1d6", 0.3f, 0.9f, 0.28f, 1.5f);
             }
         }
 
@@ -408,7 +416,7 @@ namespace NovaStriker.Game
                     if (t > 0.22f - 0.03f * F(Sp.level)) { poundT[p] = 0; Sprite(p.x, p.y + 1, "ring", Sp.level >= 3 ? "#ffffff" : c, 0.8f, 0.55f, 3.2f); }
                     if (S.Rnd() < 0.5f)
                     {
-                        var w = S.W(p.x + (S.Rnd() - 0.5f) * 3, p.y - 0.5 + S.Rnd() * 3, (S.Rnd() - 0.5f) * 1.5f);
+                        var w = W(p.x + (S.Rnd() - 0.5f) * 3, p.y - 0.5 + S.Rnd() * 3, (S.Rnd() - 0.5f) * 1.5f);
                         var P = Particle(w, S.Rnd() < 0.5f ? "#ffffff" : c, 0.1f, 0.6f); P.v = new Vector3(0, 0.6f, 0); P.drag = 1;
                     }
                     DustSwirl(p.x, p.y, 0.3f + 0.2f * F(Sp.level));
@@ -514,9 +522,9 @@ namespace NovaStriker.Game
                     bossBeams[e] = B;
                 }
                 var L = A.span; bool live = e.state == "laser";
-                Vector3 a = S.W(L.x0, L.y, 0.2), b = S.W(L.x1, L.y, 0.2);
+                Vector3 a = W(L.x0, L.y, 0.2), b = W(L.x1, L.y, 0.2);
                 charge.Span(B.core, a, b); charge.Span(B.glow, a, b);
-                if (e.flier) { var c = S.W(e.x + e.facing * 1.3, e.y + 0.35, 0.2); charge.Span(B.feed, c, a); B.feed.material.opacity = live ? 0.75f : 0.25f; B.feed.scale.x = B.feed.scale.z = live ? 1 : 0.35f; }
+                if (e.flier) { var c = W(e.x + e.facing * 1.3, e.y + 0.35, 0.2); charge.Span(B.feed, c, a); B.feed.material.opacity = live ? 0.75f : 0.25f; B.feed.scale.x = B.feed.scale.z = live ? 1 : 0.35f; }
                 else B.feed.visible = false;
                 if (live)
                 {
@@ -572,7 +580,7 @@ namespace NovaStriker.Game
                 Sl.drawn = true;
                 double x1 = p.x, y1 = p.y + 0.95, len = JMath.Hypot(x1 - Sl.x0, y1 - Sl.y0);
                 if (len < 1) continue;
-                Vector3 a = S.W(Sl.x0, Sl.y0, 0.3), b = S.W(x1, y1, 0.3);
+                Vector3 a = W(Sl.x0, Sl.y0, 0.3), b = W(x1, y1, 0.3);
                 var core = charge.Line("#ffffff", 0.03f + Sl.tier * 0.012f); var glow = charge.Line(ECHO_ORANGE, 0.09f + Sl.tier * 0.03f);
                 charge.Span(core, a, b); charge.Span(glow, a, b);
                 charge.AddFlash(core, 0.26f, 1); charge.AddFlash(glow, 0.3f, 0.75f);
@@ -709,7 +717,7 @@ namespace NovaStriker.Game
                 if (!p.thrusting) continue;
                 foreach (var dz in new[] { -0.13f, 0.13f })
                 {
-                    var v = S.W(p.x + (S.Rnd() - 0.5f) * 0.1f, p.y - 0.05, dz);
+                    var v = W(p.x + (S.Rnd() - 0.5f) * 0.1f, p.y - 0.05, dz);
                     var P = Particle(v, S.Rnd() < 0.5f ? "#fff1c9" : NOVA_GOLD, 0.26f, 0.16f + S.Rnd() * 0.08f);
                     P.v = new Vector3((S.Rnd() - 0.5f) * 0.6f, -5 - S.Rnd() * 3, (S.Rnd() - 0.5f) * 0.6f); P.drag = 0.86f;
                 }

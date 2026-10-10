@@ -21,6 +21,8 @@ namespace NovaStriker.Game.Three
         public Material m { get; private set; }
         public readonly Dictionary<string, object> userData = new Dictionary<string, object>();
         internal readonly List<TMesh> owners = new List<TMesh>();
+        // Rig disposal calls this after all owners detach; fixed/shared raw templates stay cached.
+        public void DestroyIfUnused() { if (owners.Count != 0 || fixedMaterial) return; if (rim != null) Object.Destroy(rim); if (m != null) Object.Destroy(m); rim = null; m = null; }
 
         Color _colorLin = Color.white, _emissiveLin = Color.black;   // linear (three.js keeps colours linear too)
         float _emissiveIntensity = 1, _roughness = 1, _metalness = 0, _opacity = 1, _clearcoat, _clearcoatRoughness, _rotation, _normalScale = 1;

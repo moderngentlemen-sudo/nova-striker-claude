@@ -137,9 +137,12 @@ namespace NovaStriker.Game
                 s.visible = classic;
                 if (!classic) continue;
                 s.position.x += speed * dt;
-                if (s.position.x > 480) s.position.x -= 820;
+                s.position.x = (s.position.x + 340) % 820 - 340;
                 var pos = s.position.v; float ahead = Vector3.Dot(new Vector3(pos.x, 0, pos.z) - fp, fn);
-                if (ahead > -70) s.position.copy(pos - fn * (ahead + 70));
+                float radius = Mathf.Sqrt(s.scale.x * s.scale.x + s.scale.y * s.scale.y) * 0.5f;
+                float envelope = 0; for (double x = camX - 80; x <= camX + 80; x += 4) envelope = Mathf.Max(envelope, Vector3.Dot(fp - S.W(x, 0, -2.8), fn));
+                float back = 70 + radius + envelope;
+                if (ahead > -back) s.position.copy(pos - fn * (ahead + back));
             }
             // sunbeams: brightest as the sun breaks out, beside the camera
             float beam = sky * Mathf.Clamp01((cover - 0.6f) / 0.4f);

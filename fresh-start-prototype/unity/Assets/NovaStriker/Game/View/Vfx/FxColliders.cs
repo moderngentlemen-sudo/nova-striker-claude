@@ -33,7 +33,7 @@ namespace NovaStriker.Game
                     go.transform.position = Th.P(S.W(xm, (b.y0 + b.y1) / 2));
                     go.transform.rotation = Th.Quat(0, S.YawAt(xm), 0);
                     var c = go.AddComponent<BoxCollider>(); c.size = new Vector3((float)(x1 - x0) * (curved ? 1.04f : 1), hgt, depth);
-                    if (b.type == 'd') breakable.Add((b, c));
+                    if (b.type == 'd' || b.tag == "collapse") breakable.Add((b, c));
                 }
             }
             built = Level.Version;
@@ -42,7 +42,7 @@ namespace NovaStriker.Game
         public void Update()
         {
             if (built != Level.Version) Build();
-            foreach (var (b, c) in breakable) { bool on = !b.broken; if (c.enabled != on) c.enabled = on; }
+            foreach (var (b, c) in breakable) { bool on = !b.broken && b.y0 > -900; if (c.enabled != on) c.enabled = on; }
         }
     }
 }

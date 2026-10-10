@@ -27,7 +27,7 @@ namespace NovaStriker.Game
             var go = new GameObject("reflection-camera");
             cam = go.AddComponent<Camera>();
             cam.enabled = false; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.clear;
-            cam.cullingMask = ~((1 << SHEET_LAYER) | (1 << 5));   // (not the sheets, not the UI)
+            cam.cullingMask = ~((1 << SHEET_LAYER) | (1 << 5) | (1 << 8));   // (not the sheets, not the UI)
             cam.depth = main.depth - 1;
             var cd = cam.GetUniversalAdditionalCameraData();
             cd.renderPostProcessing = false; cd.renderShadows = false; cd.requiresDepthTexture = false; cd.requiresColorTexture = false;
@@ -51,7 +51,7 @@ namespace NovaStriker.Game
             bool want = SETTINGS.reflections && q != "low";
             if (want != on) { on = want; cam.enabled = want; foreach (var s in sheets) s.visible = want; }
             if (!want) return;
-            int div = q == "ultra" ? 1 : 2, w = Mathf.Max(64, Screen.width / div), h = Mathf.Max(64, Screen.height / div);
+            int div = q == "ultra" ? 2 : 4, w = Mathf.Max(64, Screen.width / div), h = Mathf.Max(64, Screen.height / div);
             if (rt == null || rtW != w || rtH != h)
             {
                 if (rt != null) rt.Release();

@@ -21,12 +21,15 @@ namespace NovaStriker.Game
         // (built once per type and shared by every enemy of it; null where a type has no model)
         static readonly Dictionary<string, List<Built>> cache = new Dictionary<string, List<Built>>();
         static Mesh empty;
+        static readonly HashSet<string> warned = new HashSet<string>();
 
-        static List<Built> Load(string type)
+        static List<Built> Load(string type, bool low)
         {
-            if (cache.TryGetValue(type, out var got)) return got;
+            string key = type + (low ? "_lod1" : "");
+            if (cache.TryGetValue(key, out var got)) return got;
             List<Built> list = null;
-            var src = Resources.Load<TextAsset>("NovaStriker/Models/enemy_" + type);
+            var src = Resources.Load<TextAsset>("NovaStriker/Models/enemy_" + key);
+            if (src == null && low) src = Resources.Load<TextAsset>("NovaStriker/Models/enemy_" + type);
             if (src != null)
             {
                 try
@@ -37,7 +40,9 @@ namespace NovaStriker.Game
                         list = new List<Built>();
                         foreach (var P in model.parts)
                         {
-                            if (P.p == null || P.n == null || P.uv == null || P.i == null) continue;
+                            if (P.p == null || P.n == null || P.uv == null || P.i == null || P.p.Length == 0 || P.p.Length % 3 != 0 || P.n.Length != P.p.Length || P.uv.Length != P.p.Length / 3 * 2 || P.i.Length % 3 != 0) throw new System.FormatException("Mesh array lengths");
+                            foreach(var f in P.p) if(float.IsNaN(f)||float.IsInfinity(f)) throw new System.FormatException("Nonfinite vertex");
+                            foreach(var index in P.i) if(index<0||index>=P.p.Length/3) throw new System.FormatException("Triangle index");
                             var g = new GeoBuilder();
                             for (int k = 0; k < P.p.Length / 3; k++)
                                 g.V(new Vector3(P.p[3 * k], P.p[3 * k + 1], P.p[3 * k + 2]), new Vector3(P.n[3 * k], P.n[3 * k + 1], P.n[3 * k + 2]), new Vector2(P.uv[2 * k], P.uv[2 * k + 1]));
@@ -46,9 +51,9 @@ namespace NovaStriker.Game
                         }
                     }
                 }
-                catch (System.Exception e) { Debug.LogWarning("Model of the " + type + " unreadable; its built-in rig is drawn: " + e.Message); list = null; }
+                catch (System.Exception e) { Debug.LogWarning("Model of the " + type + " unreadable; its built-in rig is drawn: " + e.Message); if (list != null) foreach (var b in list) Object.Destroy(b.mesh); list = null; }
             }
-            cache[type] = list;
+            cache[key] = list;
             return list;
         }
 
@@ -142,10 +147,11 @@ namespace NovaStriker.Game
             }
         }
 
-        public static void Apply(EnemyRig R)
+        public static void Apply(EnemyRig R, bool low = false)
         {
+            if (R != null) R.modelLow = low;
             if (R == null || R.type == null || !SETTINGS.enemyModels) return;
-            var parts = Load(R.type);
+            var parts = Load(R.type, low);
             if (parts == null || parts.Count == 0) return;
             var named = Named(R);
             var byNode = new Dictionary<TObj, List<Built>>();
@@ -153,7 +159,7 @@ namespace NovaStriker.Game
             foreach (var b in parts)
             {
                 var n = Node(R, b.node);
-                if (n == null || Mat(R, b.mat) == null) continue;
+                if (n == null || Mat(R, b.mat) == null) { if (warned.Add(R.type)) Debug.LogWarning("Invalid model rig node for " + R.type + ": " + b.node + "; using the built-in rig"); return; }
                 if (!byNode.TryGetValue(n, out var l)) { byNode[n] = l = new List<Built>(); order.Add(n); }
                 l.Add(b);
             }

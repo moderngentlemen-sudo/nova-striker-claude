@@ -135,7 +135,7 @@ namespace NovaStriker.Game
         {
             if (rig != null && (p.@char == "nova" || p.@char == "ram" || p.@char == "fix") && rig.extra.muzzle != null) return rig.extra.muzzle.worldPos;
             if (rig != null && p.@char == "echo" && rig.extra.staffTip != null && rig.extra.handStaff.visible) return rig.extra.staffTip.worldPos;
-            return S.W(p.x + p.facing * 0.45, p.y + p.h * 0.62, 0.25);
+            return S.W(p.x + p.facing * 0.45, p.y + p.h * 0.62, LevelFeatures.Depth(p) + 0.25);
         }
 
         void Dispose(St Sx)
@@ -255,7 +255,7 @@ namespace NovaStriker.Game
         void BeamPreview(Player p, St Sx, Vector3 at)
         {
             var c = PlayerSim.Chest(p); var h = Level.RayCast(c.x + p.aimX * 0.6, c.y + p.aimY * 0.6, p.aimX, p.aimY, MARKSMAN.beam.range);
-            var end = S.W(h.x, h.y, 0.25);
+            var end = S.W(h.x, h.y, LevelFeatures.Depth(p) + 0.25);
             Span(Sx.sight, at, end); Sx.sight.material.colorCss = "#ffffff";
             Sx.sight.material.opacity = 0.35f + 0.3f * Mathf.Abs(Mathf.Sin(t * 22)); Sx.sight.scale.x = Sx.sight.scale.z = 1.4f;
         }
@@ -278,7 +278,7 @@ namespace NovaStriker.Game
             for (; i < Sx.dotN; i++)
             {
                 for (int s = 0; s < 3 && !hit; s++) { vy -= MARKSMAN.arc.gravity * dt / 3; x += vx * dt / 3; y += vy * dt / 3; if (Level.PointInSolid(x, y)) hit = true; }
-                pts.Add(S.W(x, y, 0.1));
+                pts.Add(S.W(x, y, LevelFeatures.Depth(p) + 0.1));
                 if (hit) { i++; break; }
             }
             float sz = 0.18f + 0.04f * level;
@@ -293,7 +293,7 @@ namespace NovaStriker.Game
             if (hit)
             {
                 float r = (float)(MARKSMAN.arc.levels[level].r * (perfect ? MARKSMAN.arc.perfectRadius : 1));
-                Sx.land.position.copy(S.W(x, y + 0.05, 0)); Sx.land.scale.setScalar(r * (1 + Mathf.Sin(t * 12) * 0.04f));
+                Sx.land.position.copy(S.W(x, y + 0.05, LevelFeatures.Depth(p) + 0)); Sx.land.scale.setScalar(r * (1 + Mathf.Sin(t * 12) * 0.04f));
                 Sx.land.material.colorCss = perfect ? "#ffffff" : ATTACH_LOOK["arc"].tint; Sx.land.visible = true;
             }
         }
@@ -304,19 +304,19 @@ namespace NovaStriker.Game
             var pv = world.RocketPreview(p);
             if (pv == null) return;
             var A = Sx.apex; float r = (float)((pv.apex - p.y) / System.Math.Max(0.01, pv.h));
-            A.group.position.copy(S.W(pv.x, pv.apex + 0.02, 0.3)); A.group.FaceCamera(view.camera);
+            A.group.position.copy(S.W(pv.x, pv.apex + 0.02, LevelFeatures.Depth(p) + 0.3)); A.group.FaceCamera(view.camera);
             string col = pv.perfect ? "#ffffff" : ATTACH_LOOK[p.attachment].tint;
             A.mat.colorCss = col; A.mat.opacity = pv.perfect ? 0.95f : 0.7f + 0.2f * Mathf.Sin(t * 10);
             A.star.material.colorCss = col; A.star.scale.setScalar(pv.perfect ? 0.8f + Mathf.Sin(t * 40) * 0.15f : 0.5f);
             A.group.visible = true;
-            Vector3 head = S.W(p.x, p.y + p.h + 0.15, 0.3), top = S.W(pv.x, pv.apex - 0.05, 0.3);
+            Vector3 head = S.W(p.x, p.y + p.h + 0.15, LevelFeatures.Depth(p) + 0.3), top = S.W(pv.x, pv.apex - 0.05, LevelFeatures.Depth(p) + 0.3);
             Span(A.beam, head, top); A.beam.material.opacity = 0.28f;
             var C = MARKSMAN.charge;
             double[] hs = { PlayerSim.RocketHeight(C[0], p.attachment, false), PlayerSim.RocketHeight(C[1], p.attachment, false), PlayerSim.RocketHeight(C[2], p.attachment, false), PlayerSim.RocketHeight(C[2], p.attachment, true) };
             for (int i = 0; i < 4; i++)
             {
                 var m = A.ticks[i]; double y = p.y + hs[i] * r;
-                m.position.copy(S.W(pv.x, y, 0.3)); m.FaceCamera(view.camera);
+                m.position.copy(S.W(pv.x, y, LevelFeatures.Depth(p) + 0.3)); m.FaceCamera(view.camera);
                 m.material.colorCss = i == 3 ? "#ffffff" : "#ffe2a8"; m.material.opacity = y <= pv.apex + 0.05 ? 0.55f : 0.22f; m.visible = true;
             }
         }
@@ -335,7 +335,7 @@ namespace NovaStriker.Game
                 if (h != null && h.Value.t < tEnd) { tEnd = h.Value.t; hitE = e; }
             }
             bool crit = hitE != null && y0 + p.aimY * (tEnd + 0.15) > hitE.y + hitE.h * HUNTER.rifle.critZone;
-            var end = S.W(x0 + p.aimX * tEnd, y0 + p.aimY * tEnd, 0.25);
+            var end = S.W(x0 + p.aimX * tEnd, y0 + p.aimY * tEnd, LevelFeatures.Depth(p) + 0.25);
             Span(Sx.laser, at, end);
             const string red = "#ff2414"; string col = full ? red : "#ff9a1f";
             bool search = hitE == null; float flick = search ? (S.Rnd() < 0.18f ? 0.15f : 0.55f + S.Rnd() * 0.45f) : 1;
@@ -382,10 +382,10 @@ namespace NovaStriker.Game
             if (tt < DASH_CHARGE.tap) return;
             int level = tt >= C[2] ? 3 : tt >= C[1] ? 2 : tt >= C[0] ? 1 : 0; float k = Mathf.Min(1, (float)(tt / C[2]));
             var col = Color.Lerp(Lin(CHARS[p.@char].energy), Color.white, level >= 3 ? 0.55f : level * 0.15f);
-            Sx.aura.position.copy(S.W(p.x, p.y + 0.04, 0));
+            Sx.aura.position.copy(S.W(p.x, p.y + 0.04, LevelFeatures.Depth(p) + 0));
             Sx.aura.material.colorLin = col; Sx.aura.material.opacity = 0.35f + 0.45f * k;
             Sx.aura.scale.setScalar((0.55f + 0.5f * k) * (1 + Mathf.Sin(t * (10 + level * 8)) * 0.06f)); Sx.aura.visible = true;
-            var at = S.W(p.x, p.y + 0.75, 0.1);
+            var at = S.W(p.x, p.y + 0.75, LevelFeatures.Depth(p) + 0.1);
             for (int i = 0; i < 1 + level * 1.5f; i++)
             {
                 float a = S.Rnd() * Mathf.PI * 2, r = 1.0f + S.Rnd() * 0.6f; var tv = S.Dir(p.x, Mathf.Cos(a) * r, Mathf.Sin(a) * r * 0.8f);
@@ -396,7 +396,7 @@ namespace NovaStriker.Game
         // ---- Events ----
         public void LevelUp(Player p, Rig rig, float level, string kind)
         {
-            var at = kind == "dash" ? S.W(p.x, p.y + 0.8, 0.2) : Muzzle(p, rig);
+            var at = kind == "dash" ? S.W(p.x, p.y + 0.8, LevelFeatures.Depth(p) + 0.2) : Muzzle(p, rig);
             string tint = kind == "burst" ? (SUB_LOOK.TryGetValue(p.sub, out var sl) ? sl.tint : SUB_LOOK["scatter"].tint)
                 : kind == "dash" || kind == "pound" || p.@char == "ram" || p.@char == "fix" ? CHARS[p.@char].energy : kind == "rifle" ? CHARS["echo"].energy
                 : PlayerSim.marksman(p) ? ATTACH_LOOK[p.attachment].tint : CHARS["nova"].energy;
@@ -489,6 +489,7 @@ namespace NovaStriker.Game
         public void OrphanUnseen(HashSet<Projectile> seen) { foreach (var kv in trails) if (!seen.Contains(kv.Key)) kv.Value.orphan = true; }
         void UpdateTrails(float dt, Vector3 cam)
         {
+            if (FxCfg.Trails == "off" || FxCfg.Projectiles != "classic") { foreach (var r in trails.Values) r.Dispose(); trails.Clear(); return; }
             foreach (var kv in new List<KeyValuePair<Projectile, Ribbon>>(trails))
             {
                 var pr = kv.Key; var r = kv.Value;

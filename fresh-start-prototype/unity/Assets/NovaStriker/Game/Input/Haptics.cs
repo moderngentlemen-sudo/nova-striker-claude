@@ -230,6 +230,15 @@ namespace NovaStriker.Game
                 if (!(saved.settingsVersion >= 10)) { saved.echoHead = "bare"; saved.settingsVersion = 10; }
                 // Version 11 (Unity): Nova is drawn with his 3D model and wears his helmet, which critical health knocks off
                 if (!(saved.settingsVersion >= 11)) { saved.novaHead = "helmet"; saved.charModels = "models"; saved.settingsVersion = 11; }
+                string Valid(string value, string fallback, params string[] options) => System.Array.IndexOf(options, value) >= 0 ? value : fallback;
+                saved.fxPreset = Valid(saved.fxPreset, "cinematic", "cinematic", "balanced", "classic", "custom");
+                saved.fxExplosions = Valid(saved.fxExplosions, "volumetric", "volumetric", "plasma", "stylised", "classic");
+                saved.fxProjectiles = Valid(saved.fxProjectiles, "energy", "energy", "tracer", "classic");
+                saved.fxTrails = Valid(saved.fxTrails, "long", "long", "short", "off");
+                saved.fxDensity = Valid(saved.fxDensity, "high", "high", "medium", "low");
+                saved.fxSmoke = Valid(saved.fxSmoke, "rich", "rich", "light", "off");
+                saved.fxDebris = Valid(saved.fxDebris, "physics", "physics", "simple", "off");
+                saved.fxScreen = Valid(saved.fxScreen, "cinematic", "cinematic", "clean");
                 SETTINGS = saved;
             }
             catch (System.Exception) { /* unreadable: keep defaults */ }

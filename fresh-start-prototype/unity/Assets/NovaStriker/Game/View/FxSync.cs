@@ -65,7 +65,7 @@ namespace NovaStriker.Game
             float len = e.type == "post" ? 7 : 12;
             var mat = new TMat(TMat.Kind.Basic) { map = tex.jag, repeat = new Vector2(len / 1.2f, 1), colorCss = HOSTILE, transparent = true, opacity = 0.6f, depthWrite = false, blending = Blending.Additive, side = Side.Double };
             var mesh = new TMesh(Geo.Plane(len, 0.5f), mat);
-            mesh.position.copy(S.W(e.x, e.y + 0.26, 0.9)); mesh.rotation.y = S.YawAt(e.x);
+            mesh.position.copy(S.W(e.x, e.y + 0.26, LevelFeatures.Depth(e) + 0.9)); mesh.rotation.y = S.YawAt(e.x);
             scene.add(mesh); markers.Add(new Marker { e = e, mesh = mesh, ticks = ticks });
         }
 
@@ -168,6 +168,7 @@ namespace NovaStriker.Game
             foreach (var pr in world.projectiles)
             {
                 seen.Add(pr);
+                effectDepth = pr.lane * LevelFeatures.LANE_W;
                 projMeshes.TryGetValue(pr, out var m);
                 projState.TryGetValue(pr, out var st);
                 if (m != null && pr.deflected && !st.defl) { m.destroy(); m = null; }
@@ -182,10 +183,10 @@ namespace NovaStriker.Game
                 var d = S.Dir(x, pr.vx, pr.vy).normalized;
                 if (pr.kind == "disc")
                 {
-                    st.spin += 0.55f;
+                    st.spin += 33f * renderDt;
                     m.rotation.set(Mathf.PI / 2 - 0.35f, st.spin, 0); m.scale.setScalar((float)pr.r / 0.4f);
                 }
-                else if (pr.kind != null && SPIN.Contains(pr.kind)) { if (!pr.rest) { m.rotation.x += 0.2f; m.rotation.y += 0.15f; } }
+                else if (pr.kind != null && SPIN.Contains(pr.kind)) { if (!pr.rest) { m.rotation.x += 12f * renderDt; m.rotation.y += 9f * renderDt; } }
                 else if (d.sqrMagnitude > 0) m.SetQuaternion(ThQ.FromUnitVectors(Vector3.up, d));
                 if (pr.kind == "grenade" && (pr.ttl < 24 ? pr.ttl % 4 == 0 : pr.ttl % 10 == 0) && st.blink != pr.ttl)
                 {
@@ -194,15 +195,20 @@ namespace NovaStriker.Game
                 if (pr.amplified) m.scale.setScalar(1.35f);
                 CineProjectile(pr, m.position.v, d);
                 projState[pr] = st;
-                if (charge.WantsTrail(pr)) charge.Trail(pr, m.position.v);
+
+            }
+            foreach (var kv in new List<KeyValuePair<Projectile, TObj>>(projMeshes))
+                if (!seen.Contains(kv.Key)) { kv.Value.destroy(); projMeshes.Remove(kv.Key); projState.Remove(kv.Key); }
+            charge.OrphanUnseen(seen); effectDepth = 0;
+        }
+        void LegacyProjectileStep(Projectile pr, double x, double y, Vector3 at)
+        {
+            if (FxCfg.Trails == "off") return;
+                if (charge.WantsTrail(pr)) charge.Trail(pr, at);
                 if (pr.kind == "sentryRocket" && S.Rnd() < 0.7f) Smoke(x - pr.vx * 0.012, y - pr.vy * 0.012, "#8e97a3", 1, 0.3f, 0.25f, 0.4f, op: 0.4f, grav: -0.3f);
                 if (pr.kind == "missile" && S.Rnd() < 0.8f) Smoke(x - pr.vx * 0.012, y - pr.vy * 0.012, "#8e97a3", 1, 0.4f, 0.35f, 0.5f, op: 0.45f, grav: -0.3f);
                 if (pr.kind == "wave") { for (int i = 0; i < 3; i++) Burst(x - System.Math.Sign(pr.vx) * 0.2, y + (S.Rnd() - 0.5f) * 1.3f, S.Rnd() < 0.4f ? "#ffffff" : ECHO_ORANGE, 1, 1.5f, 0.24f, 0.2f); }
                 else if (S.Rnd() < (pr.kind == "pellet" ? 0.25f : 0.6f)) Burst(x, y, TrailColor(pr), 1, 0.6f, pr.kind == "rail" ? 0.5f : 0.22f, 0.18f);
-            }
-            foreach (var kv in new List<KeyValuePair<Projectile, TObj>>(projMeshes))
-                if (!seen.Contains(kv.Key)) { kv.Value.destroy(); projMeshes.Remove(kv.Key); projState.Remove(kv.Key); }
-            charge.OrphanUnseen(seen);
         }
         static string KindTint(string kind)
         {
@@ -272,7 +278,7 @@ namespace NovaStriker.Game
                 double sx = e.x + e.facing * 1.3, sy = e.y + 1.35;
                 double dx = e.aimX - sx, dy = e.aimY - sy, d = JMath.Hypot(dx, dy); if (d == 0) d = 1;
                 double len = 26, ex = sx + dx / d * len, ey = sy + dy / d * len;
-                Vector3 a = S.W(sx, sy, 0.25), b = S.W(ex, ey, 0.25);
+                Vector3 a = S.W(sx, sy, LevelFeatures.Depth(e) + 0.25), b = S.W(ex, ey, LevelFeatures.Depth(e) + 0.25);
                 m.position.copy((a + b) * 0.5f);
                 m.scale.set(e.state == "lock" ? 2.6f : 1, Vector3.Distance(a, b), e.state == "lock" ? 2.6f : 1);
                 m.SetQuaternion(ThQ.FromUnitVectors(Vector3.up, (b - a).normalized));
@@ -324,7 +330,7 @@ namespace NovaStriker.Game
                 if (((p.state == "lash" || p.state == "zip") && p.lash != null) || reel != null)
                 {
                     double tx = reel != null ? reel.x : p.lash.tx, ty = reel != null ? reel.y + reel.h * 0.55 : p.lash.ty;
-                    float Llen = reel != null ? 1 : (float)p.lash.len; var tgt = S.W(tx, ty, 0.2);
+                    float Llen = reel != null ? 1 : (float)p.lash.len; var tgt = S.W(tx, ty, LevelFeatures.Depth(p) + 0.2);
                     float k = p.state == "zip" || reel != null ? 1 : Llen;
                     for (int i = 1; i < n; i++) { float u = (float)i / (n - 1) * k; Sc.prev[i] = pts[i]; pts[i] = Vector3.Lerp(anchor, tgt, u); }
                 }
@@ -429,7 +435,7 @@ namespace NovaStriker.Game
                     foreach (var f in new[] { 0.25f, 0.55f }) { var r = new TMesh(Geo.Torus((float)e.w * 0.75f, 0.04f, 6, 24), mat); r.rotation.x = Mathf.PI / 2; r.position.y = (float)e.h * f; g.add(r); }
                     scene.add(g); bands[e] = g;
                 }
-                g.position.copy(S.W(e.x, e.y, 0));
+                g.position.copy(S.W(e.x, e.y, LevelFeatures.Depth(e)));
                 g.rotation.y += 0.08f;
             }
             foreach (var kv in new List<KeyValuePair<Enemy, TObj>>(bands)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); bands.Remove(kv.Key); }

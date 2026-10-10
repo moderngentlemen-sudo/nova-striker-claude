@@ -21,7 +21,7 @@ namespace NovaStriker.Game
         public Vfx(View view)
         {
             this.view = view;
-            root = new GameObject("Vfx").transform;
+            root = new GameObject("Vfx").transform; root.SetParent(view.scene.go.transform, false);
             lights = new FxLights(root);
             decals = new FxDecals(view.scene);
             colliders = new FxColliders(root);
@@ -70,9 +70,13 @@ namespace NovaStriker.Game
 
         public void Update(float dt)
         {
+            ParticleBudget.Update(dt);
+            if (FxCfg.Smoke == "off") { smoke.ps.Clear(); smokeDark.ps.Clear(); }
+            if (FxCfg.Debris == "off") { debris.ps.Clear(); shard.ps.Clear(); }
+            if (!FxCfg.Distortion) haze.ps.Clear();
             lights.Update(dt); decals.Update(dt); colliders.Update();
-            int n = 0; foreach (var l in all) n += l.Count;
-            PerfOverlay.Particles = n; PerfOverlay.Lights = lights.Active; PerfOverlay.Decals = decals.Active;
+            int n = ParticleBudget.Live;
+            PerfOverlay.Particles = n; PerfOverlay.Lights = lights.Active + Sparks.ActiveLights; PerfOverlay.Decals = decals.Active;
         }
     }
 }

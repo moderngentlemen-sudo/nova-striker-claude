@@ -1,4 +1,4 @@
-// Clouds with volume (Settings › Effects › Clouds: Volumetric): clusters of lit puffs (Cloud.shader), drawn instanced
+// Volume-like lit cloud impostors (legacy settings key: volumetric), drawn instanced
 // in one call. Every cloud lives behind the play area: it is placed from the camera's place on the path, at least
 // 70 m back from the plane the action is in, along the path's direction, so it slides past behind the action as the
 // wind and the camera move and can never drift into it. Far banks sit 180-420 m back; low banks roll below the deck.
@@ -55,15 +55,19 @@ namespace NovaStriker.Game
             var f = Level.Frame(camX);
             var P = new Vector3((float)f.px, 0, (float)f.pz); var T = new Vector3((float)f.tx, 0, (float)f.tz).normalized; var Nn = new Vector3((float)f.nx, 0, (float)f.nz).normalized;
             var camU = view.camera.transform.position;
+            // Include the visible curved route and the entire billboard radius in the exclusion envelope.
+            float envelope = 0;
+            for (double x = camX - 80; x <= camX + 80; x += 2)
+                envelope = Mathf.Max(envelope, Vector3.Dot(P - S.W(x, 0, -2.8), Nn));
             int n = 0;
             foreach (var c in clouds)
             {
                 c.x += c.speed * dt;
-                if (c.x - camX > SPAN) c.x -= 2 * SPAN; else if (c.x - camX < -SPAN) c.x += 2 * SPAN;
+                c.x = camX + ((c.x - camX + SPAN) % (2 * SPAN) + 2 * SPAN) % (2 * SPAN) - SPAN;
                 float u = (float)(c.x - camX);
                 foreach (var p in c.puffs)
                 {
-                    float back = Mathf.Max(MIN_BACK, c.d + p.off.z);   // (never closer than MIN_BACK behind the play plane)
+                    float back = Mathf.Max(MIN_BACK + envelope + 0.5f * Mathf.Sqrt(p.sx * p.sx + p.sy * p.sy), c.d + p.off.z);   // (never closer than MIN_BACK behind the play plane)
                     var three = P + T * (u + p.off.x) + Vector3.up * (c.h + p.off.y) - Nn * back;
                     var w = Th.P(three);
                     mats[n] = Matrix4x4.TRS(w, Quaternion.identity, new Vector3(p.sx, p.sy, 1));
@@ -75,7 +79,19 @@ namespace NovaStriker.Game
             for (int i = 0; i < n; i++) sorted[i] = mats[order[n - 1 - i]];
             mat.SetFloat("_Opacity", 0.92f * sky);
             var rp = new RenderParams(mat) { shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false, worldBounds = new Bounds(camU, Vector3.one * 2400) };
-            Graphics.RenderMeshInstanced(rp, quad, 0, sorted, n);
+            if (!SystemInfo.supportsInstancing) { for (int i = 0; i < n; i++) Graphics.DrawMesh(quad, sorted[i], mat, 8); return; }
+            for (int start = 0; start < n; start += 500)
+            {
+                int count = Mathf.Min(500, n - start);
+                var bounds = new Bounds(sorted[start].GetColumn(3), Vector3.zero);
+                for (int i = start; i < start + count; i++)
+                {
+                    float radius = Mathf.Sqrt(sorted[i].m00 * sorted[i].m00 + sorted[i].m11 * sorted[i].m11) * 0.5f;
+                    bounds.Encapsulate(new Bounds(sorted[i].GetColumn(3), Vector3.one * (radius * 2)));
+                }
+                rp.worldBounds = bounds; rp.layer = 8;
+                Graphics.RenderMeshInstanced(rp, quad, 0, sorted, count, start);
+            }
         }
     }
 }
