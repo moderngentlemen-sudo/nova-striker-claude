@@ -588,11 +588,10 @@ def build_undercity():
         if pud: flat_poly('puddle', WET, [(-0.6, 0.6), (0.3, 0.4), (0.4, 1.1), (-0.4, 1.3)])
         B('edge', NEONB, (0, -2.05, 0.003), (2.0, 0.04, 0.006))
         done(c, b)
-    c, b = kit('FlatPlatform')          # the transit platform: wet paving and a yellow edge at the back, over the track
+    c, b = kit('FlatPlatform')          # the transit platform: paving and a yellow edge at the back, over the track
     floor_base(BLACK)
     B('edge', HAZ, (0, 1.95, 0.003), (2.0, 0.25, 0.006))
     for k in range(5): B('dot', GRIP, (-0.8 + k * 0.4, 1.95, 0.0065), (0.08, 0.08, 0.002))
-    flat_poly('puddle', WET, [(-0.5, -0.9), (0.4, -1.1), (0.6, -0.5), (-0.3, -0.4)])
     done(c, b)
 
     c, b = kit('FireEscape')            # balcony and stair on a wall below the deck (origin at the deck's top front edge)
