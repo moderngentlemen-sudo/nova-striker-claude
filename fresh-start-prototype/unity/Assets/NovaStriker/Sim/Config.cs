@@ -85,6 +85,27 @@ namespace NovaStriker.Sim
         public string novaDefense = "dodge";  // Nova's Marksman kit on the parry button: 'dodge', or 'shield' (absorbs hits into damage)
         public bool novaParryStun = false;    // Nova's perfect parry (or perfect shield block) stuns the attacker
         public bool hdr = false;              // HDR output on displays that support it
+        // Effects (presentation only: the simulation never reads these; FxCfg resolves the preset)
+        public string fxPreset = "cinematic"; // cinematic, balanced, classic, or custom (the settings below)
+        public string fxExplosions = "volumetric"; // volumetric, plasma, stylised, classic
+        public string fxProjectiles = "energy";    // energy, tracer, classic
+        public string fxTrails = "long";      // long, short, off
+        public string fxDensity = "high";     // high, medium, low
+        public string fxDebris = "physics";   // physics, simple, off
+        public string fxSmoke = "rich";       // rich, light, off
+        public bool fxLights = true;          // dynamic light from shots and blasts
+        public bool fxDistortion = true;      // heat haze and shockwave refraction
+        public bool fxDecals = true;          // scorch marks and scuffs
+        public string fxScreen = "cinematic"; // cinematic (aberration kicks, lens dirt, grain) or clean
+        public bool weather = true;           // per-zone weather and atmosphere
+        public string clouds = "volumetric";  // volumetric or classic
+        public string birds = "realistic";    // realistic, classic or off
+        public bool enemyModels = true;       // Blender models for enemies where they exist
+        public bool perfOverlay = false;      // frame time readout
+        // Level features (gameplay; they apply when a zone loads)
+        public bool levelTiers = true;        // upper catwalks and lower walkways
+        public bool levelHazards = true;      // vents, shock floors, crushers, lasers, wind, lightning and more
+        public bool depthLanes = true;        // back, middle and front lanes in marked stretches
         public double settingsVersion = 11;
 
         public Settings Clone() => (Settings)MemberwiseClone();

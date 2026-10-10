@@ -58,7 +58,34 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "hdr", label = "HDR output (needs an HDR display with HDR on in the system)", @bool = true },
             new SettingDef { key = "volume", label = "Sound effects volume", range = new[] { 0f, 1, 0.05f } },
             new SettingDef { key = "music", label = "Music volume", range = new[] { 0f, 1, 0.05f } },
+            new SettingDef { key = "fxPreset", label = "Effects preset", opts = O("cinematic", "Cinematic: everything", "balanced", "Balanced: lighter on the GPU", "classic", "Classic: the original effects", "custom", "Custom: the settings below") },
+            new SettingDef { key = "fxExplosions", label = "Explosions (Custom preset)", opts = O("volumetric", "Volumetric: fire, smoke, embers, debris", "plasma", "Plasma: energy implosion and burst", "stylised", "Stylised: crisp toon puffs", "classic", "Classic") },
+            new SettingDef { key = "fxProjectiles", label = "Projectiles (Custom preset)", opts = O("energy", "Energy: glowing cores and trails", "tracer", "Tracer: bright streaks", "classic", "Classic") },
+            new SettingDef { key = "fxTrails", label = "Projectile trails (Custom preset)", opts = O("long", "Long", "short", "Short", "off", "Off") },
+            new SettingDef { key = "fxDensity", label = "Particle density (Custom preset)", opts = O("high", "High", "medium", "Medium", "low", "Low") },
+            new SettingDef { key = "fxDebris", label = "Debris (Custom preset)", opts = O("physics", "Physics: chunks bounce off the level", "simple", "Simple", "off", "Off") },
+            new SettingDef { key = "fxSmoke", label = "Smoke (Custom preset)", opts = O("rich", "Rich", "light", "Light", "off", "Off") },
+            new SettingDef { key = "fxLights", label = "Light from shots and blasts (Custom preset)", @bool = true },
+            new SettingDef { key = "fxDistortion", label = "Heat haze and shockwave distortion (Custom preset)", @bool = true },
+            new SettingDef { key = "fxDecals", label = "Scorch marks and scuffs (Custom preset)", @bool = true },
+            new SettingDef { key = "fxScreen", label = "Screen effects (Custom preset)", opts = O("cinematic", "Cinematic: lens dirt, grain, aberration kicks", "clean", "Clean") },
+            new SettingDef { key = "weather", label = "Weather and atmosphere", @bool = true },
+            new SettingDef { key = "clouds", label = "Clouds", opts = O("volumetric", "Volumetric, lit by the sun", "classic", "Classic") },
+            new SettingDef { key = "birds", label = "Birds", opts = O("realistic", "Realistic gulls", "classic", "Classic", "off", "Off") },
+            new SettingDef { key = "enemyModels", label = "Enemy 3D models (where available)", @bool = true },
+            new SettingDef { key = "perfOverlay", label = "Frame time readout", @bool = true },
+            new SettingDef { key = "levelTiers", label = "Multi-tier levels (when a zone loads)", @bool = true },
+            new SettingDef { key = "levelHazards", label = "Level hazards (when a zone loads)", @bool = true },
+            new SettingDef { key = "depthLanes", label = "Depth lanes: Z / X or L3 + up/down (when a zone loads)", @bool = true },
         };
+        // The pause menu's sections, in order, and which settings go in each (the rest are Game)
+        static readonly string[] SECTIONS = { "Game", "Level features", "Effects", "Graphics", "Controls", "Audio" };
+        static string SectionOf(string key) =>
+            key.StartsWith("fx") || key == "weather" || key == "clouds" || key == "birds" || key == "enemyModels" || key == "perfOverlay" ? "Effects"
+            : key == "levelTiers" || key == "levelHazards" || key == "depthLanes" ? "Level features"
+            : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
+            : key == "aimAssist" || key == "lockOn" || key == "lockMode" || key == "dashCharge" || key == "haptics" || key == "hapticStrength" || key == "p1Aim" ? "Controls"
+            : key == "volume" || key == "music" ? "Audio" : "Game";
         static readonly (string kind, string a, string b, string c)[] HELP_ROWS =
         {
             ("R", "Move · crouch", "Left stick", "A/D · S"),
@@ -204,27 +231,33 @@ namespace NovaStriker.Game.UI
             pause.Para("<b>Controller:</b> D-pad or left stick to move · left/right changes a list or slider · A to select · B to resume · LB top · RB settings", 13, Pal.muted);
             playerList = W.Rect(pause.content, "players");
             var pl = playerList.gameObject.AddComponent<VerticalLayoutGroup>(); pl.spacing = 6; pl.childControlWidth = pl.childControlHeight = true; pl.childForceExpandHeight = false;
-            var grid = W.Rect(pause.content, "settings");
-            var gl = grid.gameObject.AddComponent<GridLayoutGroup>(); gl.cellSize = new Vector2(434, 46); gl.spacing = new Vector2(18, 8); gl.constraint = GridLayoutGroup.Constraint.FixedColumnCount; gl.constraintCount = 2;
-            foreach (var d in SETTING_DEFS)
+            foreach (var section in SECTIONS)
             {
-                var cell = W.Rect(grid, "setting " + d.key);
-                W.Fill(W.Box(cell, Pal.C("#ffffff", 0.04f), "bg").rectTransform);
-                var lab = W.Txt(cell, d.label, 13, Pal.text, false, FontStyle.Normal, TextAnchor.MiddleLeft); W.Fill(lab.rectTransform);
-                lab.rectTransform.offsetMin = new Vector2(10, 0); lab.rectTransform.offsetMax = new Vector2(-190, 0);
-                Selectable ctl;
-                if (d.@bool)
+                var defs = SETTING_DEFS.Where(d => SectionOf(d.key) == section).ToArray();
+                if (defs.Length == 0) continue;
+                pause.Para("<b>" + section.ToUpperInvariant() + "</b>", 15, Pal.text);
+                var grid = W.Rect(pause.content, "settings " + section);
+                var gl = grid.gameObject.AddComponent<GridLayoutGroup>(); gl.cellSize = new Vector2(434, 46); gl.spacing = new Vector2(18, 8); gl.constraint = GridLayoutGroup.Constraint.FixedColumnCount; gl.constraintCount = 2;
+                foreach (var d in defs)
                 {
-                    Button b = null;
-                    b = Btn.Make(cell, (bool)GetSetting(d.key) ? "On" : "Off", () => { bool v = !(bool)GetSetting(d.key); SetSetting(d.key, v); b.GetComponentInChildren<Text>().text = v ? "ON" : "OFF"; Btn.SetOn(b, v); }, 13, true);
-                    Btn.SetOn(b, (bool)GetSetting(d.key)); ctl = b;
+                    var cell = W.Rect(grid, "setting " + d.key);
+                    W.Fill(W.Box(cell, Pal.C("#ffffff", 0.04f), "bg").rectTransform);
+                    var lab = W.Txt(cell, d.label, 13, Pal.text, false, FontStyle.Normal, TextAnchor.MiddleLeft); W.Fill(lab.rectTransform);
+                    lab.rectTransform.offsetMin = new Vector2(10, 0); lab.rectTransform.offsetMax = new Vector2(-190, 0);
+                    Selectable ctl;
+                    if (d.@bool)
+                    {
+                        Button b = null;
+                        b = Btn.Make(cell, (bool)GetSetting(d.key) ? "On" : "Off", () => { bool v = !(bool)GetSetting(d.key); SetSetting(d.key, v); b.GetComponentInChildren<Text>().text = v ? "ON" : "OFF"; Btn.SetOn(b, v); }, 13, true);
+                        Btn.SetOn(b, (bool)GetSetting(d.key)); ctl = b;
+                    }
+                    else if (d.range != null)
+                        ctl = RangeCtl.Make(cell, d.range[0], d.range[1], d.range[2], Convert.ToSingle(GetSetting(d.key)), d.fmt, v => SetSetting(d.key, (double)Math.Round(v, 4)));
+                    else ctl = Cycler.Make(cell, d.opts, SettingText(d.key), v => SetSetting(d.key, v));
+                    var cr = (RectTransform)ctl.transform;
+                    var le = ctl.GetComponent<LayoutElement>();
+                    W.At(cr, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-8, 0), new Vector2(d.@bool ? 64 : 176, le.preferredHeight));
                 }
-                else if (d.range != null)
-                    ctl = RangeCtl.Make(cell, d.range[0], d.range[1], d.range[2], Convert.ToSingle(GetSetting(d.key)), d.fmt, v => SetSetting(d.key, (double)Math.Round(v, 4)));
-                else ctl = Cycler.Make(cell, d.opts, SettingText(d.key), v => SetSetting(d.key, v));
-                var cr = (RectTransform)ctl.transform;
-                var le = ctl.GetComponent<LayoutElement>();
-                W.At(cr, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-8, 0), new Vector2(d.@bool ? 64 : 176, le.preferredHeight));
             }
             pause.Para("Character lines are placeholder writing for the CP-09 test, not canon. Settings are remembered on this machine (PlayerPrefs).", 13, Pal.muted);
             pause.visible = false;

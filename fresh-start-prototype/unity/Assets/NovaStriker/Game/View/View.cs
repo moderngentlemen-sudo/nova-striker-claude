@@ -118,6 +118,7 @@ namespace NovaStriker.Game
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
             breakables = new Breakables(scene, fx);
+            new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
             Resize(Screen.width, Screen.height);
         }
 
