@@ -239,6 +239,9 @@ namespace NovaStriker.Game
                 saved.fxSmoke = Valid(saved.fxSmoke, "rich", "rich", "light", "off");
                 saved.fxDebris = Valid(saved.fxDebris, "physics", "physics", "simple", "off");
                 saved.fxScreen = Valid(saved.fxScreen, "cinematic", "cinematic", "clean");
+                saved.clouds = Valid(saved.clouds, "volumetric", "volumetric", "classic", "off");
+                saved.birds = Valid(saved.birds, "realistic", "realistic", "classic", "off");
+                saved.quality = Valid(saved.quality, "high", "high", "ultra", "low");
                 SETTINGS = saved;
             }
             catch (System.Exception) { /* unreadable: keep defaults */ }

@@ -17,7 +17,8 @@ Shader "NovaStriker/Energy"
             #pragma target 4.5
             #pragma multi_compile_instancing
             #pragma instancing_options procedural:ParticleInstancingSetup
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Particles.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ParticlesInstancing.hlsl"
             CBUFFER_START(UnityPerMaterial)
                 float4 _Tint; float _Opacity, _EnergyTime;
             CBUFFER_END
@@ -26,7 +27,13 @@ Shader "NovaStriker/Energy"
             Varyings Vert(Attributes i) {
                 Varyings o; UNITY_SETUP_INSTANCE_ID(i); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.positionWS=TransformObjectToWorld(i.positionOS.xyz);o.positionCS=TransformWorldToHClip(o.positionWS);
-                o.normalWS=TransformObjectToWorldNormal(i.normalOS);o.uv=i.uv;o.color=GetParticleColor(i.color);return o;
+                o.normalWS=TransformObjectToWorldNormal(i.normalOS);o.uv=i.uv;o.color=i.color;
+                #if defined(UNITY_PARTICLE_INSTANCING_ENABLED)
+                uint packed=unity_ParticleInstanceData[unity_InstanceID].color;
+                half4 particleColour=half4(packed&255u,(packed>>8)&255u,(packed>>16)&255u,(packed>>24)&255u)/255.0;
+                o.color=lerp(half4(1,1,1,1),i.color,unity_ParticleUseMeshColors)*particleColour;
+                #endif
+                return o;
             }
             half4 Frag(Varyings i):SV_Target {
                 float face=abs(dot(normalize(i.normalWS),GetWorldSpaceNormalizeViewDir(i.positionWS)));

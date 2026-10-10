@@ -158,6 +158,7 @@ namespace NovaStriker.Game
         // ---- Baking: static geometry merged into one mesh per material (and shadow flag) ----
         sealed class BakeSet { public TMat mat; public bool cast; public readonly List<CombineInstance> parts = new List<CombineInstance>(); }
         readonly Dictionary<(TMat, bool), BakeSet> baked = new Dictionary<(TMat, bool), BakeSet>();
+        public LandmarkLods landmarkLods;
         // A piece of static geometry at a three.js position, Euler rotation (XYZ) and scale
         public void Bake(Mesh geo, TMat mat, Vector3 pos, Vector3 rot = default, Vector3? scale = null, bool cast = true)
         {
@@ -574,6 +575,7 @@ namespace NovaStriker.Game
             RenderSettings.ambientProbe = sh;
             bool low = SETTINGS.quality == "low";
             if (SETTINGS.reducedScreenEffects) { trauma = 0; punch = 0; bloomKick = 0; impact = null; pendingImpact = null; }
+            landmarkLods?.ApplyQuality();
             grade.SetFloat("_Exposure", Sx.exposure);
             // (Low quality draws without the grade, as the prototype does: tone mapping only)
             grade.SetVector("_Lift", low ? Vector3.zero : Sx.lift); grade.SetVector("_Gamma", low ? Vector3.one : Sx.gamma); grade.SetVector("_Gain", low ? Vector3.one : Sx.gain);

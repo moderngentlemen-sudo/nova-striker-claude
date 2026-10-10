@@ -52,6 +52,7 @@ namespace NovaStriker.Game
 
         public static void Build(View view)
         {
+            view.landmarkLods = new LandmarkLods(view.scene);
             void Add(Mesh geo, TMat mat, float x, float y, float z, float ry = 0, float rx = 0, float rz = 0, bool cast = false) =>
                 view.Bake(geo, mat, new Vector3(x, y, z), new Vector3(rx, ry, rz), null, cast);
             Vector3 At(double x, double y, double depth) => S.W(x, y, depth);
@@ -78,15 +79,15 @@ namespace NovaStriker.Game
                     if (foundry && g.r < 18)
                     {
                         // The reactor core inside the helix: a tall drum with glowing rings at each turn of the climb
-                        Add(Geo.Cylinder(R, R + 0.8f, 70, 48), core, Cx, 18, Cz);
-                        for (float y = -2; y < 50; y += 5.5f) Add(Geo.Torus(R + 0.35f, 0.28f, 8, 48), molten, Cx, y, Cz, rx: PI / 2);
+                        view.landmarkLods.Add("reactor",Geo.Cylinder(R,R+.8f,70,48),Geo.Cylinder(R,R+.8f,70,24),Geo.Cylinder(R,R+.8f,70,12),core,new Vector3(Cx,18,Cz),Vector3.zero);
+                        for (float y = -2; y < 50; y += 5.5f) view.landmarkLods.Add("reactor ring",Geo.Torus(R+.35f,.28f,8,48),Geo.Torus(R+.35f,.28f,6,24),Geo.Torus(R+.35f,.28f,4,12),molten,new Vector3(Cx,y,Cz),new Vector3(PI/2,0,0));
                         for (int i = 0; i < 10; i++) { float a = i / 10f * PI * 2; Add(Geo.Box(0.5f, 64, 0.5f), hot, Cx + Mathf.Sin(a) * (R + 0.2f), 18, Cz + Mathf.Cos(a) * (R + 0.2f)); }
                         Add(Geo.Cylinder(R * 0.55f, R, 6, 32), steel, Cx, 56, Cz);
                     }
                     else if (foundry)
                     {
                         // The furnace dome the path bends round, venting heat
-                        Add(Geo.Sphere(R, 32, 18, 0, PI * 2, 0, PI / 2), rust, Cx, -2, Cz);
+                        view.landmarkLods.Add("furnace dome",Geo.Sphere(R,32,18,0,PI*2,0,PI/2),Geo.Sphere(R,20,10,0,PI*2,0,PI/2),Geo.Sphere(R,12,6,0,PI*2,0,PI/2),rust,new Vector3(Cx,-2,Cz),Vector3.zero);
                         Add(Geo.Cylinder(R, R, 4, 32), steel, Cx, -4, Cz);
                         for (int i = 0; i < 6; i++)
                         {
@@ -101,7 +102,7 @@ namespace NovaStriker.Game
                         var pts = new Vector2[13];
                         for (int i = 0; i <= 12; i++) { float t = i / 12f; pts[i] = new Vector2(R * (1 - 0.32f * Mathf.Sin(t * PI * 0.95f)), -20 + t * 56); }
                         var shell = TMat.Std(0xa7a9bd, 0.85f); shell.side = Side.Double;
-                        Add(Geo.Lathe(pts, 48, key: "tower" + R), shell, Cx, 0, Cz);
+                        view.landmarkLods.Add("cooling tower",Geo.Lathe(pts,48,key:"tower"+R),Geo.Lathe(pts,24,key:"tower-medium"+R),Geo.Lathe(pts,12,key:"tower-distant"+R),shell,new Vector3(Cx,0,Cz),Vector3.zero);
                         foreach (var y in new float[] { 8, 24 }) Add(Geo.Torus(R * (y < 20 ? 0.74f : 0.7f) + 0.2f, 0.18f, 6, 48), neon, Cx, y, Cz, rx: PI / 2);
                     }
                 }
@@ -163,7 +164,7 @@ namespace NovaStriker.Game
                     if (JMath.Round(x - g.x0) % 10 == 0) { var c = At(x, 1, -6.5); Add(Geo.Box(0.4f, 14, 0.4f), concrete, c.x, 2, c.z); }
                 }
                 double t0 = g.x0 + 20;
-                for (int i = 0; i < 3; i++) { var t = At(t0 + i * 9, 1.5, -5); Add(Geo.Capsule(1.4f, 6.4f, 4, 12), train, t.x, 1.6f, t.z, S.YawAt(t0 + i * 9), 0, PI / 2); }
+                for (int i = 0; i < 3; i++) { var t = At(t0 + i * 9, 1.5, -5); view.landmarkLods.Add("transit carriage",Geo.Capsule(1.4f,6.4f,4,12),Geo.Capsule(1.4f,6.4f,3,8),Geo.Capsule(1.4f,6.4f,2,6),train,new Vector3(t.x,1.6f,t.z),new Vector3(0,S.YawAt(t0+i*9),PI/2)); }
             }
         }
     }

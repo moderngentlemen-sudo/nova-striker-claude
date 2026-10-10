@@ -51,14 +51,15 @@ namespace NovaStriker.Game
         public void Update(float dt, double camX, float sky)
         {
             Shader.SetGlobalVector("_NovaSkyTop", view.SkyTop); Shader.SetGlobalVector("_NovaSkyBot", view.SkyBot);
-            if (SETTINGS.clouds != "volumetric" || sky < 0.02f) return;
             var f = Level.Frame(camX);
             var P = new Vector3((float)f.px, 0, (float)f.pz); var T = new Vector3((float)f.tx, 0, (float)f.tz).normalized; var Nn = new Vector3((float)f.nx, 0, (float)f.nz).normalized;
             var camU = view.camera.transform.position;
             // Include the visible curved route and the entire billboard radius in the exclusion envelope.
             float envelope = 0;
-            for (double x = camX - 80; x <= camX + 80; x += 2)
-                envelope = Mathf.Max(envelope, Vector3.Dot(P - S.W(x, 0, -2.8), Nn));
+            for (double x = camX - 460; x <= camX + 460; x += 4)
+                envelope = Mathf.Max(envelope, Vector3.Dot(P - S.W(x, 0, -4.2), Nn));
+            BackdropCloudFeature.Place(view.camera, P, T, Nn, envelope, sky, dt);
+            if (SETTINGS.clouds != "volumetric" || sky < 0.02f || BackdropCloudFeature.Active) return;
             int n = 0;
             foreach (var c in clouds)
             {

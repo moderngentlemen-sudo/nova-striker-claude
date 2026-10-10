@@ -123,6 +123,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   - **Blasts:** fireballs, smoke, sparks and embers that bounce off the level, chunks of debris and shards,
     a flash of light, a heat ripple and a scorch mark on the floor.
   - **Projectiles:** glowing energy bolts with trails, muzzle flashes and impact bursts.
+  - **Charged beams:** Nova and RAM gather mesh light particles into rotating 3D charge cages, then release round energy cores with helical filaments, streaming particles and pooled surface lights. Chain lightning branches between snapshot lane positions, with electrical body arcs and sparks on shocked enemies. Classic stays selectable.
   - **Presets:** *Cinematic*, *Balanced*, *Classic* (the original effects) or *Custom*. Custom lets you cycle
     each option: explosions, projectiles, trails, particle density, debris, smoke, effect lights, heat
     distortion, scorch marks and screen effects. Low graphics quality caps them all.
@@ -130,8 +131,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     flare from the sun.
   - **Performance overlay** (Settings › *Effects*): aggregate particle/light counts, CPU/GPU frame timing where supported, p95 time, draw/SetPass/triangle counters and managed memory.
 - **Clouds and birds** (Settings › *Effects*):
-  - **Lit cloud impostors:** clusters of shaded puffs (`Cloud.shader`), kept at least 70 m behind the action so
-    the full puff bounds stay outside the local curved-route backdrop envelope. True ray-marched volume rendering is still incomplete.
+  - **Background clouds:** High/Ultra use a bounded half-resolution URP Render Graph volume with seeded 3D density and 24/40 ray steps. Balanced/Low and unsupported volume renderers use lit cloud clusters. Full bounds stay at least 70 m behind the curved playable envelope; full-resolution opaque depth rejects foreground overlap. Target-GPU cost and full traversal approval remain pending.
   - **Gulls:** white gulls modelled in Blender (`bird.json`) glide, flap, bank and scatter at explosions.
 - **Weather** (Settings › *Effects* › *Weather*; `Weather.cs`):
   - **Storm Spire:** rain with splashes, lightning, storm clouds and mist.
@@ -156,7 +156,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     only reach their own lane, except area attacks.
   - The data and rules are in `Sim/LevelFeatures.cs`; `SimTests/LevelTests` tests them.
 
-**Known limits:** tier waypoints and hazard avoidance are headless checked, but complete human/bot traversal and keyboard/gamepad testing remain required. Clouds are lit impostors; scorch marks use surface quads; projected wall decals and landmark LODs remain open. Software-rendered CI captures do not establish a 60 fps desktop result or compatibility with the owner’s 6000.6.2f1 editor.
+**Known limits:** tier waypoints and hazard avoidance are headless checked, but complete human/bot traversal and keyboard/gamepad testing remain required. Projected decals use Unity's shipped decal graph with a surface-aligned quad fallback; reactor, dome, cooling tower and train have spatial LOD owners. The new volume/beam/decal features require their updated CI captures to pass. City-block LODs, all impact/material cases and target-GPU profiling remain open. Software CI captures do not establish 60 fps or compatibility with the owner's 6000.6.2f1 editor.
 
 ### Earlier additions
 

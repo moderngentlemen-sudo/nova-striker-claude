@@ -3,7 +3,7 @@ using System; using System.IO; using System.Collections; using System.Collection
 using NovaStriker.Sim; using NovaStriker.Game.Three; using UnityEngine; using static NovaStriker.Sim.Cfg;
 namespace NovaStriker.Game {
  public sealed partial class GameMain {
-  [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights;}
+  [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights,cloudFrames,cloudSteps,landmarkLods,projectedDecals;public bool settingsRoundtrip;}
   [Serializable] sealed class BlastReview {public string preset;public int fire,smoke,sparks;public bool fireInCamera;}
   ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending,reviewHoldSimulation;
   void LateUpdate() {
@@ -16,6 +16,8 @@ namespace NovaStriker.Game {
    }
   }
   void StartReviewIfRequested() {
+   var startup=Environment.GetCommandLineArgs();int probe=Array.IndexOf(startup,"--nova-settings-check");
+   if(probe>=0&&probe+1<startup.Length) {SettingsStore.Load();bool pass=PersistedReviewSettings();File.WriteAllText(Path.Combine(startup[probe+1],"settings-reload.json"),"{\"passed\":"+(pass?"true":"false")+"}");Debug.Log("NOVA_SETTINGS_RELOAD "+pass);Application.Quit(pass?0:1);return;}
    var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"--nova-review");if(i<0||i+1>=args.Length)return;
    reviewFolder=Path.GetFullPath(args[i+1]);Directory.CreateDirectory(reviewFolder);
    int c=Array.IndexOf(args,"--nova-commit");review=new ReviewReport {unity=Application.unityVersion,device=SystemInfo.deviceModel,cpu=SystemInfo.processorType,gpu=SystemInfo.graphicsDeviceName,api=SystemInfo.graphicsDeviceType.ToString(),ramMB=SystemInfo.systemMemorySize,width=Screen.width,height=Screen.height,commit=c>=0&&c+1<args.Length?args[c+1]:"local"};
@@ -50,6 +52,7 @@ namespace NovaStriker.Game {
    }
    SetPaused(true);yield return Settle(3);yield return Capture("paused");SetPaused(false);
    yield return ReviewEnergy();
+   yield return ReviewBackdrop();
    SETTINGS.aiTeammates=3;world.Teleport("skyline");yield return Settle();Directory.CreateDirectory(Path.Combine(reviewFolder,"motion"));
    for(int frame=0;frame<40;frame++){yield return Settle(2);yield return Capture("motion/"+frame.ToString("D3"),false);}
    SETTINGS.aiTeammates=0;SETTINGS.levelHazards=false;world.Teleport("gym");yield return Settle();
@@ -67,8 +70,43 @@ namespace NovaStriker.Game {
    for(int i=0;i<12;i++){world.SwapCharacter(world.players[0],ROSTER[i%4]);yield return Settle(3);review.characterMaterials.Add(Resources.FindObjectsOfTypeAll<Material>().Length);review.characterMeshes.Add(Resources.FindObjectsOfTypeAll<Mesh>().Length);}
    for(int character=0;character<4;character++)if(review.characterMaterials[character+8]-review.characterMaterials[character+4]>4||review.characterMeshes[character+8]-review.characterMeshes[character+4]>4)review.errors.Add("Character resources did not stabilize for "+ROSTER[character]);
    review.cpuMs=PerfOverlay.CpuMs;review.gpuMs=PerfOverlay.GpuMs;review.p95=PerfOverlay.P95;review.drawCalls=PerfOverlay.DrawCalls;review.setPass=PerfOverlay.SetPass;review.triangles=PerfOverlay.Triangles;review.gcBytes=PerfOverlay.GCBytes;review.particles=ParticleBudget.Live;review.particleCap=FxCfg.MaxParticles;review.meshes=Resources.FindObjectsOfTypeAll<Mesh>().Length;review.materials=Resources.FindObjectsOfTypeAll<Material>().Length;review.lights=Resources.FindObjectsOfTypeAll<Light>().Length;
+   VerifySettingsPersistence();
    File.WriteAllText(Path.Combine(reviewFolder,"runtime.json"),JsonUtility.ToJson(review,true));
    Debug.Log("NOVA_REVIEW_COMPLETE "+review.captures.Count+" captures, "+review.errors.Count+" errors");Application.Quit(review.errors.Count==0?0:1);
+  }
+
+  static bool PersistedReviewSettings() => SETTINGS.fxPreset=="custom"&&SETTINGS.fxExplosions=="classic"&&SETTINGS.fxProjectiles=="energy"&&SETTINGS.fxSmoke=="off"&&SETTINGS.fxTrails=="off"&&SETTINGS.reducedScreenEffects&&SETTINGS.clouds=="volumetric"&&SETTINGS.birds=="realistic";
+  void VerifySettingsPersistence() {
+   var original=JsonUtility.ToJson(SETTINGS);
+   SETTINGS.fxPreset="custom";SETTINGS.fxExplosions="classic";SETTINGS.fxProjectiles="energy";SETTINGS.fxSmoke="off";SETTINGS.fxTrails="off";SETTINGS.reducedScreenEffects=true;SETTINGS.clouds="volumetric";SETTINGS.birds="realistic";
+   SettingsStore.Save();SETTINGS=new Settings();SettingsStore.Load();review.settingsRoundtrip=PersistedReviewSettings();if(!review.settingsRoundtrip)review.errors.Add("Settings save/load roundtrip failed");
+   var saved=PlayerPrefs.GetString("novaStriker.settings");
+   PlayerPrefs.SetString("novaStriker.settings","{\"settingsVersion\":11,\"fxPreset\":\"invalid\",\"fxSmoke\":\"invalid\",\"clouds\":\"invalid\",\"birds\":\"invalid\"}");SettingsStore.Load();
+   if(SETTINGS.fxPreset!="cinematic"||SETTINGS.fxSmoke!="rich"||SETTINGS.clouds!="volumetric"||SETTINGS.birds!="realistic")review.errors.Add("Invalid graphics settings were not migrated");
+   PlayerPrefs.SetString("novaStriker.settings",saved);PlayerPrefs.Save();SETTINGS=new Settings();JsonUtility.FromJsonOverwrite(original,SETTINGS);
+  }
+
+  IEnumerator ReviewBackdrop() {
+   SETTINGS.aiTeammates=0;SETTINGS.fxPreset="cinematic";SETTINGS.clouds="volumetric";SETTINGS.quality="high";SETTINGS.levelHazards=false;
+   world.Teleport("skyline");world.enemies.Clear();yield return Settle(12);reviewHoldSimulation=true;world.players[0].mercy=0;
+   int before=BackdropCloudFeature.RenderedFrames;yield return Settle(2);
+   if(!BackdropCloudFeature.Active||BackdropCloudFeature.RenderedFrames<=before)review.errors.Add("Backdrop cloud Render Graph feature did not render");
+   review.cloudSteps=BackdropCloudFeature.Steps;yield return Capture("cloud_volume");
+   paused=true;yield return Capture("cloud_volume_paused");paused=false;
+   SETTINGS.camera="ortho";SETTINGS.fov=50;yield return Settle(2);yield return Capture("cloud_ortho");
+   SETTINGS.camera="perspective";SETTINGS.fov=90;yield return Settle(2);yield return Capture("cloud_wide");
+   SETTINGS.fxPreset="balanced";yield return Settle(2);if(BackdropCloudFeature.Active)review.errors.Add("Balanced clouds did not select impostors");yield return Capture("cloud_balanced");
+   SETTINGS.clouds="off";yield return Settle(2);if(BackdropCloudFeature.Active)review.errors.Add("Cloud Off did not stop volume");yield return Capture("cloud_off");
+   SETTINGS.fxPreset="cinematic";SETTINGS.clouds="volumetric";SETTINGS.fov=54;review.cloudFrames=BackdropCloudFeature.RenderedFrames;
+   world.Teleport("gym");yield return Settle(12);var human=world.players[0];human.mercy=0;
+   view.vfx.decals.Stamp(human.x+1,human.y,2,"scorch",20);yield return Settle(2);review.projectedDecals=view.vfx.decals.ProjectedActive;
+   if(review.projectedDecals==0)review.errors.Add("Native URP projected mark did not activate");yield return Capture("projected_decal");
+   // The gym's real floating wall, using its collision face rather than an approximate art coordinate.
+   var panel=Level.BOXES.Find(box=>box.tag=="panel"&&box.x0<60);
+   if(panel!=null) {human.x=human.prevX=panel.x0-3;human.y=human.prevY=0;view.vfx.decals.StampSurface(S.W(panel.x0,(panel.y0+panel.y1)/2,0),S.Dir(panel.x0,-1,0),2,"scorch",20);}
+   yield return Settle(12);yield return Capture("projected_wall_decal");
+   review.landmarkLods=view.landmarkLods?.Count??0;if(review.landmarkLods==0)review.errors.Add("Landmark LODs missing");
+   reviewHoldSimulation=false;SETTINGS.levelHazards=true;
   }
 
   // Seed a valid charge state, release through the production simulation, then render the real owner.

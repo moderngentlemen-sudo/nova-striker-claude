@@ -156,7 +156,7 @@ jobs:
 
       - name: Capture Linux player review
         if: matrix.name == 'Linux' && steps.secrets.outputs.ok == 'true'
-        timeout-minutes: 12
+        timeout-minutes: 17
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libgl1-mesa-dri libasound2t64 ffmpeg
@@ -164,7 +164,7 @@ jobs:
           player=$(find build/StandaloneLinux64 -name '*.x86_64' -type f -print -quit)
           test -n "$player"
           chmod +x "$player"
-          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 600s "$player" \
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 900s "$player" \
             -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
             -logFile "$GITHUB_WORKSPACE/review/player.log" \
             --nova-review "$GITHUB_WORKSPACE/review" --nova-commit "$GITHUB_SHA"
@@ -175,11 +175,15 @@ jobs:
           log=Path('review/player.log').read_text(errors='replace')
           assert not any(s in log for s in ('GLSL compilation failed', 'ShaderProgram is unsupported', 'Shader error in')), 'Player shader compilation failed'
           assert not r['errors'], r['errors']
-          assert len(r['captures']) == 35, r['captures']
+          assert len(r['captures']) == 43, r['captures']
           assert all(name in r['captures'] for name in ['nova_beam_charge','nova_beam_release','ram_beam_charge','ram_beam_release','chain_lightning','electrified_enemies']), r['captures']
           assert r['particles'] <= r['particleCap'], r
+          assert r['cloudFrames'] > 0 and r['cloudSteps'] == 24 and r['landmarkLods'] > 0 and r['projectedDecals'] > 0 and r['settingsRoundtrip'], r
           print('Player review:',r['unity'],r['gpu'],len(r['captures']),'captures')
           PY
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 90s "$player" \
+            -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
+            -logFile "$GITHUB_WORKSPACE/review/settings-reload.log" --nova-settings-check "$GITHUB_WORKSPACE/review"
           ffmpeg -hide_banner -loglevel warning -y -framerate 10 -i review/motion/%03d.png -c:v libx264 -pix_fmt yuv420p review/skyline-motion.mp4
       - name: Upload player review evidence
         if: always() && matrix.name == 'Linux'

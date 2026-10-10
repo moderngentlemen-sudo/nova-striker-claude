@@ -64,6 +64,8 @@ namespace NovaStriker.EditorTools
             ("Cloud", "NovaStriker/Cloud", false, false, false),
             ("Bird", "NovaStriker/Bird", false, false, false),
             ("Energy", "NovaStriker/Energy", false, false, false),
+            ("CloudVolume", "NovaStriker/CloudVolume", false, false, false),
+            ("ProjectedDecal", "Shader Graphs/Decal", false, false, false),
         };
         static void MakeTemplates()
         {
@@ -75,7 +77,8 @@ namespace NovaStriker.EditorTools
                 var m = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (m == null) { m = new Material(sh) { name = name }; AssetDatabase.CreateAsset(m, path); }
                 else m.shader = sh;
-                if (name.StartsWith("Particle")) Templates.ConfigureParticle(m, name);
+                if (name == "ProjectedDecal") m.SetFloat("Normal_Blend", 0);
+                else if (name.StartsWith("Particle")) Templates.ConfigureParticle(m, name);
                 else Templates.Configure(m, transparent, surface, coat);
                 m.enableInstancing = true;   // (repeated props and instanced draws batch)
                 EditorUtility.SetDirty(m);
@@ -142,6 +145,13 @@ namespace NovaStriker.EditorTools
                 var ssao = ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>(); ssao.name = "Ambient Occlusion";
                 AddFeature(data, ssao);
             }
+            var clouds = ScriptableObject.CreateInstance<BackdropCloudFeature>(); clouds.name = "Backdrop cloud volume";
+            AddFeature(data, clouds);
+            var decals = ScriptableObject.CreateInstance<DecalRendererFeature>(); decals.name = "Projected surface marks";
+            // Screen-space projection works on the software OpenGL review API as well as desktop GPUs.
+            var decalSettings = new SerializedObject(decals);
+            var technique = decalSettings.FindProperty("m_Settings.technique"); if (technique != null) technique.enumValueIndex = 2;
+            decalSettings.ApplyModifiedPropertiesWithoutUndo(); AddFeature(data, decals);
             var grade = ScriptableObject.CreateInstance<FullScreenPassRendererFeature>(); grade.name = "Grade";
             grade.injectionPoint = FullScreenPassRendererFeature.InjectionPoint.AfterRenderingPostProcessing;
             grade.passMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{RES}/Grade.mat");

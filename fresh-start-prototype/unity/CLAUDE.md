@@ -99,14 +99,14 @@ The README's *Unity-only additions* has the full description.
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
   not yet been tested on an HDR display.
 - **The graphics and level update** (`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`). Its source checks and Blender renders are recorded in GRAPHICS_UPDATE_STATUS.md; only actual player evidence can establish Unity review.
-  - **Effects:** `Game/View/Vfx/`. `Vfx` owns the particle layers (`FxPool`), effect lights, quad decals and the
+  - **Effects:** `Game/View/Vfx/`. `Vfx` owns the particle layers (`FxPool`), effect lights, pooled projected/quad decals and the
     colliders particles bounce off (layer 9). `Fx.Cine.cs` reacts to events; `CineEvent` returning true replaces
     the classic reaction. Effects read `FxCfg`, never the raw settings. Textures are PNG data in
     `Resources/NovaStriker/Fx/*.png.bytes` (`Art/Blender/make_fx_textures.py`).
-  - **New shaders:** `Distort`, `Cloud`, `Bird`, plus the particle templates. Each needs a `TEMPLATES` row in
+  - **New shaders:** `Distort`, `Cloud`, `CloudVolume`, `Bird`, `Energy`, plus the particle templates. Each needs a `TEMPLATES` row in
     `NovaSetup` and the owner running *Set Up Project*.
   - **Clouds and gulls:** `CloudLayer.cs` and `Birds.cs`, drawn with `Graphics.RenderMeshInstanced`. Keep
-    entire cloud/bird bounds behind the visible curved-route envelope, not just their centres. Clouds are lit impostors; the legacy key is still `volumetric`.
+    entire cloud/bird bounds behind the curved-route envelope, not just their centres. `BackdropCloudFeature` supplies the half-resolution 24/40-step High/Ultra volume before foreground transparency; Balanced/Low keep lit impostors. The settings key stays `volumetric`; unsupported/compatibility renderers fall back.
   - **Weather and the world reacting:** `Weather.cs`, per zone, from the camera's place. `View.lamps` and
     `View.neon` are the materials it flickers.
   - **Level features:** `Sim/LevelFeatures.cs` (tiers, hazards, depth lanes), applied in
@@ -116,7 +116,8 @@ The README's *Unity-only additions* has the full description.
   - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
     Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
-  - **Limits:** complete AI traversal is pending despite deterministic tier waypoints and hazard avoidance; decals are quads; true cloud volumes and landmark LODs remain open.
+  - **Energy:** existing BeamFX/ChargeFX/SubFX own bounded `EnergyTube` meshes and the shared energy particle layer; use `Th.P` once. Chain endpoints snapshot depth before hit/removal. Keep Classic independent from explosion style and separate pause drawing from time advancement.
+  - **Limits:** full human/bot traversal, all impact/trigger cases, city-block LODs, owner-editor compatibility and target-GPU profiling remain pending. Volume, beam and projected-decal authoring must pass actual CI shader/player/capture review before approval.
 
 ## Open threads and ideas
 

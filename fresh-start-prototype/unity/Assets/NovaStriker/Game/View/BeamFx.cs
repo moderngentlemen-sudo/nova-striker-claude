@@ -18,7 +18,7 @@ namespace NovaStriker.Game
             public Strip edge, sheath, core; public TMesh glow, core2, hit;
             public readonly List<Vector3> pts = new List<Vector3>(); public float age, end = -1, ringT, W; public Color tint; public bool ram;
             public readonly List<BeamSeg> segs = new List<BeamSeg>(); public double dx, dy, px, depth;
-            public EnergyTube volume, filamentA, filamentB; public float lightT, particleT; public bool launched;
+            public EnergyTube volume, filamentA, filamentB; public float lightT, particleT, stampT; public bool launched;
         }
         readonly Dictionary<Player, B> beams = new Dictionary<Player, B>();
         public BeamFX(Fx fx) { this.fx = fx; scene = fx.scene; }
@@ -159,6 +159,7 @@ namespace NovaStriker.Game
             }
             foreach (var g in b.segs) if (g.wall) {
                 var at = S.W(g.x1, g.y1, b.depth + 0.2); var normal = S.Dir(g.x1, g.nx, g.ny).normalized;
+                b.stampT -= dt; if (b.stampT <= 0) { b.stampT += .6f; v.decals.StampSurface(at, normal, b.ram ? .8f : .5f, "scorch", 8, .65f); }
                 for (int i = 0; i < Mathf.CeilToInt(2 * FxCfg.Amount); i++) v.spark.Emit(at + normal * 0.03f, normal * 6 + Random.insideUnitSphere * 4, 0.05f, 0.3f, b.tint * 2);
                 if (FxCfg.Smoke != "off" && Random.value < 0.2f * FxCfg.Amount) v.smoke.Emit(at + normal * 0.05f, normal * 0.5f + Vector3.up * 0.6f, 0.3f, 0.7f, new Color(0.7f, 0.75f, 0.8f, 0.3f));
             }
