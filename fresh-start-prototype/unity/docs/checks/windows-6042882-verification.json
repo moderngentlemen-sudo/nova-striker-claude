@@ -1,0 +1,17 @@
+{
+  "commit": "60428826e7d4c8727465f79698d3a6d738132521",
+  "run": 38057267941,
+  "artifact": 11671449416,
+  "sha256": "2009b7136a890922bc8c067e0e60ef713358e165b4d605231af646d35f4edbca",
+  "outer_bytes": 43901523,
+  "inner_entries": 188,
+  "outer_crc": "pass",
+  "inner_crc": "pass",
+  "required_player_files": [
+    "NovaStriker.exe",
+    "UnityPlayer.dll",
+    "NovaStriker_Data/globalgamemanagers",
+    "NovaStriker_Data/Managed/NovaStriker.Game.dll",
+    "NovaStriker_Data/Managed/NovaStriker.Sim.dll"
+  ]
+}

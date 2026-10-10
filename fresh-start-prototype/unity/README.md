@@ -16,7 +16,7 @@ Sound and music are synthesized by the existing audio engine.
 |---|---|
 | Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 132 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
 | Sound and music engine | **Rendered offline.** Outside Unity it rendered the score at all three intensities, plus a run of sound effects, to WAV. Levels were sensible, with no NaNs, at about 20× real time. |
-| View, effects, rigs, UI, input, editor setup | **Built** with pinned Unity 6000.3.25f1 / URP 17.3.0 for all desktop targets. The graphical review includes 44 named stills, skyline frames and controlled charged-beam/lightning motion; stage/enemy/effect stills are inspected separately from full playthroughs. Exact checks and remaining manual gates are recorded in the status file. |
+| View, effects, rigs, UI, input, editor setup | **Built** with pinned Unity 6000.3.25f1 / URP 17.3.0 for all desktop targets in preceding reviewed commits. The latest source passes Windows/macOS builds; final Linux review is pending. The capture harness expects 44 named stills, skyline frames and controlled charged-beam/lightning motion. Stage/enemy/effect stills are inspected separately from full playthroughs. Exact checks and remaining manual gates are recorded in the status file. |
 
 The automated graphical review captures all six zones, both boss spaces, eleven enemy models, four effect
 presets, Nova/RAM charge and release, chain lightning, cloud modes, surface projection, pause and skyline motion. It also checks resource counts over resets and character swaps. Full
