@@ -128,7 +128,7 @@ namespace NovaStriker.Game
                     }
                     else
                     {
-                        if (back) { float hh = 26 + Rnd() * 18; var p = At(x, -6 + hh / 2, -9); Add(Geo.Box(4.6f, hh, 4), windows, p.x, p.y, p.z, ry); }
+                        if (back) { float hh = 26 + Rnd() * 18; var p = At(x, -6 + hh / 2, -9); view.landmarkLods.QueueCity(Geo.Copy(Geo.Box(4.6f,hh,4)),4.6f,hh,p,ry); }
                         else
                         {
                             // (both depths are drawn before either block, as the prototype's array literal does)
@@ -139,13 +139,14 @@ namespace NovaStriker.Game
                                 var geo = Geo.Copy(Geo.Box(ww, hh, ww)); var uv = geo.uv;
                                 for (int i = 0; i < uv.Length; i++) uv[i] = new Vector2(uv[i].x * ww / 6, uv[i].y * hh / 12);
                                 geo.uv = uv;
-                                Add(geo, windows, p.x, p.y, p.z, ry);
+                                view.landmarkLods.QueueCity(geo, ww, hh, p, ry);
                                 if (Rnd() < 0.25f) { var q = At(x, -20 + hh + 0.3f, d); Add(Geo.Box(ww * 0.9f, 0.3f, 0.3f), neon, q.x, q.y, q.z, ry); }
                             }
                         }
                     }
                 }
             }
+            view.landmarkLods.FlushCity(windows);
             // Lift pads on the foundry floor: a glowing disc with a faint column of light up to the platform it serves
             foreach (var L in Level.LIFTS)
             {

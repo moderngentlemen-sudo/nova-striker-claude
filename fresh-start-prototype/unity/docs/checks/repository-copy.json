@@ -8,5 +8,14 @@
   "history": "complete",
   "bundle_sha256": "b30bfbd0f00b0a990fb7428ee15d1966f23557df5a1f589b8120f3948a5a5ca2",
   "bundle_bytes": 13719847,
-  "github_creation": "blocked: connected GitHub tools do not expose repository creation; no authenticated gh CLI available"
+  "github_creation": "blocked: connected GitHub tools do not expose repository creation; no authenticated gh CLI available",
+  "destination": "moderngentlemen-sudo/X-MEN-NOVA-GPT-6.1",
+  "branch": "nova-striker-unity-sol-6-1",
+  "remote_head": "e8eee6d15ba8f193fef6a18a654db73bbffec0a1",
+  "remote_tree": "a51c1f9b5802afed0231d6561dd02a8e29129afc",
+  "remote_history_count": 83,
+  "remote_root": "be924a9d08956f36cbd4f1fc2f9b86237d7ee62a",
+  "main_tree_preserved": "22bccc82f3159c523868a7b68c0e0731f021907a",
+  "copy_state": "verified_remote",
+  "repository_created": false
 }

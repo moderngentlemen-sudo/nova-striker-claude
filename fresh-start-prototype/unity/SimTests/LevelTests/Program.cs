@@ -18,6 +18,13 @@ static class P {
     return evs;
   }
   static void Main() {
+    // Backdrop bounds sample across staging gaps and outside zones; every frame must remain finite.
+    {
+      bool finite=true,orthogonal=true;
+      for(double x=-500;x<=2200;x+=.5) {var f=Level.Frame(x);finite&=double.IsFinite(f.px)&&double.IsFinite(f.pz)&&double.IsFinite(f.tx)&&double.IsFinite(f.tz)&&double.IsFinite(f.nx)&&double.IsFinite(f.nz);orthogonal&=Math.Abs(f.tx*f.tx+f.tz*f.tz-1)<1e-9&&Math.Abs(f.nx*f.nx+f.nz*f.nz-1)<1e-9&&Math.Abs(f.tx*f.nx+f.tz*f.nz)<1e-9;}
+      Check(finite&&orthogonal,"route frames: backdrop sampling across every zone and staging gap is finite and orthonormal");
+      var gap=Level.Frame(399);Check(Math.Abs(gap.pz+2*Level.ARC_R)<1e-9&&gap.tx==-1,"route frames: skyport staging gap continues its analytic route");
+    }
     // Chain geometry snapshots each impacted lane, including across lanes, before damage/removal.
     {
       var w = Make(false,false,true,"gym"); var p = w.AddPlayer("pad0","nova");

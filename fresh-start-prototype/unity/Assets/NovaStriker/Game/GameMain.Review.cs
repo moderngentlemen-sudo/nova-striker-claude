@@ -27,6 +27,9 @@ namespace NovaStriker.Game {
    StartCoroutine(ReviewScenes());
   }
   IEnumerator Settle(int frames=12) {for(int i=0;i<frames;i++)yield return null;}
+  void FrameReviewPlayer(Player human) {
+   double halfH=14*Math.Tan(SETTINGS.fov*Math.PI/360);world.cam=new Cam{x=human.x+3,y=human.y+2.1,dist=14,halfH=halfH,halfW=halfH*Screen.width/Screen.height};view.SnapCamera(world);
+  }
   IEnumerator Capture(string name, bool counted = true) {
    // A transient zone banner should not cover the asset being reviewed.
    var banner=ui.canvas.transform.Find("banner");if(banner!=null)banner.gameObject.SetActive(false);
@@ -99,11 +102,12 @@ namespace NovaStriker.Game {
    SETTINGS.clouds="off";yield return Settle(2);if(BackdropCloudFeature.Active)review.errors.Add("Cloud Off did not stop volume");yield return Capture("cloud_off");
    SETTINGS.fxPreset="cinematic";SETTINGS.clouds="volumetric";SETTINGS.fov=54;review.cloudFrames=BackdropCloudFeature.RenderedFrames;
    world.Teleport("gym");yield return Settle(12);var human=world.players[0];human.mercy=0;
+   FrameReviewPlayer(human);yield return Settle(2);
    view.vfx.decals.Stamp(human.x+1,human.y,2,"scorch",20);yield return Settle(2);review.projectedDecals=view.vfx.decals.ProjectedActive;
    if(review.projectedDecals==0)review.errors.Add("Native URP projected mark did not activate");yield return Capture("projected_decal");
    // The gym's real floating wall, using its collision face rather than an approximate art coordinate.
    var panel=Level.BOXES.Find(box=>box.tag=="panel"&&box.x0<60);
-   if(panel!=null) {human.x=human.prevX=panel.x0-3;human.y=human.prevY=0;view.vfx.decals.StampSurface(S.W(panel.x0,(panel.y0+panel.y1)/2,0),S.Dir(panel.x0,-1,0),2,"scorch",20);}
+   if(panel!=null) {human.x=human.prevX=panel.x0-3;human.y=human.prevY=0;FrameReviewPlayer(human);view.vfx.decals.StampSurface(S.W(panel.x0,(panel.y0+panel.y1)/2,0),S.Dir(panel.x0,-1,0),2,"scorch",20);}
    yield return Settle(12);yield return Capture("projected_wall_decal");
    review.landmarkLods=view.landmarkLods?.Count??0;if(review.landmarkLods==0)review.errors.Add("Landmark LODs missing");
    reviewHoldSimulation=false;SETTINGS.levelHazards=true;
@@ -119,7 +123,10 @@ namespace NovaStriker.Game {
     world.SwapCharacter(human,character);human.x=human.prevX=52;human.y=human.prevY=0;human.aimX=1;human.aimY=0;
     human.state="normal";human.mercy=0;human.onGround=true;human.lane=human.laneTo=human.laneFrom=1;human.laneT=0;
     human.chargeT=PlayerSim.BeamSpec(human).at;
+    FrameReviewPlayer(human);
     view.vfx.ClearParticles();yield return Settle(7);yield return Capture(character+"_beam_charge");
+    var viewport=view.camera.WorldToViewportPoint(Th.P(S.W(human.x,human.y+1,LevelFeatures.Depth(human))));
+    if(viewport.z<=0||viewport.x<0||viewport.x>1||viewport.y<0||viewport.y>1)review.errors.Add(character+" charge owner is outside the captured camera");
     world.Step(new Dictionary<int,Cmd>{{human.slot,new Cmd{ax=1,ay=0,aimFree=true,released=new Buttons{fire=true}}}});
     foreach(var ev in world.events)view.OnEvent(ev);world.events.Clear();
     if(human.beam==null) {review.errors.Add(character+" production beam release failed");continue;}

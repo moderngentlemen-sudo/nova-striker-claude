@@ -403,9 +403,10 @@ namespace NovaStriker.Sim
         // World position/tangent/normal for sim x. The normal points toward the camera.
         public static PathFrame Frame(double x)
         {
-            if (x >= PATH2_X0)
+            // The short staging gap still belongs to skyport, which has the analytic frame below.
+            // Backdrop bounds sample beyond the active zone, so route frames must be defined there too.
+            if (x >= PATH2_X0 && SEGS_OF.TryGetValue(RouteAt(x).id, out var segs))
             {
-                var segs = SEGS_OF[RouteAt(x).id];
                 Seg g = null;
                 foreach (var q in segs) if (x < q.x1) { g = q; break; }
                 if (g == null) g = segs[segs.Count - 1];

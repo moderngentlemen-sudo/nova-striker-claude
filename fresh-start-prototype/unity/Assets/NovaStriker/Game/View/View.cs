@@ -548,6 +548,8 @@ namespace NovaStriker.Game
         Color sunLin = Look.Lin(0xffeed6);
         int rendererIndex;
         static Cam Copy(Cam c) => new Cam { x = c.x, y = c.y, dist = c.dist, halfW = c.halfW, halfH = c.halfH };
+        // A teleport/capture can deliberately reposition the camera without advancing simulation.
+        public void SnapCamera(World world) { camPrev=Copy(world.cam);camCur=Copy(world.cam);camTick=world.tick;camX=world.cam.x;camY=world.cam.y;camDist=world.cam.dist;lead=0;trauma=0;punch=0; }
 
         // The route's look (Look.LOOK) blends in with its atmosphere: light intensities, the rim light's colour,
         // reflections, exposure and the grade. The environment map itself switches with the route.
