@@ -96,6 +96,7 @@ namespace NovaStriker.Sim
         public bool fxLights = true;          // dynamic light from shots and blasts
         public bool fxDistortion = true;      // heat haze and shockwave refraction
         public bool fxDecals = true;          // scorch marks and scuffs
+        public bool reducedScreenEffects = false;
         public string fxScreen = "cinematic"; // cinematic (aberration kicks, lens dirt, grain) or clean
         public bool weather = true;           // per-zone weather and atmosphere
         public string clouds = "volumetric";  // volumetric or classic

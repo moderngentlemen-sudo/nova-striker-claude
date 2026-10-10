@@ -337,6 +337,7 @@ namespace NovaStriker.Sim
     public sealed class Snare { public Player owner; public double x, y, armT, ttl; public bool dead; }
     public sealed class Well
     {
+        public int lane;
         public Player owner;
         public double x, y, px, py, vx, vy, t, level, r, life, mult;
         public string phase;
@@ -374,6 +375,7 @@ namespace NovaStriker.Sim
     // ---- Events: what happened this tick, for rendering, audio, haptics and the interface ----
     public sealed class Ev
     {
+        public double? depth;      // immutable presentation origin, metres toward camera; captured when emitted
         public string type;
         public Player p, q, by, saved;
         public Enemy e;

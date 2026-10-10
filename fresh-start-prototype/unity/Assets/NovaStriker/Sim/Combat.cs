@@ -507,7 +507,7 @@ namespace NovaStriker.Sim
         {
             ExplodeArgs Common(Blast spec, string kind, bool rocket = false) => new ExplodeArgs
             {
-                owner = pr.owner, team = pr.team, x = x, y = y, level = pr.level, perfect = pr.perfect, family = pr.family, skip = skip, spec = spec, kind = kind, rocket = rocket,
+                owner = pr.owner, team = pr.team, x = x, y = y, depth = pr.lane * LevelFeatures.LANE_W, level = pr.level, perfect = pr.perfect, family = pr.family, skip = skip, spec = spec, kind = kind, rocket = rocket,
             };
             // RAM's level 3 Breach Shot bursts where it ends; Fix's Hot Rivets burst when their fuse runs out
             if (pr.endBlast != null) world.Explode(Common(pr.endBlast, "breachBlast"));
@@ -522,9 +522,9 @@ namespace NovaStriker.Sim
         static bool HitWall(World world, Projectile pr, double ox, double oy)
         {
             // A breakable piece takes the shot's damage (enemy fire wears cover down too); blasting shells do it in Explode
-            var bk = pr.blast == null ? Level.BreakableAt(pr.x, pr.y, 0.05) : null;
+            var bk = pr.blast == null ? Level.BreakableAt(pr.x, pr.y, 0.05, pr.lane) : null;
             if (bk != null) world.DamageBox(bk, JMath.Max(0.5, pr.dmg) * (pr.heavy ? 2 : 1), pr.x, pr.y, pr.owner as Player);
-            bool fx = Level.PointInSolid(pr.x, oy), fy = Level.PointInSolid(ox, pr.y);
+            bool fx = Level.PointInSolid(pr.x, oy, pr.lane), fy = Level.PointInSolid(ox, pr.y, pr.lane);
             bool flipX = fx || !fy, flipY = fy || !fx;
             if (pr.disc != null)
             {
@@ -574,14 +574,14 @@ namespace NovaStriker.Sim
             {
                 bool floor = pr.vy < 0;
                 pr.vy = -pr.vy * pr.bouncy; pr.vx *= SUB.grenade.roll;
-                if (floor && pr.vy < 2.4) { pr.vy = 0; pr.rest = true; double g = Level.GroundBelow(pr.x, oy + 0.05); if (g > double.NegativeInfinity && oy - g < 0.5) pr.y = g + pr.r; }
+                if (floor && pr.vy < 2.4) { pr.vy = 0; pr.rest = true; double g = Level.GroundBelow(pr.x, oy + 0.05, pr.lane); if (g > double.NegativeInfinity && oy - g < 0.5) pr.y = g + pr.r; }
             }
             if (sp > 3) world.Emit("bounce", new Ev { x = ox, y = oy, pr = pr, sp = sp });
         }
         // The top of a one-way platform crossed going down between two heights, if any (grenades land on them)
-        static double? OneWayTop(double x, double y0, double y1)
+        static double? OneWayTop(double x, double y0, double y1, int lane)
         {
-            foreach (var b in Level.BOXES) if (b.type == 'o' && x > b.x0 && x < b.x1 && y0 >= b.y1 - 0.02 && y1 < b.y1) return b.y1;
+            foreach (var b in Level.BOXES) if (Level.InLane(b.laneMask, lane) && b.type == 'o' && x > b.x0 && x < b.x1 && y0 >= b.y1 - 0.02 && y1 < b.y1) return b.y1;
             return null;
         }
 
@@ -613,7 +613,7 @@ namespace NovaStriker.Sim
                 {
                     // A grenade at rest rolls to a stop, and falls again if the floor goes
                     pr.vx *= 0.8; pr.vy = 0;
-                    if (!Level.PointInSolid(pr.x, pr.y - pr.r - 0.08) && OneWayTop(pr.x, pr.y, pr.y - pr.r - 0.08) == null) pr.rest = false;
+                    if (!Level.PointInSolid(pr.x, pr.y - pr.r - 0.08, pr.lane) && OneWayTop(pr.x, pr.y, pr.y - pr.r - 0.08, pr.lane) == null) pr.rest = false;
                 }
                 else if (truthy(pr.gravity)) pr.vy -= pr.gravity * DT * k;
                 pr.ttl--;
@@ -628,10 +628,10 @@ namespace NovaStriker.Sim
                     pr.x += pr.vx * DT * k / steps; pr.y += pr.vy * DT * k / steps;
                     if (truthy(pr.bouncy) && pr.vy < 0)
                     {
-                        var top = OneWayTop(pr.x, oy, pr.y);
+                        var top = OneWayTop(pr.x, oy, pr.y, pr.lane);
                         if (top != null) { Bounce(world, pr, pr.x, top.Value + 0.01, false, true); continue; }
                     }
-                    if (!pr.ghost && Level.PointInSolid(pr.x, pr.y))
+                    if (!pr.ghost && Level.PointInSolid(pr.x, pr.y, pr.lane))
                     {
                         if (HitWall(world, pr, ox, oy)) break;
                         continue;

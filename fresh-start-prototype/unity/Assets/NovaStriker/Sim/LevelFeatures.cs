@@ -17,6 +17,7 @@ namespace NovaStriker.Sim
     public sealed class Hazard
     {
         public int id;
+        public int laneMask = 7;
         public string kind, zone;
         public double x0, x1, y0, y1;
         public int period, warn, on, phase;
@@ -97,9 +98,9 @@ namespace NovaStriker.Sim
             new object[] { "vent", 576.0, 577.4, 0.0, 7.0, 200, 50, 40, 0, 3.0, 0.0, 22.0 },
             // Undercity Descent: shock grates, falling debris
             new object[] { "shock", 870.0, 873.0, 20.0, 20.4, 280, 60, 110, 0, 6.0, 0.0, 6.0 },
-            new object[] { "debris", 1043.0, 1044.6, 0.0, 9.0, 240, 70, 12, 0, 16.0, 3.0, 4.0 },
+            new object[] { "debris", 1043.0, 1044.6, 0.0, 9.0, 240, 70, 48, 0, 16.0, 3.0, 4.0 },
             new object[] { "shock", 1093.0, 1096.0, 0.0, 0.4, 300, 60, 120, 60, 6.0, 0.0, 6.0 },
-            new object[] { "debris", 1113.0, 1114.6, 0.0, 9.0, 240, 70, 12, 120, 16.0, 3.0, 4.0 },
+            new object[] { "debris", 1113.0, 1114.6, 0.0, 9.0, 240, 70, 48, 120, 16.0, 3.0, 4.0 },
         };
 
         // ---- Depth lanes: the stretches where three lanes open (x0, x1) ----
@@ -175,14 +176,32 @@ namespace NovaStriker.Sim
         // Where a body is drawn in depth (m toward the camera), easing through a hop
         public static double Depth(Body b)
         {
+            if (b == null) return 0;
             if (b.laneT <= 0) return b.laneTo * LANE_W;
             double k = 1 - b.laneT / (double)HOP; k = k * k * (3 - 2 * k);
             return (b.laneFrom + (b.laneTo - b.laneFrom) * k) * LANE_W;
         }
 
+        public static bool Danger(double x, double y, int lane, double margin = 0.6)
+        {
+            foreach (var h in Level.HAZARDS)
+                if (h.dmg > 0 && Level.InLane(h.laneMask, lane) && (h.state == "warn" || h.state == "on") && x > h.x0 - margin && x < h.x1 + margin && y < h.y1 && y + 1.5 > h.y0) return true;
+            return false;
+        }
+
+        public static bool CanHop(Actor a, int to)
+        {
+            if (a == null || to < -1 || to > 1 || a.laneT > 0) return false;
+            if (!Level.HasHeadroom(a.x, a.y, a.w, a.h, to)) return false;
+            if (a is Enemy e && e.flier) return true;
+            double floor = Level.GroundBelow(a.x, a.y + 0.1, to);
+            return !double.IsNegativeInfinity(floor) && floor >= Level.KillYAt(a.x) && (!a.onGround || a.y - floor < 0.15);
+        }
+
         static void StartHop(World w, Actor a, int to)
         {
             if (to == a.laneTo || a.laneT > 0) return;
+            if (!CanHop(a, to)) { w.Emit("laneBlocked", new Ev { p = a as Player, owner = a, x = a.x, y = a.y, n = to }); return; }
             a.laneFrom = a.laneTo; a.laneTo = to; a.laneT = HOP;
             w.Emit("laneHop", new Ev { x = a.x, y = a.y, n = to, owner = a, p = a as Player, e = a as Enemy });
         }
@@ -245,7 +264,7 @@ namespace NovaStriker.Sim
             foreach (var h in Level.HAZARDS)
             {
                 if (h.kind == "collapse") { StepCollapse(w, h); continue; }
-                if (h.kind == "slag") { Harm(w, h, 20); continue; }
+                if (h.kind == "slag") { h.state = "on"; Harm(w, h, 20); continue; }
                 long c = ((long)w.tick + h.phase) % h.period;
                 string st = c < h.period - h.warn - h.on ? "idle" : c < h.period - h.on ? "warn" : "on";
                 if (st != h.state)
@@ -254,6 +273,8 @@ namespace NovaStriker.Sim
                     w.Emit(st == "warn" ? "hazardWarn" : st == "on" ? "hazardOn" : "hazardOff", Ev(h));
                 }
                 if (st != "on") continue;
+                // Machinery descends through empty air before its impact damage window.
+                if ((h.kind == "crusher" || h.kind == "debris") && c - (h.period - h.on) < h.on * 0.65) continue;
                 if (h.kind == "wind") { Push(w, h); continue; }
                 if (h.kind == "vent") { Launch(w, h); continue; }
                 Harm(w, h, h.kind == "shock" ? 20 : 0);
@@ -262,7 +283,8 @@ namespace NovaStriker.Sim
 
         static Ev Ev(Hazard h) => new Ev { id = h.id.ToString(), kind = h.kind, x = (h.x0 + h.x1) / 2, y = h.y0, x0 = h.x0, x1 = h.x1, y0 = h.y0, y1 = h.y1, dir = h.dir };
 
-        static bool Inside(Hazard h, Body b) => b.x + b.w / 2 > h.x0 && b.x - b.w / 2 < h.x1 && b.y < h.y1 && b.y + b.h > h.y0;
+        public static bool Inside(Hazard h, Body b) => Level.InLane(h.laneMask, b.lane) && b.x + b.w / 2 > h.x0 && b.x - b.w / 2 < h.x1 && b.y < h.y1 && b.y + b.h > h.y0;
+        static bool ImpactInside(Hazard h, Body b) => Inside(h,b) && ((h.kind != "crusher" && h.kind != "debris") || b.y < h.y0 + 1.2);
 
         // Damage whoever is inside: once per `on` window, or every `every` ticks for lasting hazards
         static void Harm(World w, Hazard h, int every)
@@ -270,7 +292,7 @@ namespace NovaStriker.Sim
             if (every > 0 && (long)w.tick % every == 0) h.hit.Clear();
             foreach (var p in w.players.Live())
             {
-                if (p.state == "dead" || p.state == "downed" || !Inside(h, p) || h.hit.Contains("p" + p.slot)) continue;
+                if (p.state == "dead" || p.state == "downed" || !ImpactInside(h, p) || h.hit.Contains("p" + p.slot)) continue;
                 if (h.kind == "shock" && !p.onGround) continue;   // (jump to clear a live floor)
                 h.hit.Add("p" + p.slot);
                 if (h.dmg <= 0) continue;
@@ -279,7 +301,7 @@ namespace NovaStriker.Sim
             }
             foreach (var e in w.enemies.Live())
             {
-                if (e.dead || e.boss || !Inside(h, e) || h.hit.Contains("e" + e.id)) continue;
+                if (e.dead || e.boss || !ImpactInside(h, e) || h.hit.Contains("e" + e.id)) continue;
                 if (h.kind == "shock" && !e.onGround) continue;
                 h.hit.Add("e" + e.id);
                 if (h.dmg <= 0) continue;
@@ -327,8 +349,8 @@ namespace NovaStriker.Sim
             if (h.state == "idle")
             {
                 bool stood = false;
-                foreach (var p in w.players.Live()) if (p.onGround && JMath.Abs(p.y - b.y1) < 0.05 && p.x > b.x0 && p.x < b.x1) stood = true;
-                foreach (var e in w.enemies.Live()) if (!e.dead && e.onGround && JMath.Abs(e.y - b.y1) < 0.05 && e.x > b.x0 && e.x < b.x1) stood = true;
+                foreach (var p in w.players.Live()) if (p.onGround && Level.InLane(b.laneMask, p.lane) && JMath.Abs(p.y - b.y1) < 0.05 && p.x > b.x0 && p.x < b.x1) stood = true;
+                foreach (var e in w.enemies.Live()) if (!e.dead && e.onGround && Level.InLane(b.laneMask, e.lane) && JMath.Abs(e.y - b.y1) < 0.05 && e.x > b.x0 && e.x < b.x1) stood = true;
                 if (stood) { h.state = "warn"; h.t = 48; w.Emit("hazardWarn", Ev(h)); }
             }
             else if (h.state == "warn") { if (--h.t <= 0) { h.state = "on"; h.t = 360; b.y0 = -1000; b.y1 = -999.6; w.Emit("hazardOn", Ev(h)); } }

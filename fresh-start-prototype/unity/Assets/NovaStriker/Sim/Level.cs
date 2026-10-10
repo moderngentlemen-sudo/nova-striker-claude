@@ -19,6 +19,7 @@ namespace NovaStriker.Sim
     public sealed class LevelBox
     {
         public int id;
+        public int laneMask = 7;     // bit 0 back, bit 1 middle, bit 2 front; legacy surfaces span all lanes
         public double x0, x1, y0, y1;
         public char type;             // 's' solid, 'o' one-way, 'g' gate (solid when closed), 'd' breakable
         public string tag;
@@ -424,11 +425,13 @@ namespace NovaStriker.Sim
         public static bool IsSolid(LevelBox b) =>
             b.type == 's' || (b.type == 'g' && GATES[b.tag]) || (b.type == 'd' && !b.broken);
 
+        public static bool InLane(int mask, int lane) => (mask & (1 << (lane + 1))) != 0;
+
         // The breakable piece at a point, if any
-        public static LevelBox BreakableAt(double x, double y, double pad = 0)
+        public static LevelBox BreakableAt(double x, double y, double pad = 0, int lane = 0)
         {
             foreach (var b in BOXES)
-                if (b.type == 'd' && !b.broken && x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad) return b;
+                if (InLane(b.laneMask, lane) && b.type == 'd' && !b.broken && x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad) return b;
             return null;
         }
 
@@ -444,7 +447,7 @@ namespace NovaStriker.Sim
             body.x += body.vx * dt;
             foreach (var b in BOXES)
             {
-                if (!IsSolid(b)) continue;
+                if (!InLane(b.laneMask, body.lane) || !IsSolid(b)) continue;
                 if (Overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, b))
                 {
                     if (body.x < (b.x0 + b.x1) / 2) { body.x = b.x0 - hw - 1e-4; body.hitWall = 1; }
@@ -458,6 +461,7 @@ namespace NovaStriker.Sim
             body.onGround = false;
             foreach (var b in BOXES)
             {
+                if (!InLane(b.laneMask, body.lane)) continue;
                 bool solid = IsSolid(b);
                 if (!solid && b.type != 'o') continue;
                 if (!Overlaps(body.x - hw, body.x + hw, body.y, body.y + body.h, b)) continue;
@@ -482,7 +486,7 @@ namespace NovaStriker.Sim
             {
                 foreach (var b in BOXES)
                 {
-                    if (!IsSolid(b) || b.type == 'g') continue;
+                    if (!InLane(b.laneMask, body.lane) || !IsSolid(b) || b.type == 'g') continue;
                     double ya = body.y + 0.3, yb = body.y + body.h - 0.2;
                     if (ya < b.y1 && yb > b.y0)
                     {
@@ -494,35 +498,35 @@ namespace NovaStriker.Sim
         }
 
         // Can a body of height h stand at (x, y)?
-        public static bool HasHeadroom(double x, double y, double w, double h)
+        public static bool HasHeadroom(double x, double y, double w, double h, int lane = 0)
         {
             double hw = w / 2;
             foreach (var b in BOXES)
             {
-                if (!IsSolid(b)) continue;
+                if (!InLane(b.laneMask, lane) || !IsSolid(b)) continue;
                 if (Overlaps(x - hw, x + hw, y + 0.05, y + h, b)) return false;
             }
             return true;
         }
 
-        public static double GroundBelow(double x, double y)
+        public static double GroundBelow(double x, double y, int lane = 0)
         {
             double best = double.NegativeInfinity;
             foreach (var b in BOXES)
             {
-                if (!(IsSolid(b) || b.type == 'o')) continue;
+                if (!InLane(b.laneMask, lane) || !(IsSolid(b) || b.type == 'o')) continue;
                 if (x > b.x0 && x < b.x1 && b.y1 <= y + 0.01 && b.y1 > best) best = b.y1;
             }
             return best;
         }
 
         // Segment-vs-solid test for line of sight (slab method)
-        public static bool SegmentBlocked(double ax, double ay, double bx, double by)
+        public static bool SegmentBlocked(double ax, double ay, double bx, double by, int lane = 0)
         {
             double dx = bx - ax, dy = by - ay;
             foreach (var b in BOXES)
             {
-                if (!IsSolid(b)) continue;
+                if (!InLane(b.laneMask, lane) || !IsSolid(b)) continue;
                 double t0 = 0, t1 = 1;
                 if (Check(-dx, ax - b.x0, ref t0, ref t1) && Check(dx, b.x1 - ax, ref t0, ref t1) &&
                     Check(-dy, ay - b.y0, ref t0, ref t1) && Check(dy, b.y1 - ay, ref t0, ref t1))
@@ -566,21 +570,21 @@ namespace NovaStriker.Sim
 
         // The first solid surface along a ray (unit direction), up to `range` m: where it is, how far, and the
         // surface normal there (wall: false when nothing is hit within range)
-        public static CastHit RayCast(double x, double y, double dx, double dy, double range)
+        public static CastHit RayCast(double x, double y, double dx, double dy, double range, int lane = 0)
         {
             double best = range, nx = 0, ny = 0; LevelBox box = null;
             foreach (var b in BOXES)
             {
-                if (!IsSolid(b)) continue;
+                if (!InLane(b.laneMask, lane) || !IsSolid(b)) continue;
                 var h = RayBoxT(x, y, dx, dy, b.x0, b.y0, b.x1, b.y1);
                 if (h != null && h.Value.t < best) { best = h.Value.t; nx = h.Value.nx; ny = h.Value.ny; box = b; }
             }
             return new CastHit { t = best, x = x + dx * best, y = y + dy * best, nx = nx, ny = ny, wall = best < range, box = box };
         }
 
-        public static bool PointInSolid(double x, double y)
+        public static bool PointInSolid(double x, double y, int lane = 0)
         {
-            foreach (var b in BOXES) if (IsSolid(b) && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
+            foreach (var b in BOXES) if (InLane(b.laneMask, lane) && IsSolid(b) && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
             return false;
         }
     }

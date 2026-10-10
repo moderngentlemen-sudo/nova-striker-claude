@@ -597,7 +597,7 @@ namespace NovaStriker.Sim
             if (cmd.held.parry && p.@char == "ram" && !p.guardBroken) { StartGuard(p, world); StateGuard(p, cmd, world); return; }
             if (cmd.held.parry && p.@char == "fix") { StartPatch(p, world); StatePatch(p, cmd, world); return; }
             if (p.onGround && cmd.my < -0.55) p.crouch = true;
-            else if (p.crouch && Level.HasHeadroom(p.x, p.y, p.w, c.height)) p.crouch = false;
+            else if (p.crouch && Level.HasHeadroom(p.x, p.y, p.w, c.height, p.lane)) p.crouch = false;
 
             HorizontalControl(p, cmd, world);
             if (!p.onGround && cmd.my < -0.7 && p.vy < 3 && p.wallDir == 0) p.fastFall = true;
@@ -706,7 +706,7 @@ namespace NovaStriker.Sim
             if (TryParry(p, world)) return;
             if (p.st >= c.slide.ticks || JMath.Abs(p.vx) < 2 || !p.onGround)
             {
-                p.crouch = !Level.HasHeadroom(p.x, p.y, p.w, c.height);
+                p.crouch = !Level.HasHeadroom(p.x, p.y, p.w, c.height, p.lane);
                 SetState(p, "normal");
             }
         }

@@ -1017,7 +1017,7 @@ namespace NovaStriker.Sim
                 double gain = p.reviveGain; var by = p.reviveBy;
                 foreach (var q in players.Live())
                 {
-                    if (q == p || q.state == "downed" || q.state == "dead" || q.state == "hitstun" || JMath.Abs(q.x - p.x) >= 1.7 || JMath.Abs(q.y - p.y) >= 1.6) continue;
+                    if (q == p || q.state == "downed" || q.state == "dead" || q.state == "hitstun" || !LevelFeatures.Same(p, q) || JMath.Abs(q.x - p.x) >= 1.7 || JMath.Abs(q.y - p.y) >= 1.6) continue;
                     gain += q.@char == "fix" ? FIX.revive : 1; by = by ?? q;
                     if (q.@char == "fix") { p.fixRevive = true; by = q; }
                 }

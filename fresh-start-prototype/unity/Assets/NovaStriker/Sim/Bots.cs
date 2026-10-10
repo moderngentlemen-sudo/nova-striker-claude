@@ -52,6 +52,7 @@ namespace NovaStriker.Sim
             public long seed;
             public Enemy target;
             public double stuck;
+            public V2 waypoint; public double goalX = double.NaN, goalY; public int navVersion = -1;
             public double? lastX, lastY;
         }
 
@@ -125,10 +126,10 @@ namespace NovaStriker.Sim
             M.t++;
             var S = SETTINGS.aiSkill != null && BOT.skill.TryGetValue(SETTINGS.aiSkill, out var sk) ? sk : BOT.skill["veteran"];
             double Rnd() { M.seed = (M.seed * 16807) % 2147483647; return M.seed / 2147483647.0; }
-            var held = new Buttons(); double mx = 0, my = 0, ax = 0, ay = 0; bool aimFree = false;
+            var held = new Buttons(); double mx = 0, my = 0, ax = 0, ay = 0; bool aimFree = false; int laneWant = 0;
             Cmd Out()
             {
-                var c = new Cmd { mx = mx, my = my, aimFree = aimFree, ax = ax, ay = ay, held = held };
+                var c = new Cmd { mx = mx, my = my, aimFree = aimFree, ax = ax, ay = ay, held = held, lane = laneWant };
                 for (int i = 0; i < 10; i++) { c.pressed[i] = held[i] && !M.prev[i]; c.released[i] = !held[i] && M.prev[i]; }
                 M.prev = held.Clone();
                 return c;
@@ -215,19 +216,27 @@ namespace NovaStriker.Sim
             // ---- 1. Hazards: leave a mortar's landing zone ----
             double? shell = S.smart ? MortarZone(world, p) : null;
             if (shell != null) { goal = p.x + (p.x >= shell.Value ? 1 : -1) * 3; stopAt = 0.2; }
+            if (LevelFeatures.Danger(p.x, p.y, p.lane) || LevelFeatures.Danger(p.x + sign(goal-p.x) * 1.2, p.y, p.lane))
+            {
+                bool escaped = false;
+                foreach (int lane in new[] { -1, 1 }) if (Level.InLaneStretch(p.x) && LevelFeatures.CanHop(p, p.lane + lane) && !LevelFeatures.Danger(p.x, p.y, p.lane + lane)) { laneWant = lane; escaped = true; break; }
+                if (!escaped) { foreach (var h in Level.HAZARDS) if (h.dmg > 0 && (h.state == "warn" || h.state == "on") && p.x>h.x0-1.8 && p.x<h.x1+1.8 && p.y<h.y1 && Level.InLane(h.laneMask,p.lane)) { goal = p.x < (h.x0+h.x1)/2 ? h.x0-1.5 : h.x1+1.5; goalY = p.y; stopAt = .1; break; } }
+            }
+            if (M.navVersion != Level.Version || M.t % 12 == 0 || JMath.Abs(M.goalX - goal) > 2 || JMath.Abs(M.goalY - goalY) > 1) { M.waypoint = LevelNavigation.Waypoint(p, goal, goalY); M.goalX = goal; M.goalY = goalY; M.navVersion = Level.Version; }
+            if (!double.IsNaN(M.goalX)) { goal = M.waypoint.x; goalY = M.waypoint.y; }
             double dx = goal - p.x;
             if (JMath.Abs(dx) > stopAt) mx = sign(dx);
 
             // ---- Platforming ----
             double dir = or(mx, p.facing);
-            bool wall = truthy(mx) && !Level.HasHeadroom(p.x + dir * 0.45, p.y + 0.3, p.w, JMath.Max(0.6, p.h - 0.4));
+            bool wall = truthy(mx) && !Level.HasHeadroom(p.x + dir * 0.45, p.y + 0.3, p.w, JMath.Max(0.6, p.h - 0.4), p.lane);
             // A wall far taller than where the goal is, with the goal just past it: wait on this side
             if (wall && JMath.Abs(dx) < 6)
             {
-                double top = p.y; while (top < p.y + 30 && !Level.HasHeadroom(p.x + dir * 0.6, top, p.w * 0.5, 1)) top += 1;
+                double top = p.y; while (top < p.y + 30 && !Level.HasHeadroom(p.x + dir * 0.6, top, p.w * 0.5, 1, p.lane)) top += 1;
                 if (top > goalY + 3.5) { mx = 0; wall = false; }
             }
-            double floorAhead = Level.GroundBelow(p.x + dir * (p.w / 2 + 0.6), p.y + 0.2);
+            double floorAhead = Level.GroundBelow(p.x + dir * (p.w / 2 + 0.6), p.y + 0.2, p.lane);
             bool gap = truthy(mx) && p.onGround && floorAhead < p.y - 1.2;
             bool goalPastGap = JMath.Abs(dx) > 2.2;
             if (gap && !goalPastGap && goalY >= p.y - 0.5) mx = 0;           // don't step off for nothing
@@ -260,7 +269,7 @@ namespace NovaStriker.Sim
             aimFree = true; ax = tx / len; ay = ty / len;
             if (!truthy(mx) && JMath.Abs(tx) > 0.2 && sign(tx) != p.facing) mx = sign(tx) * 0.3;   // turn to face it
             if (!p.onGround) ay = JMath.Max(ay, -0.3);                                       // (aiming hard down in the air is a ground pound)
-            bool seen = !Level.SegmentBlocked(cx, cy, tgt.x, tgt.y + tgt.h / 2);
+            bool seen = !Level.SegmentBlocked(cx, cy, tgt.x, tgt.y + tgt.h / 2, p.lane);
             bool threat = Threat(world, p, M, S, Rnd);
             bool close = JMath.Abs(tx) < 2.0 + tgt.w / 2 && JMath.Abs(ty) < 1.6;
             int crowd = foes.FindAll(e => Dist(e) < 6).Count;
@@ -362,7 +371,7 @@ namespace NovaStriker.Sim
             if (ranged && (e.flier || RANGED_FOES.Contains(e.type))) s -= 2;
             if (!ranged && (e.flier || vy > 2.6)) s += 4;
             if (e.armor > 0 && (p.@char == "echo" || p.@char == "fix")) s += 2;
-            if (ranged && Level.SegmentBlocked(p.x, p.y + p.h / 2, e.x, e.y + e.h / 2)) s += 3;
+            if (ranged && Level.SegmentBlocked(p.x, p.y + p.h / 2, e.x, e.y + e.h / 2, p.lane)) s += 3;
             return s;
         }
 

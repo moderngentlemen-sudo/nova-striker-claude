@@ -14,6 +14,7 @@ namespace NovaStriker.Sim
         public Actor owner;
         public string team = "p";
         public double x, y;
+        public double? depth; // projectile snapshot; null resolves from the owner for actor-owned attacks
         public Blast spec;
         public double level;
         public bool perfect;
@@ -154,7 +155,18 @@ namespace NovaStriker.Sim
             SpawnGym();
         }
 
-        public void Emit(string type, Ev data) { data.type = type; events.Add(data); }
+        public void Emit(string type, Ev data)
+        {
+            data.type = type;
+            if (!data.depth.HasValue)
+            {
+                // An impact belongs to its victim; a flight event belongs to the shot's frozen lane.
+                if (data.pr != null) data.depth = data.pr.lane * LevelFeatures.LANE_W;
+                else if ((type == "shot" || type == "burst" || type == "grenadeThrow" || type == "discThrow") && data.p != null) data.depth = data.p.lane * LevelFeatures.LANE_W;
+                else data.depth = LevelFeatures.Depth((Body)data.e ?? data.p ?? data.owner);
+            }
+            events.Add(data);
+        }
         public int NewInstance() => instanceSeq++;
         public void Schedule(double ticks, Action fn) { scheduled.Add(new Scheduled { t = tick + ticks, fn = fn }); }
         public List<Player> ActivePlayers() => players.FindAll(p => p.state != "dead" && p.state != "downed");
@@ -166,7 +178,12 @@ namespace NovaStriker.Sim
 
         // ---- Spawning helpers used by players, enemies and combat ----
         public void SpawnHitbox(Hit hb) { hitboxes.Add(hb); }
-        public void SpawnProjectile(Projectile pr) { pr.px = pr.x; pr.py = pr.y; projectiles.Add(pr); }
+        public void SpawnProjectile(Projectile pr)
+        {
+            pr.px = pr.x; pr.py = pr.y;
+            if (!pr.laneSet) { pr.lane = pr.owner?.lane ?? 0; pr.laneSet = true; }
+            projectiles.Add(pr);
+        }
         public void SpawnShockwave(Enemy e, double dir, double dmg, double scale = 1)
         {
             shockwaves.Add(new Shockwave { owner = e, x = e.x + dir * (e.w / 2), y = e.y, dir = dir, speed = 11, ttl = JMath.Round(60 * scale), dmg = dmg, h = 0.9, instance = NewInstance() });
@@ -272,7 +289,7 @@ namespace NovaStriker.Sim
                     if (q.state == "dead" || q.state == "downed" || !Reach(q, spec.r)) continue;
                     HitPlayer(this, q, new Hit { owner = a.owner, dmg = spec.dmg, unblockable = true, cat = "unblockable", heavy = true, kb = new[] { or(sign(q.x - x), 1) * 7, 6.0 }, instance = id, at = new V2(x, y) });
                 }
-                Emit("enemyBlast", new Ev { x = x, y = y, r = spec.r });
+                Emit("enemyBlast", new Ev { x = x, y = y, r = spec.r, depth = a.depth });
                 return;
             }
             for (int i = 0; i < enemies.Count; i++)
@@ -283,7 +300,7 @@ namespace NovaStriker.Sim
                 if (a.family != null && (res == "hit" || res == "kill")) AwardFocus(this, a.owner, a.family, null);
             }
             if (a.rocket && spec.rocket && a.owner is Player op && marksman(op)) RocketPush(op, x, y, spec, a.family, a.perfect);
-            Emit(a.kind, new Ev { p = a.owner as Player, owner = a.owner, x = x, y = y, r = spec.r, level = a.level, perfect = a.perfect });
+            Emit(a.kind, new Ev { p = a.owner as Player, owner = a.owner, x = x, y = y, r = spec.r, level = a.level, perfect = a.perfect, depth = a.depth });
         }
 
         // Rocket jump: a charged shot bursting on terrain close to Nova launches him away from the burst
@@ -321,7 +338,7 @@ namespace NovaStriker.Sim
         public RocketPreviewInfo RocketPreview(Player p)
         {
             if (!marksman(p) || p.chargeT < MARKSMAN.charge[0] || p.chargeT >= MARKSMAN.beam.at || p.aimY > -0.6 || (p.state != "normal" && p.state != "slide")) return null;
-            double gy = Level.GroundBelow(p.x, p.y + 0.1);
+            double gy = Level.GroundBelow(p.x, p.y + 0.1, p.lane);
             if (double.IsNegativeInfinity(gy)) return null;
             string stage = ChargeStage(p); bool perfect = stage == "perfect"; int level = p.chargeT >= MARKSMAN.charge[2] ? 3 : p.chargeT >= MARKSMAN.charge[1] ? 2 : 1;
             string A = p.attachment;
@@ -344,7 +361,7 @@ namespace NovaStriker.Sim
             double bounces = b.attach == "prism" ? B.prismBounces : 0;
             for (int i = 0; i <= bounces; i++)
             {
-                var h = Level.RayCast(sx, sy, dx, dy, B.range);
+                var h = Level.RayCast(sx, sy, dx, dy, B.range, p.lane);
                 segs.Add(new BeamSeg { x0 = sx, y0 = sy, x1 = h.x, y1 = h.y, wall = h.wall, nx = h.nx, ny = h.ny });
                 if (!h.wall || i == bounces) break;
                 double dot = dx * h.nx + dy * h.ny; dx -= 2 * dot * h.nx; dy -= 2 * dot * h.ny;
@@ -352,7 +369,7 @@ namespace NovaStriker.Sim
             }
             b.segs = segs; b.pulse++;
             var last = segs[segs.Count - 1];
-            var endBox = Level.RayCast(last.x0, last.y0, dx, dy, B.range).box;
+            var endBox = Level.RayCast(last.x0, last.y0, dx, dy, B.range, p.lane).box;
             if (endBox != null && endBox.type == 'd' && b.pulse % B.pulse == 1) DamageBox(endBox, B.dmg * b.mult * 2, last.x1, last.y1, p);
             bool Near(double x, double y, double r) { foreach (var g in segs) if (DistToSeg(x, y, g) < r) return true; return false; }
             foreach (var pr in projectiles.Live()) if (pr.team == "e" && !pr.dead && Near(pr.x, pr.y, B.width + pr.r)) { pr.dead = true; Emit("erase", new Ev { x = pr.x, y = pr.y }); }
@@ -463,7 +480,7 @@ namespace NovaStriker.Sim
         public void FireSniper(Player p, double f)
         {
             var c = Chest(p); double ax = p.aimX, ay = p.aimY; bool full = f >= 1;
-            double x0 = c.x + ax * 0.9, y0 = c.y + ay * 0.9; var wall = Level.RayCast(x0, y0, ax, ay, HUNTER.rifle.range);
+            double x0 = c.x + ax * 0.9, y0 = c.y + ay * 0.9; var wall = Level.RayCast(x0, y0, ax, ay, HUNTER.rifle.range, p.lane);
             if (wall.box != null && wall.box.type == 'd') DamageBox(wall.box, HUNTER.rifle.minDmg + (HUNTER.rifle.maxDmg - HUNTER.rifle.minDmg) * f, wall.x, wall.y, p);
             var line = new List<(Enemy e, double t)>();
             foreach (var e in enemies.Live())
@@ -619,7 +636,7 @@ namespace NovaStriker.Sim
             var c = Chest(p); double ax = p.aimX, ay = p.aimY, mult = perfect ? MARKSMAN.perfectMult : 1;
             double x0 = c.x + ax * 0.6, y0 = c.y + ay * 0.6, R = SUB.chain.range[level], cos = JMath.Cos(SUB.chain.cone);
             V2 Mid(Enemy e) => new V2(e.x, e.y + e.h * 0.55);
-            bool Clear(V2 a, V2 b) => !Level.SegmentBlocked(a.x, a.y, b.x, b.y);
+            bool Clear(V2 a, V2 b) => !Level.SegmentBlocked(a.x, a.y, b.x, b.y, p.lane);
             Enemy first = null;
             var t = p.lockT;
             if (t != null && !t.dead && JMath.Hypot(t.x - x0, Mid(t).y - y0) <= R && Clear(new V2(x0, y0), Mid(t))) first = t;
@@ -653,7 +670,7 @@ namespace NovaStriker.Sim
                 }
             }
             // Nothing in reach: the arc lashes out and earths itself on the nearest surface in front
-            if (first == null) { var h = Level.RayCast(x0, y0, ax, ay, R * 0.7); pts.Add(new ChainPt { x = h.x, y = h.y, fizzle = true }); }
+            if (first == null) { var h = Level.RayCast(x0, y0, ax, ay, R * 0.7, p.lane); pts.Add(new ChainPt { x = h.x, y = h.y, fizzle = true }); }
             p.burstCd = SUB.chain.cd;
             Emit("chain", new Ev { p = p, pts = pts, level = level, perfect = perfect, n = hit.Count });
         }
@@ -678,7 +695,7 @@ namespace NovaStriker.Sim
             var c = Chest(p); double x = c.x + p.aimX * 0.7, y = c.y + p.aimY * 0.7;
             wells.Add(new Well
             {
-                owner = p, x = x, y = y, px = x, py = y, vx = p.aimX * SUB.well.speed, vy = p.aimY * SUB.well.speed, phase = "orb", t = 0, level = level, perfect = perfect,
+                owner = p, lane = p.lane, x = x, y = y, px = x, py = y, vx = p.aimX * SUB.well.speed, vy = p.aimY * SUB.well.speed, phase = "orb", t = 0, level = level, perfect = perfect,
                 r = SUB.well.r[level] * (perfect ? 1.2 : 1), life = SUB.well.life[level] + (perfect ? 30 : 0), mult = perfect ? MARKSMAN.perfectMult : 1,
             });
             p.burstCd = SUB.well.cd;
@@ -711,7 +728,7 @@ namespace NovaStriker.Sim
             // A well that opens at floor level lifts a little, so what it catches floats up into it
             double gy = Level.GroundBelow(w.x, w.y + 0.05);
             if (gy > double.NegativeInfinity && w.y - gy < SUB.well.lift && !Level.PointInSolid(w.x, gy + SUB.well.lift)) w.y = gy + SUB.well.lift;
-            Emit("wellOpen", new Ev { p = w.owner, x = w.x, y = w.y, r = w.r, level = w.level });
+            Emit("wellOpen", new Ev { p = w.owner, depth = w.lane * LevelFeatures.LANE_W, x = w.x, y = w.y, r = w.r, level = w.level });
         }
         void UpdateWells(bool frozen)
         {
