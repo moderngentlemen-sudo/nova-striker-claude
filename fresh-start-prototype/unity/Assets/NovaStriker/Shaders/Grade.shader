@@ -203,12 +203,16 @@ Shader "NovaStriker/Grade"
                 else if (st == 3)   // Shatter
                 {
                     float2 p = (vUv - _Center) * asp * 7.0;
-                    float2 ip = floor(p), fp = frac(p); float md = 8.0, md2 = 8.0; float2 id = float2(0.0, 0.0), mo = float2(0.0, 0.0);
-                    [unroll] for (int j = -1; j <= 1; j++)
-                    [unroll] for (int i = -1; i <= 1; i++)
+                    float2 ip = floor(p), fp = frac(p); float md = 8.0, md2 = 8.0; float2 id = float2(0.0, 0.0);
+                    // Keep the distance reduction branchless. HLSLcc's packed-register translation of the
+                    // nested scalar swap generated invalid vec2 assignments on the pinned OpenGL backend.
+                    [loop] for (int j = -1; j <= 1; j++)
+                    [loop] for (int i = -1; i <= 1; i++)
                     {
                         float2 g = float2(i, j), o = hash22(ip + g + seed), rr = g + o - fp; float dd = dot(rr, rr);
-                        if (dd < md) { md2 = md; md = dd; id = ip + g; mo = rr; } else if (dd < md2) md2 = dd;
+                        id = dd < md ? ip + g : id;
+                        md2 = min(md2, max(md, dd));
+                        md = min(md, dd);
                     }
                     float crack = 1.0 - smoothstep(0.0, 0.06, sqrt(md2) - sqrt(md));
                     float2 sc = (id + 0.5) / 7.0 / asp, sdir = normalize(sc * asp + float2(1e-4, 1e-4));

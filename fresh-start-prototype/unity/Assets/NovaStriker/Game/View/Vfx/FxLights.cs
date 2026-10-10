@@ -11,9 +11,11 @@ namespace NovaStriker.Game
         sealed class L { public Light l; public float t, life, k; public uint seed; }
         readonly L[] ls = new L[N];
         int next;
+        public static int ActiveLights { get; private set; }
 
         public FxLights(Transform parent)
         {
+            ActiveLights = 0;
             for (int i = 0; i < N; i++)
             {
                 var go = new GameObject("fx light " + i); go.transform.SetParent(parent, false);
@@ -36,6 +38,7 @@ namespace NovaStriker.Game
             x.l.transform.position = new Vector3(at.x, at.y, -at.z);
             x.l.color = c; x.l.range = range; x.k = intensity; x.t = 0; x.life = Mathf.Max(0.05f, life); x.seed = (uint)Random.Range(1, 1 << 30);
             x.l.intensity = intensity; x.l.enabled = true;
+            ActiveLights = Active;
         }
 
         public void Update(float dt)
@@ -51,6 +54,7 @@ namespace NovaStriker.Game
                 float flicker = 0.85f + 0.15f * Mathf.PerlinNoise(x.seed % 1000, x.t * 30);
                 x.l.intensity = x.k * (1 - u) * (1 - u) * flicker;
             }
+            ActiveLights = Active;
         }
     }
 }

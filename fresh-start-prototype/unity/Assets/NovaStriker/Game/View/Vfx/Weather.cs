@@ -37,7 +37,7 @@ namespace NovaStriker.Game
         public Weather(View view)
         {
             this.view = view; V = view.vfx;
-            root = new GameObject("Weather").transform;
+            root = new GameObject("Weather").transform; root.SetParent(view.scene.go.transform, false);
             rain = Drops("rain", new Color(0.78f, 0.85f, 0.95f, 0.38f), 2400, 0.25f, 0.04f);
             drips = Drops("drips", new Color(0.7f, 0.86f, 1f, 0.6f), 300, 1f, 0.03f);
 
@@ -62,7 +62,7 @@ namespace NovaStriker.Game
             {
                 name = name, mat = FxPool.Mat(Templates.ParticleAdd, FxTex.Get("streak"), white), max = max, gravity = gravity,
                 stretch = true, stretchK = 0.045f, collide = true, bounce = 0, fade = FxPool.Fade(white, white, 0, 1, 1, 0.08f),
-                extra = ps => { var c = ps.collision; c.lifetimeLoss = 1; c.dampen = 1; c.radiusScale = 0.2f; }
+                extra = ps => { var c = ps.collision; c.lifetimeLoss = 1; c.dampen = 1; c.radiusScale = 0.2f; c.sendCollisionMessages = true; }
             }, root);
             var sgo = new GameObject(name + " splash"); sgo.transform.SetParent(l.ps.transform, false);
             var sp = sgo.AddComponent<ParticleSystem>();
@@ -71,7 +71,7 @@ namespace NovaStriker.Game
             m.simulationSpace = ParticleSystemSimulationSpace.World; m.gravityModifier = 1;
             m.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.32f); m.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
             m.startSize = new ParticleSystem.MinMaxCurve(width * 0.8f, width * 1.4f); m.startColor = tint;
-            var em = sp.emission; em.rateOverTime = 0; em.SetBursts(new[] { new ParticleSystem.Burst(0, 2, 3) });
+            var em = sp.emission; em.rateOverTime = 0; em.burstCount = 0; // every birth goes through WeatherSplash
             var sh = sp.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 38; sh.radius = 0.04f; sh.rotation = new Vector3(-90, 0, 0);
             var co = sp.colorOverLifetime; co.enabled = true; co.color = new ParticleSystem.MinMaxGradient(FxPool.Fade(white, white, 1, 0.8f, 0, 0.4f));
             var r = sgo.GetComponent<ParticleSystemRenderer>();
@@ -79,8 +79,8 @@ namespace NovaStriker.Game
             r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.04f; r.lengthScale = 1.5f;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
             ParticleBudget.Register(sp);
-            var sub = l.ps.subEmitters; sub.enabled = false; // explicit parent admission; collision splashes disabled to avoid unbudgeted births
-            sub.AddSubEmitter(sp, ParticleSystemSubEmitterType.Collision, ParticleSystemSubEmitterProperties.InheritNothing);
+            var callback = l.ps.gameObject.AddComponent<WeatherSplash>(); callback.source = l.ps; callback.splash = sp;
+            sp.Play();
             l.ps.Play();
             dropTint[name] = tint;
             return l;
@@ -192,6 +192,9 @@ namespace NovaStriker.Game
             }
             UpdateBolt(dt);
             UpdateCraft(dt, camX);
+            int weatherLights = bolt.enabled ? 1 : 0;
+            foreach (var f in floods) if (f.l.enabled) weatherLights++;
+            PerfOverlay.WeatherLights = weatherLights;
             } finally { ParticleBudget.Ambient = false; }
         }
 
@@ -255,7 +258,9 @@ namespace NovaStriker.Game
             // two or three quick pulses, then gone
             float k = boltT < 0.08f ? 1 : boltT < 0.16f ? 0.25f : boltT < 0.24f ? 0.85f : boltT < 0.5f ? Mathf.Lerp(0.5f, 0, (boltT - 0.24f) / 0.26f) : 0;
             bolt.intensity = 2.2f * k;
-            boltLine.enabled = k > 0.2f;
+            bool flash = FxCfg.Lights && !Cfg.SETTINGS.reducedScreenEffects;
+            bolt.enabled = flash && k > 0;
+            boltLine.enabled = !Cfg.SETTINGS.reducedScreenEffects && k > 0.2f;
             var c = new Color(0.85f, 0.9f, 1f, k); boltLine.startColor = c; boltLine.endColor = c;
             if (boltT >= 0.5f) { boltT = -1; bolt.enabled = false; boltLine.enabled = false; }
         }
@@ -331,6 +336,8 @@ namespace NovaStriker.Game
             // floodlights high in front of the deck, sweeping slowly over it
             foreach (var f in floods)
             {
+                f.l.enabled = FxCfg.Lights;
+                f.cone.gameObject.SetActive(FxCfg.Lights);
                 float sweep = Mathf.Sin(t * 0.45f + f.phase);
                 var pos = Th.P(S.W(camX + f.du, camY + 16, 9));
                 var aim = Th.P(S.W(camX + f.du + sweep * 10, camY - 3, -1 + Mathf.Cos(t * 0.3f + f.phase) * 2));

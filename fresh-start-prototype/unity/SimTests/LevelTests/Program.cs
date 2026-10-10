@@ -153,6 +153,17 @@ static class P {
         w.tick=h.period-h.on-h.phase+(int)System.Math.Ceiling(h.on*.65);LevelFeatures.Step(w,new Dictionary<int,Cmd>(),false);
         Check(p.hp==hp,kind+": floor impact does not damage empty air above the head");
     }
+    // Observe real bot commands and movement over a tier route, rather than checking the waypoint formula alone.
+    foreach(var hero in new[]{"nova","echo"}) {
+      var w=Make(true,false,true,"gym");w.AddPlayer("keyboard",hero);var ai=new Bots();ai.Sync(w,3);w.Teleport("gym");
+      var reached=new HashSet<string>();
+      foreach(var p in w.players){p.x=52;p.y=p.device=="keyboard"?4.4:0;p.onGround=true;}
+      for(int tick=0;tick<600;tick++) {
+        w.enemies.Clear();var commands=new Dictionary<int,Cmd>{[0]=new Cmd()};ai.Commands(w,commands);w.Step(commands);w.events.Clear();
+        foreach(var p in w.players)if(Bots.IsBot(p)&&p.onGround&&p.y>=4.3)reached.Add(p.@char);
+      }
+      Check(w.players.Where(Bots.IsBot).All(p=>reached.Contains(p.@char)),hero+": all three teammates physically reach the upper route");
+    }
     string Replay(string preset,string quality) {
       var w=Make(true,true,true,"gym");SETTINGS.fxPreset=preset;SETTINGS.quality=quality;var p=w.AddPlayer("pad0","nova");p.x=52;p.y=0;
       Run(w,p,180,i=>new Cmd {mx=i<70?.5:0,lane=i==20?1:0,held=new Buttons {jump=i>35&&i<55},pressed=new Buttons{jump=i==36}});

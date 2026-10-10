@@ -13,7 +13,7 @@ namespace NovaStriker.Game {
    QualitySettings.vSyncCount=0;Application.targetFrameRate=60;
    StartCoroutine(ReviewScenes());
   }
-  IEnumerator Settle(int frames=60) {for(int i=0;i<frames;i++)yield return null;}
+  IEnumerator Settle(int frames=12) {for(int i=0;i<frames;i++)yield return null;}
   IEnumerator Capture(string name, bool counted = true) {
    yield return new WaitForEndOfFrame();var texture=new Texture2D(Screen.width,Screen.height,TextureFormat.RGB24,false);texture.ReadPixels(new Rect(0,0,Screen.width,Screen.height),0,0,false);texture.Apply(false);File.WriteAllBytes(Path.Combine(reviewFolder,name+".png"),texture.EncodeToPNG());Destroy(texture);if(counted)review.captures.Add(name);
   }
@@ -29,9 +29,9 @@ namespace NovaStriker.Game {
    }
    SetPaused(true);yield return Settle(3);yield return Capture("paused");SetPaused(false);
    world.Teleport("skyline");yield return Settle();Directory.CreateDirectory(Path.Combine(reviewFolder,"motion"));
-   for(int frame=0;frame<40;frame++){yield return Settle(6);yield return Capture("motion/"+frame.ToString("D3"),false);}
+   for(int frame=0;frame<40;frame++){yield return Settle(2);yield return Capture("motion/"+frame.ToString("D3"),false);}
    foreach(var type in new[]{"swarmer","shield","sniper","brute","post","turret","drone","mortar","charger","warden","stormcaller"}) {
-    world.Teleport("gym");world.enemies.Clear();var enemy=Enemies.CreateEnemy(type,world.players[0].x+4,0);world.enemies.Add(enemy);yield return Settle(15);yield return Capture("enemy_"+type);
+    world.Teleport("gym");world.enemies.Clear();var enemy=Enemies.CreateEnemy(type,world.players[0].x+4,0);world.enemies.Add(enemy);yield return Settle(6);yield return Capture("enemy_"+type);
    }
    // Reset/settings lifecycle counts are evidence, not an assertion of no leak.
    for(int i=0;i<10;i++){world.Teleport(i%2==0?"gym":"arena");SETTINGS.enemyModels=i%2==0;yield return Settle(3);review.resetMeshes.Add(Resources.FindObjectsOfTypeAll<Mesh>().Length);review.resetMaterials.Add(Resources.FindObjectsOfTypeAll<Material>().Length);review.resetLights.Add(Resources.FindObjectsOfTypeAll<Light>().Length);}

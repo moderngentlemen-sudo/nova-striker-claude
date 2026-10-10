@@ -114,9 +114,12 @@ namespace NovaStriker.Game
             foreach (var (x0, x1) in Level.LANES)
                 for (double x = x0; x < x1; x += 1.5)
                 {
-                    double floor = Level.GroundBelow(x + 0.4, 60);
-                    if (double.IsNegativeInfinity(floor)) continue;
-                    foreach (var dz in new[] { -0.7f, 0.7f }) { var s = Box(root, 0.9f, 0.012f, 0.06f, guide, x + 0.45, floor + 0.012, dz * (float)LevelFeatures.LANE_W / 0.7f * 0.5f); s.cast = false; s.receive = false; }
+                    foreach (var b in Level.BOXES) {
+                        if ((b.type != 's' && b.type != 'o') || b.laneMask != 7 || x < b.x0 || x + 0.9 > b.x1) continue;
+                        TObj owner = root;
+                        foreach (var c in collapses) if (c.b == b) { owner = c.g; break; }
+                        foreach (var dz in new[] { -0.7f, 0.7f }) { var s = Box(owner, 0.9f, 0.012f, 0.06f, guide, x + 0.45, b.y1 + 0.012, dz); s.cast = false; s.receive = false; }
+                    }
                 }
             built = Level.Version;
         }

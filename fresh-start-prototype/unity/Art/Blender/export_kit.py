@@ -12,10 +12,11 @@ parts = {}
 for col in bpy.data.collections:
     if not col.name.startswith('Kit_'): continue
     asset = col.name[4:]
-    for o in col.objects:
+    for o in sorted(col.objects,key=lambda obj:obj.name):
         if o.type not in ('MESH', 'CURVE', 'FONT'): continue
         ev = o.evaluated_get(dg); me = ev.to_mesh()
-        bm = bmesh.new(); bm.from_mesh(me); bmesh.ops.triangulate(bm, faces=bm.faces[:]); bm.to_mesh(me); bm.free()
+        # Avoid beauty-diagonal ties depending on allocation order in symmetric/font faces.
+        bm = bmesh.new(); bm.from_mesh(me); bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='FIXED', ngon_method='EAR_CLIP'); bm.to_mesh(me); bm.free()
         me.calc_loop_triangles() if hasattr(me, 'calc_loop_triangles') else None
         mw = o.matrix_world; nmw = mw.to_3x3().inverted().transposed()
         mats = [m.name if m else 'Kit_Hull' for m in me.materials] or ['Kit_Hull']

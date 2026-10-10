@@ -21,6 +21,7 @@ namespace NovaStriker.Game
 
         public Sparks(TObj scene, Camera cam)
         {
+            ActiveLights = 0;
             this.cam = cam;
             ParticleBudget.Register(() => { int n = 0; foreach (var p in ps) if (p != null && p.life > 0) n++; return n; }, excess => { int dropped = 0; foreach (var p in ps) if (p != null && p.life > 0 && dropped < excess) { p.life = 0; dropped++; } return dropped; });
             for (int i = 0; i < N; i++) ps[i] = new P();
@@ -31,7 +32,7 @@ namespace NovaStriker.Game
             scene.add(dm.obj);
             for (int i = 0; i < LIGHTS; i++)
             {
-                var go = new GameObject("spark-light"); var l = go.AddComponent<Light>();
+                var go = new GameObject("spark-light"); go.transform.SetParent(scene.go.transform, false); var l = go.AddComponent<Light>();
                 l.type = LightType.Point; l.color = new Color(1f, 0.78f, 0.45f); l.range = 3.6f; l.intensity = 0; l.shadows = LightShadows.None; l.enabled = false;
                 lights[i] = l; lightOwner[i] = -1;
             }
@@ -39,9 +40,9 @@ namespace NovaStriker.Game
 
         // A shower of `n` sparks from a sim point, thrown toward `dir` (radians; 0 = forward along +x, PI/2 = up)
         // at about `speed` m/s. `owner` keeps one light per source (a sliding player keeps relighting the same one).
-        public void Emit(int owner, double x, double y, float n, float dir, float speed, float spread = 0.7f, string color = "#ffe2a8", float light = 1)
+        public void Emit(int owner, double x, double y, float n, float dir, float speed, float spread = 0.7f, string color = "#ffe2a8", float light = 1, float depth = 0, int lane = 0)
         {
-            double floor = Level.GroundBelow(x, y + 0.3);
+            double floor = Level.GroundBelow(x, y + 0.3, lane);
             if (double.IsNegativeInfinity(floor)) floor = y - 50;
             var c = S.Lin(color);
             int count = Mathf.Max(1, Mathf.RoundToInt(n * (0.6f + Random.value * 0.8f)));
@@ -50,27 +51,26 @@ namespace NovaStriker.Game
                 if (!ParticleBudget.Admit()) break;
                 var p = ps[next]; next = (next + 1) % N;
                 float a = dir + (Random.value - 0.5f) * spread, sp = speed * (0.5f + Random.value * 0.8f);
-                p.x = x; p.y = y; p.dz = (Random.value - 0.5f) * 0.3f; p.floor = floor; p.bounces = 0;
+                p.x = x; p.y = y; p.dz = depth + (Random.value - 0.5f) * 0.3f; p.floor = floor; p.bounces = 0;
                 p.vx = Mathf.Cos(a) * sp; p.vy = Mathf.Sin(a) * sp; p.vdz = (Random.value - 0.5f) * sp * 0.5f;
                 p.life = p.max = 0.45f + Random.value * 0.6f; p.size = 0.02f + Random.value * 0.02f;
                 p.c = c * (2.5f + Random.value * 2f);   // (bright enough to bloom)
             }
-            if (FxCfg.Lights) Light(owner, x, y, light * Mathf.Min(1.5f, 0.4f + count * 0.12f));
+            if (FxCfg.Lights) Light(owner, x, y, depth, light * Mathf.Min(1.5f, 0.4f + count * 0.12f));
         }
 
-        void Light(int owner, double x, double y, float k)
+        void Light(int owner, double x, double y, float depth, float k)
         {
             int slot = -1;
             for (int i = 0; i < LIGHTS; i++) if (lightOwner[i] == owner) { slot = i; break; }
             if (slot < 0) { slot = 0; for (int i = 1; i < LIGHTS; i++) if (lightK[i] < lightK[slot]) slot = i; lightOwner[slot] = owner; }
             lightK[slot] = Mathf.Max(lightK[slot], k);
-            lights[slot].transform.position = Th.P(S.W(x, y + 0.15, 0.2));
+            lights[slot].transform.position = Th.P(S.W(x, y + 0.15, depth + 0.2));
         }
 
         public static int ActiveLights;
         public void Update(float dt)
         {
-            ActiveLights = 0; foreach (var light in lights) if (light.enabled) ActiveLights++;
             t += dt;
             var camPos = cam.transform.position;
             for (int i = 0; i < N; i++)
@@ -99,10 +99,13 @@ namespace NovaStriker.Game
                 dm.col[v] = head; dm.col[v + 1] = head; dm.col[v + 2] = tail; dm.col[v + 3] = tail;
             }
             dm.Upload();
+            int allowed = Mathf.Max(0, FxCfg.MaxLights - FxLights.ActiveLights);
+            ActiveLights = 0;
             for (int i = 0; i < LIGHTS; i++)
             {
                 lightK[i] *= Mathf.Exp(-dt * 7);
-                var l = lights[i]; bool on = FxCfg.Lights && lightK[i] > 0.02f;
+                var l = lights[i]; bool on = FxCfg.Lights && lightK[i] > 0.02f && allowed > 0;
+                if (on) { allowed--; ActiveLights++; }
                 if (l.enabled != on) l.enabled = on;
                 if (on) l.intensity = lightK[i] * 2.4f * (0.75f + 0.25f * Mathf.Sin(t * 47 + i * 2.1f) * Mathf.Sin(t * 31 + i));
                 else lightOwner[i] = -1;

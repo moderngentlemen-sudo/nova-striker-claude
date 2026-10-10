@@ -9,7 +9,7 @@ def B(n,c,s,m='HullDark',bev=.025):return box(n,M[m],c,s,bev,1)
 def C(n,a,b,r,m='Metal',v=12):return cyl(n,M[m],a,b,r,v)
 def piece(name,fn):
  before=set(bpy.data.objects);fn();col=bpy.data.collections.new('Kit_'+name);bpy.context.scene.collection.children.link(col)
- for o in set(bpy.data.objects)-before:
+ for o in sorted(set(bpy.data.objects)-before,key=lambda obj:obj.name):
   for c in list(o.users_collection):c.objects.unlink(o)
   col.objects.link(o)
 def rail():
