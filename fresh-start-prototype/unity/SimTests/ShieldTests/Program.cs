@@ -1,5 +1,6 @@
 // Headless tests of the Unity-only options: Nova's absorbing shield (blocks, energy, overfill to 150%, firing
-// behind it, perfect blocks) and the perfect-parry stun. `dotnet run` here; it prints PASS/FAIL per check.
+// behind it, perfect blocks) and the perfect-parry stun, on the plain level (the level features off: LevelTests
+// covers those). `dotnet run` here; it prints PASS/FAIL per check.
 using System; using System.Collections.Generic; using System.Linq; using NovaStriker.Sim; using static NovaStriker.Sim.Cfg;
 static class P {
   static Cmd C(bool parry, double ax = 1) { var c = new Cmd { ax = ax, ay = 0, aimFree = true }; c.held.parry = parry; return c; }
@@ -7,7 +8,7 @@ static class P {
   static void Check(bool ok, string m) { Console.WriteLine((ok ? "PASS " : "FAIL ") + m); if (!ok) fails++; }
   static (World w, Player p, Enemy e) Setup(string def, bool stun, string enemy = "swarmer") {
     prev = new Cmd();
-    SETTINGS = new Settings { novaKit = "marksman", novaDefense = def, novaParryStun = stun };
+    SETTINGS = new Settings { novaKit = "marksman", novaDefense = def, novaParryStun = stun, levelTiers = false, levelHazards = false, depthLanes = false };
     var w = new World(); w.Teleport("gym"); w.enemies.Clear();
     var p = w.AddPlayer("pad0", "nova"); p.x = 10; p.y = 0; p.facing = 1;
     var e = Enemies.CreateEnemy(enemy, 12.2, 0, q => q.zone = "gym"); w.enemies.Add(e);
@@ -97,7 +98,7 @@ static class P {
     // 5. Sentinel kit perfect parry with the stun option (same sweep)
     { bool perf=false, stun=false;
       for (int off = 0; off < 60 && !stun; off++) {
-        SETTINGS = new Settings { novaKit = "sentinel", novaParryStun = true };
+        SETTINGS = new Settings { novaKit = "sentinel", novaParryStun = true, levelTiers = false, levelHazards = false, depthLanes = false };
         var w = new World(); w.Teleport("gym"); w.enemies.Clear();
         var p = w.AddPlayer("pad0", "nova"); p.x = 10; p.y = 0; var e = Enemies.CreateEnemy("swarmer", 12.2, 0, q => q.zone = "gym"); w.enemies.Add(e);
         var ev = new List<Ev>(); prev = new Cmd(); int ws = -1;
