@@ -6,12 +6,23 @@
 # Run: blender -b <out>/enemy_<type>.blend -P export_enemy.py -- <path/to/enemy_<type>.json>
 import json, os, sys, bpy
 OUT = sys.argv[sys.argv.index('--') + 1]
+LOW = '--lod' in sys.argv
 UV_TILE = 0.9
 for o in bpy.data.objects:
     if o.type == 'CURVE': o.data.resolution_u = 3; o.data.bevel_resolution = 1
     for m in list(getattr(o, 'modifiers', [])):
         if m.type == 'SUBSURF': o.modifiers.remove(m)      # (removed, not applied: a zero-level one errors on apply)
         elif m.type == 'BEVEL': m.segments = 1
+if 'enemy_mortar' in bpy.data.filepath:
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and '__' in o.name:
+            m=o.modifiers.new('runtime_budget','DECIMATE');m.ratio=0.80
+if LOW:
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and '__' in o.name:
+            m=o.modifiers.new('distance_lod','DECIMATE');m.ratio=0.48
+        elif o.type == 'CURVE': o.data.resolution_u=2
+
 dg = bpy.context.evaluated_depsgraph_get()
 parts = {}
 for o in sorted(bpy.data.objects, key=lambda o: o.name):

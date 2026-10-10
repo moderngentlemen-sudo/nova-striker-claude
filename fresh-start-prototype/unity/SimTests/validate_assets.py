@@ -18,7 +18,7 @@ def mesh(part, path):
 for path in sorted((res / 'Models').glob('enemy_*.json')):
     data = json.loads(path.read_text()); parts = data.get('parts', [])
     tris = sum(mesh(p, f'{path.name}/{p.get("node")}') for p in parts)
-    kind = path.stem.removeprefix('enemy_'); budget = 18000 if kind in ('warden','stormcaller') else 7000 if kind in ('brute','charger') else 3000
+    kind = path.stem.removeprefix('enemy_').removesuffix('_lod1'); budget = 18000 if kind in ('warden','stormcaller') else 7000 if kind in ('brute','charger') else 3000
     if not parts or any(not p.get('node') or p.get('mat') not in ('Enemy_Plate','Enemy_Joint','Enemy_Energy','Enemy_Glass') for p in parts): errors.append(f'{path.name}: invalid rig/material mapping')
     if tris > budget: errors.append(f'{path.name}: {tris} triangles exceeds {budget}')
     print(f'{path.name}: {tris} triangles / {budget}')
@@ -26,8 +26,11 @@ for path in sorted((res / 'Env').glob('*_kit.json')):
     data = json.loads(path.read_text()); assets = {p.get('asset') for p in data.get('parts',[])}
     tris = sum(mesh(p,f'{path.name}/{p.get("asset")}') for p in data.get('parts',[]))
     if any(p.get('asset') not in assets for p in data.get('place',[])): errors.append(f'{path.name}: unknown placement asset')
+    per_asset={a:sum(len(p['i'])//3 for p in data.get('parts',[]) if p['asset']==a) for a in assets}
+    placed=sum(per_asset[p['asset']] for p in data.get('place',[]))
+    if path.stem!='gym_kit' and placed>80000: errors.append(f'{path.name}: {placed} placed triangles exceeds 80000')
     if tris > 80000: errors.append(f'{path.name}: triangle budget exceeded')
-    print(f'{path.name}: {tris} source triangles, {len(data.get("place",[]))} placements')
+    print(f'{path.name}: {tris} source triangles, {len(data.get("place",[]))} placements, {placed} placed triangles')
 bird = json.loads((res/'Models/bird.json').read_text()); mesh(bird,'bird')
 if len(bird.get('c',[])) != len(bird['p']) or len(bird.get('uv2',[])) != len(bird['p'])//3*2: errors.append('bird: invalid colour/wing data')
 for path in sorted((res/'Fx').glob('*.bytes')):

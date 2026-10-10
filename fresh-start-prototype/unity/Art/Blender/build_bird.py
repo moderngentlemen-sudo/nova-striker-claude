@@ -35,5 +35,13 @@ for s in (1, -1):
         o = mesh_obj(f'Bird_Wing{nm}{s}', q, [(0, 1, 2, 3) if s > 0 else (3, 2, 1, 0)], m)
         mod(o, 'SOLIDIFY', thickness=0.012, offset=0)
     o = mesh_obj(f'Bird_WingTip{s}', tipq, [(0, 1, 2) if s > 0 else (2, 1, 0)], DARK); mod(o, 'SOLIDIFY', thickness=0.01, offset=0)
+# Small overlapping primaries give a feathered trailing edge without enlarging the 1.3m wingspan.
+    for k in range(5):
+        x=.35+k*.05; trailing=-.12-k*.008
+        q=[(s*x,-.04,.018),(s*(x+.065),-.07,.012),(s*(x+.07),trailing-.05,.007),(s*x,trailing,.012)]
+        o=mesh_obj(f'Bird_WingFeather{s}_{k}',q,[(0,1,2,3) if s>0 else (3,2,1,0)], DARK if k==4 else GREY)
+        mod(o,'SOLIDIFY',thickness=.006,offset=0)
+# Eyes and a split tail preserve a gull silhouette at close review scale.
+for s in (-1,1):patch('Bird_Eye'+str(s),DARK,(s*.043,.208,.048),(.005,.005,.005),res=(6,4),subsurf=0)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'bird.blend'))
 print('built', len(bpy.data.objects), 'objects')
