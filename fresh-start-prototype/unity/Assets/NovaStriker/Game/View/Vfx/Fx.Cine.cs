@@ -124,7 +124,8 @@ namespace NovaStriker.Game
                 }
             }
             bool abrasion = SOLID.Contains(ev.pr?.kind ?? "") || ev.surface == "glass" || ev.surface == "crate";
-            V.decals.StampSurface(W(ev.x,ev.y),normal,.55f,abrasion?"scuff":"scorch",6,.7f);
+            float markSize = Mathf.Clamp(.55f + 4 * F(ev.pr?.r ?? .08), .55f, 1.2f);
+            V.decals.StampSurface(W(ev.x,ev.y),normal,markSize,abrasion?"scuff":"scorch",6,abrasion?.9f:.7f);
         }
 
         void Muzzle(Ev ev, string css)
