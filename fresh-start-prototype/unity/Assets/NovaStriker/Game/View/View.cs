@@ -399,7 +399,7 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 seenE.Add(e);
-                if (!enemyRigs.TryGetValue(e, out var R)) { R = EnemyRigs.Build(e.type); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
+                if (!enemyRigs.TryGetValue(e, out var R)) { R = EnemyRigs.Build(e.type); EnemyModels.Apply(R); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
                 double x = e.prevX + (e.x - e.prevX) * a, y = e.prevY + (e.y - e.prevY) * a;
                 R.root.position.copy(S.W(x, y, LevelFeatures.Depth(e)));
                 R.root.rotation.y = S.YawAt(x);
