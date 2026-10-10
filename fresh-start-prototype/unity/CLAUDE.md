@@ -28,9 +28,10 @@ Notes for whoever continues this work.
 
 All run without Unity, from `SimTests/`:
 
-- `bash parity.sh`: the C# simulation against the JavaScript prototype, tick by tick. It must stay at
-  `N match, 0 differ`. Every Unity-only option defaults **off** so this keeps holding; keep it that way for
-  new options.
+- **Unity is the primary platform now** (the owner decided; Unreal Engine may follow). Gameplay no longer has to
+  match the browser prototype, and new options may default on.
+- `bash parity.sh`: the C# simulation against the JavaScript prototype, tick by tick. Informational only now: it
+  will differ once Unity's gameplay moves on. Use it to spot unintended simulation changes during graphics work.
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
@@ -143,8 +144,8 @@ The README's *Unity-only additions* has the full description.
      (Settings › Character models).
   2. Redo the effects with VFX Graph.
   3. Cinemachine camera and more post-processing.
-  4. Decide whether Unity becomes the main version. Once it does, gameplay changes no longer need to match
-     the browser prototype.
+  4. Decided: Unity is the main version (and Unreal Engine may follow), so gameplay changes no longer need to
+     match the browser prototype.
 - **Browser builds:** a web build would be silent until the audio is reworked. The game synthesizes sound in
   `OnAudioFilterRead`, which Unity's web build doesn't support.
 

@@ -39,7 +39,7 @@ From `fresh-start-prototype/unity/SimTests/`:
 |---|---|---|
 | Type-check, editor | see `typecheck/README.md`; the exact line is in A3 | `ok` for `NovaStriker.Sim`, `NovaStriker.Game` and `NovaStriker.Editor` |
 | Type-check, player | the same with `--player` and `--only NovaStriker.Sim,NovaStriker.Game` | `ok` for both |
-| Parity | `bash parity.sh` | `128 match, 0 differ` (or `N match, 0 differ`) |
+| Parity (informational, see A5) | `bash parity.sh` | `0 differ` until Phase 7 |
 | Shield tests | `cd ShieldTests && ~/.dotnet/dotnet run` | `ALL PASS` |
 | Level feature tests (from Phase 7 on) | `cd LevelTests && ~/.dotnet/dotnet run` | `ALL PASS` |
 
@@ -81,14 +81,15 @@ shader error. So:
    push again until it is green. A run takes about 8 minutes. Wait with a background
    `until ... ; do sleep 30; done` loop, never a foreground sleep.
 
-### A5. The simulation and parity
+### A5. The simulation
 
-1. `Assets/NovaStriker/Sim/` is a tick-for-tick port of the browser prototype. `parity.sh` checks it.
+1. **Unity is now the primary platform** (the owner's decision); the game no longer has to match the browser
+   prototype. `parity.sh` is informational: run it during graphics phases to catch accidental simulation
+   changes (it must stay at `0 differ` until Phase 7), and expect it to differ once the gameplay phases land.
 2. Graphics work (Phases 1 to 6, 10 and 11) must **not** change any file in `Sim/` except to add new fields to
    the `Settings` class in `Sim/Config.cs`. The simulation must never read graphics settings.
-3. Gameplay work (Phases 7 to 9) does change `Sim/`. Every new gameplay behaviour must sit behind a setting
-   whose default is **off**, and with it off the simulation must behave exactly as before: same boxes, same
-   events, no extra random numbers drawn. `parity.sh` runs with defaults, so it must stay at `0 differ`.
+3. Gameplay work (Phases 7 to 9) changes `Sim/`. Each feature has a setting, on by default; with it off the
+   simulation behaves as before (same boxes, same events, no extra random numbers drawn), which LevelTests check.
 4. Never call `UnityEngine.Random` or read the clock in `Sim/`. Use tick counts.
 
 ### A6. Coordinate spaces (the most common source of bugs)
@@ -189,9 +190,9 @@ menu.
    | `birds` | `"realistic"` | `realistic`, `classic`, `off` |
    | `enemyModels` | `true` | bool: Blender models for enemies where available |
    | `perfOverlay` | `false` | bool: frame time readout |
-   | `levelTiers` | `false` | bool, gameplay (Phase 7) |
-   | `levelHazards` | `false` | bool, gameplay (Phase 8) |
-   | `depthLanes` | `false` | bool, gameplay (Phase 9) |
+   | `levelTiers` | `true` | bool, gameplay (Phase 7) |
+   | `levelHazards` | `true` | bool, gameplay (Phase 8) |
+   | `depthLanes` | `true` | bool, gameplay (Phase 9) |
 
 2. Create `Game/View/Vfx/FxCfg.cs`: a static class that resolves the *effective* value of each fx setting:
 
@@ -468,9 +469,9 @@ everything.
 
 ## Part C. Level features (gameplay)
 
-All three features change the simulation, sit behind settings that default **off**, and apply when a zone loads
+All three features change the simulation, each with a setting that defaults **on**, and apply when a zone loads
 (the pause menu's zone buttons, a respawn at a checkpoint, or a new game). With all three off the game must be
-exactly as now (parity).
+exactly as before (LevelTests check this).
 
 ### Phase 7. Multi-tier levels
 
@@ -512,7 +513,7 @@ exactly as now (parity).
    with id ≥ 10000 when features change: build those into their own group (not baked into the shared chunks), and
    destroy and rebuild that group whenever `Level.ApplyFeatures` runs (expose a version counter on `Level` that the
    view watches). The FX colliders (Phase 2) watch the same counter.
-9. Verify: all checks including LevelTests; parity still 0 differ. Push. Owner: turn on *Level features ›
+9. Verify: all checks including LevelTests. Push. Owner: check *Level features ›
    Multi-tier levels*, reload a zone from the pause menu, play.
 
 ### Phase 8. Level hazards
@@ -557,7 +558,7 @@ exactly as now (parity).
 8. **Tests** (LevelTests): with hazards off, no `hazard*` events are emitted; with hazards on, a `vent` cycles
    through its states on the expected ticks, a player standing in a `shock` panel takes damage only while it is
    on, and a `collapse` platform drops a standing player after 48 ticks and returns.
-9. Verify (parity 0 differ) and push. Owner: turn on *Level hazards*, reload zones, play.
+9. Verify (LevelTests) and push. Owner: with *Level hazards* on, reload zones, play.
 
 ### Phase 9. Depth lanes
 
@@ -601,7 +602,7 @@ enemies hop between them; attacks only reach their own lane unless they are area
 6. **Tests** (LevelTests): with lanes off, everyone's lane stays 0 and no hop starts; with lanes on, Z and X hops
    take 10 ticks and change the lane at tick 5, a projectile from lane -1 passes an enemy in lane 0 without
    hitting it, a blast hits enemies in all three lanes, and leaving a stretch returns a player to lane 0.
-7. Verify (parity 0 differ) and push. Owner: turn on *Depth lanes*, reload a zone, try Z and X (or L3 with up or
+7. Verify (LevelTests) and push. Owner: with *Depth lanes* on, reload a zone, try Z and X (or L3 with up or
    down) in a lane stretch.
 
 ---
@@ -739,8 +740,6 @@ rigs so every animation, armour readout and hit flash keeps working.
 
 ## Appendix 2. When to stop and ask the owner
 
-- Before making any level feature (tiers, hazards, lanes) on by default: that ends parity with the browser
-  prototype, which is the owner's decision (CLAUDE.md, *Agreed direction*, item 4).
 - Before changing Nova's shield colour, character designs, or any gameplay tuning not listed here.
 - If a phase cannot meet its budget or a Unity feature is unavailable in 6.3: explain the trade-off and propose an
   alternative.
