@@ -199,7 +199,7 @@ namespace NovaStriker.Game
                     float s = r * 2.4f; P.v = S.Dir(x, -Mathf.Cos(a) * s - Mathf.Sin(a) * s * 0.8f, -Mathf.Sin(a) * s + Mathf.Cos(a) * s * 0.8f); P.drag = 0.97f;
                 }
             }
-            foreach (var kv in new List<KeyValuePair<Well, WellM>>(wells)) if (!seen.Contains(kv.Key)) { kv.Value.g.destroy(); wells.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Well, WellM>>(wells)) if (!seen.Contains(kv.Key)) { kv.Value.g.DestroyOwnedMaterials(); wells.Remove(kv.Key); }
         }
 
         public void Update(float dt, World world, View view)
@@ -239,7 +239,7 @@ namespace NovaStriker.Game
                     if (S.Rnd() < 0.3f) { var P = F.Particle(S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3), SLOW, 0.12f, 0.8f); P.v = new Vector3(0, 0.35f, 0); P.drag = 1; }
                 }
             }
-            foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(auras)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); auras.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(auras)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); auras.Remove(kv.Key); }
             foreach (var p in world.players)
             {
                 var rig = fx.RigOf(p); if (rig == null || !rig.root.visible) continue;

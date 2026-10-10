@@ -111,8 +111,13 @@ Shader "NovaStriker/Grade"
             float2 hash22(float2 p) { return frac(sin(float2(dot(p, float2(127.1, 311.7)), dot(p, float2(269.5, 183.3)))) * 43758.5453); }
             float noise(float2 p)
             {
-                float2 i = floor(p), f = frac(p); f = f * f * (3.0 - 2.0 * f);
-                return lerp(lerp(hash2(i), hash2(i + float2(1.0, 0.0)), f.x), lerp(hash2(i + float2(0.0, 1.0)), hash2(i + float2(1.0, 1.0)), f.x), f.y);
+                // Scalar lattice coordinates avoid HLSLcc packing a shared scalar seed into a
+                // two-component GLSL assignment (floor/frac(_Seed) in Thunderclap).
+                float ix = floor(p.x), iy = floor(p.y), fx = frac(p.x), fy = frac(p.y);
+                fx = fx * fx * (3.0 - 2.0 * fx); fy = fy * fy * (3.0 - 2.0 * fy);
+                float corner = ix * 127.1 + iy * 311.7;
+                return lerp(lerp(hash(corner), hash(corner + 127.1), fx),
+                            lerp(hash(corner + 311.7), hash(corner + 438.8), fx), fy);
             }
             float luma(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
             float hexEdge(float2 p)

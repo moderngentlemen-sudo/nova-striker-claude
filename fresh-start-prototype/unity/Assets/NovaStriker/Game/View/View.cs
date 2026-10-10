@@ -349,8 +349,14 @@ namespace NovaStriker.Game
         }
 
         // ---- Entities ----
-        static void DisposeRig(TObj root) => root.destroy();
-        static void DisposeEnemyRig(TObj root) { var materials = new HashSet<TMat>(); root.traverse(o => { if (o is TMesh mesh && !o.outline && mesh.material != null) materials.Add(mesh.material); }); root.destroy(); foreach (var mat in materials) mat.DestroyIfUnused(); }
+        static void DisposeRig(TObj root) => root.DestroyOwnedMaterials();
+        static void DisposeEnemyRig(EnemyRig rig)
+        {
+            rig.root.DestroyOwnedMaterials();
+            // Include slots unused by a fallback/export: there need not be a mesh owner to collect.
+            rig.mats.plate.DestroyIfUnused(); rig.mats.joint.DestroyIfUnused(); rig.mats.energy.DestroyIfUnused();
+            rig.parts.shieldMat?.DestroyIfUnused();
+        }
 
         void SyncEntities(World world, float a, float dt)
         {
@@ -402,10 +408,10 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 seenE.Add(e);
-                if (enemyModelSetting != SETTINGS.enemyModels) { foreach (var old in enemyRigs.Values) DisposeEnemyRig(old.root); enemyRigs.Clear(); enemyModelSetting = SETTINGS.enemyModels; }
+                if (enemyModelSetting != SETTINGS.enemyModels) { foreach (var old in enemyRigs.Values) DisposeEnemyRig(old); enemyRigs.Clear(); enemyModelSetting = SETTINGS.enemyModels; }
                 bool lowModel = SETTINGS.quality == "low" || Vector3.Distance(camera.transform.position, Th.P(S.W(e.x, e.y, LevelFeatures.Depth(e)))) > (e.boss ? 65 : 45);
                 enemyRigs.TryGetValue(e, out var R);
-                if (R != null && R.modelLow != lowModel) { DisposeEnemyRig(R.root); enemyRigs.Remove(e); R = null; }
+                if (R != null && R.modelLow != lowModel) { DisposeEnemyRig(R); enemyRigs.Remove(e); R = null; }
                 if (R == null) { R = EnemyRigs.Build(e.type); EnemyModels.Apply(R, lowModel); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
                 double x = e.prevX + (e.x - e.prevX) * a, y = e.prevY + (e.y - e.prevY) * a;
                 R.root.position.copy(S.W(x, y, LevelFeatures.Depth(e)));
@@ -419,7 +425,7 @@ namespace NovaStriker.Game
                 if (R.tag != null) R.tag.visible = e.tagged > 0 && !e.dead;
                 StunMarker(R, e, t);
             }
-            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeEnemyRig(enemyRigs[e].root); enemyRigs.Remove(e); }
+            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeEnemyRig(enemyRigs[e]); enemyRigs.Remove(e); }
 
             foreach (var (mesh, tag) in gateMeshes)
             {

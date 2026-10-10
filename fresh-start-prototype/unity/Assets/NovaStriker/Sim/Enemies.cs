@@ -45,6 +45,7 @@ namespace NovaStriker.Sim
                 state = "idle", st = 0, atk = null, token = null, target = null, cd = 30 + JMath.Floor(JRandom.Next() * 40),
                 hitstop = 0, flash = 0, dead = false, deathT = 0, tagged = 0, stun = 0, slamCd = 120, cycle = 0,
                 aimX = 0, aimY = 0, label = "", light = T.light, flier = T.flier, boss = T.boss, homeX = x, homeY = y,
+                phase = T.boss ? 1 : 0,
             };
             extra?.Invoke(e);
             return e;

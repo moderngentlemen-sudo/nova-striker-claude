@@ -36,7 +36,7 @@ namespace NovaStriker.Game
                 mk.mesh.material.opacity = 0.35f + 0.45f * Mathf.Abs(Mathf.Sin(mk.t * 0.35f));
                 mk.mesh.material.offset = new Vector2(-mk.t * 0.04f, 0);
                 mk.mesh.scale.x = 0.3f + 0.7f * Mathf.Min(1, k * 2);
-                if (mk.t >= mk.ticks || mk.e.dead) { mk.mesh.destroy(); mk.dead = true; }
+                if (mk.t >= mk.ticks || mk.e.dead) { mk.mesh.DestroyOwnedMaterials(); mk.dead = true; }
             }
             markers.RemoveAll(m => m.dead);
         }
@@ -56,7 +56,7 @@ namespace NovaStriker.Game
                 m.life -= dt; float k = 1 - Mathf.Max(0, m.life) / m.max;
                 m.mesh.material.opacity = 0.35f + 0.5f * k * (0.6f + 0.4f * Mathf.Sin(k * 40));
                 m.mesh.scale.setScalar(1.25f - 0.25f * k);
-                if (m.life <= 0) { m.mesh.destroy(); m.dead = true; }
+                if (m.life <= 0) { m.mesh.DestroyOwnedMaterials(); m.dead = true; }
             }
             marks.RemoveAll(m => m.dead);
         }
@@ -171,7 +171,7 @@ namespace NovaStriker.Game
                 effectDepth = pr.lane * LevelFeatures.LANE_W;
                 projMeshes.TryGetValue(pr, out var m);
                 projState.TryGetValue(pr, out var st);
-                if (m != null && pr.deflected && !st.defl) { m.destroy(); m = null; }
+                if (m != null && pr.deflected && !st.defl) { m.DestroyOwnedMaterials(); m = null; }
                 if (m == null)
                 {
                     string key = pr.deflected ? (pr.reflected ? "reflected" : "deflected") : pr.kind != null && tmpl.ContainsKey(pr.kind) ? pr.kind : "std";
@@ -198,7 +198,7 @@ namespace NovaStriker.Game
 
             }
             foreach (var kv in new List<KeyValuePair<Projectile, TObj>>(projMeshes))
-                if (!seen.Contains(kv.Key)) { kv.Value.destroy(); projMeshes.Remove(kv.Key); projState.Remove(kv.Key); }
+                if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); projMeshes.Remove(kv.Key); projState.Remove(kv.Key); }
             charge.OrphanUnseen(seen); effectDepth = 0;
         }
         void LegacyProjectileStep(Projectile pr, double x, double y, Vector3 at)
@@ -258,7 +258,7 @@ namespace NovaStriker.Game
                 float k = (float)(b.ttl / b.max);
                 m.material.opacity = 0.25f + 0.4f * k + (b.ttl % 10 < 5 && k < 0.25f ? 0.2f : 0);
             }
-            foreach (var kv in new List<KeyValuePair<Barrier, TMesh>>(barrierMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); barrierMeshes.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Barrier, TMesh>>(barrierMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); barrierMeshes.Remove(kv.Key); }
         }
 
         // ---- Sniper lasers ----
@@ -284,7 +284,7 @@ namespace NovaStriker.Game
                 m.SetQuaternion(ThQ.FromUnitVectors(Vector3.up, (b - a).normalized));
                 m.material.colorCss = e.state == "lock" ? "#ffffff" : HOSTILE;
             }
-            foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(lasers)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); lasers.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(lasers)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); lasers.Remove(kv.Key); }
         }
 
         // ---- Shockwaves ----
@@ -306,7 +306,7 @@ namespace NovaStriker.Game
                 if (S.Rnd() < 0.8f) Burst(s.x, s.y + 0.2, col, 2, 3, 0.35f, 0.25f, dir: Mathf.PI / 2, spread: 1.5f);
                 if (s.team == "p" && S.Rnd() < 0.6f) Dust(s.x, s.y, 0.3f, new[] { s.dir > 0 ? 0 : Mathf.PI }, noRing: true, op: 0.45f);
             }
-            foreach (var kv in new List<KeyValuePair<Shockwave, TMesh>>(shockMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); shockMeshes.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Shockwave, TMesh>>(shockMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); shockMeshes.Remove(kv.Key); }
         }
 
         // ---- Echo's nano-scarf: a spring chain that becomes the lash ----
@@ -373,7 +373,7 @@ namespace NovaStriker.Game
                 else Sc.mat.emissiveIntensity = fast || p.state == "lash" || reel != null ? 1.6f : 0.5f;
                 Sc.dm.visible = rig.root.visible;
             }
-            foreach (var kv in new List<KeyValuePair<Player, Scarf>>(scarves)) if (!seen.Contains(kv.Key)) { kv.Value.dm.obj.destroy(); scarves.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Player, Scarf>>(scarves)) if (!seen.Contains(kv.Key)) { kv.Value.dm.obj.DestroyOwnedMaterials(); scarves.Remove(kv.Key); }
         }
         Scarf MakeScarf(Player p, Rig rig)
         {
@@ -418,7 +418,7 @@ namespace NovaStriker.Game
                 bool armed = s.armT <= 0;
                 m.ring.material.emissiveIntensity = armed ? 1.6f + Mathf.Sin(Time.time * 1000 * 0.012f) * 0.9f : 0.4f;
             }
-            foreach (var kv in new List<KeyValuePair<Snare, (TObj g, TMesh ring)>>(snareMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.g.destroy(); snareMeshes.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Snare, (TObj g, TMesh ring)>>(snareMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.g.DestroyOwnedMaterials(); snareMeshes.Remove(kv.Key); }
         }
         readonly Dictionary<Enemy, TObj> bands = new Dictionary<Enemy, TObj>();
         void SyncSnaredRings(World world)
@@ -438,7 +438,7 @@ namespace NovaStriker.Game
                 g.position.copy(S.W(e.x, e.y, LevelFeatures.Depth(e)));
                 g.rotation.y += 0.08f;
             }
-            foreach (var kv in new List<KeyValuePair<Enemy, TObj>>(bands)) if (!seen.Contains(kv.Key)) { kv.Value.destroy(); bands.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Enemy, TObj>>(bands)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); bands.Remove(kv.Key); }
         }
     }
 

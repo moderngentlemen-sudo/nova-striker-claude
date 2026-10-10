@@ -55,7 +55,7 @@ namespace NovaStriker.Game
                 }
                 dm.Upload();
             }
-            public void Dispose() => dm.obj.destroy();
+            public void Dispose() => dm.obj.DestroyOwnedMaterials();
         }
 
         sealed class Apex { public TObj group; public TMesh bar, star; public List<TMesh> ticks; public TMesh beam; public TMat mat; }
@@ -147,9 +147,9 @@ namespace NovaStriker.Game
 
         void Dispose(St Sx)
         {
-            foreach (var o in new TObj[] { Sx.orb, Sx.core, Sx.halo, Sx.crystal, Sx.sight, Sx.laser, Sx.laserDot, Sx.aura, Sx.land, Sx.apex.group, Sx.apex.beam }) o.destroy();
-            Sx.dots.obj.destroy();
-            foreach (var m in Sx.motes) m.destroy(); foreach (var m in Sx.apex.ticks) m.destroy();
+            foreach (var o in new TObj[] { Sx.orb, Sx.core, Sx.halo, Sx.crystal, Sx.sight, Sx.laser, Sx.laserDot, Sx.aura, Sx.land, Sx.apex.group, Sx.apex.beam }) o.DestroyOwnedMaterials();
+            Sx.dots.obj.DestroyOwnedMaterials();
+            foreach (var m in Sx.motes) m.DestroyOwnedMaterials(); foreach (var m in Sx.apex.ticks) m.DestroyOwnedMaterials();
         }
         void Hide(St Sx)
         {

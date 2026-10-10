@@ -218,7 +218,7 @@ namespace NovaStriker.Game
                     if (fl != null) F.Smoke(x, fl.Value + 0.1, "#b9c1cb", 1, 3, 0.4f, 0.5f, dir: g.x1 >= g.x0 ? 0.35f : Mathf.PI - 0.35f, spread: 0.6f, grav: -0.5f, op: 0.35f);
                 }
             }
-            foreach (var p in new List<Player>(beams.Keys)) if (!world.players.Contains(p)) { var Bm = beams[p]; foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.destroy(); beams.Remove(p); }
+            foreach (var p in new List<Player>(beams.Keys)) if (!world.players.Contains(p)) { var Bm = beams[p]; foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.DestroyOwnedMaterials(); beams.Remove(p); }
         }
     }
 }

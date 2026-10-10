@@ -365,7 +365,7 @@ namespace NovaStriker.Game
                 "Ram_Frame" => Worn(new TMat(TMat.Kind.Physical) { colorCss = "#7b838d", roughness = 0.65f, metalness = 0.35f, clearcoat = 0.65f, clearcoatRoughness = 0.18f }),
                 _ => null,
             };
-            if (t != null) extraMats[name] = t;
+            if (t != null) { t.retained = true; extraMats[name] = t; }
             return t;
         }
         static TMat Worn(TMat m) { Look.Wear(m); return m; }

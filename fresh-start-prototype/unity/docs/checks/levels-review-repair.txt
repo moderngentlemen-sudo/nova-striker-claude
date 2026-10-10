@@ -1,0 +1,152 @@
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(193,33): warning CS8981: The type name 'climb' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(296,33): warning CS8981: The type name 'box' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(305,33): warning CS8981: The type name 'box' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(306,33): warning CS8981: The type name 'drop' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(319,33): warning CS8981: The type name 'dmg' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(326,33): warning CS8981: The type name 'rifle' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(358,33): warning CS8981: The type name 'lance' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(359,33): warning CS8981: The type name 'rail' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(378,33): warning CS8981: The type name 'round' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(385,33): warning CS8981: The type name 'volley' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(393,33): warning CS8981: The type name 'arc' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(403,33): warning CS8981: The type name 'prism' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(414,33): warning CS8981: The type name 'burst' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(426,33): warning CS8981: The type name 'rocket' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(437,33): warning CS8981: The type name 'melee' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(438,33): warning CS8981: The type name 'boost' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(439,33): warning CS8981: The type name 'focus' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(440,33): warning CS8981: The type name 'skate' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(447,33): warning CS8981: The type name 'over' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(458,33): warning CS8981: The type name 'grenade' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(466,37): warning CS8981: The type name 'bomblets' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(472,33): warning CS8981: The type name 'chain' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(477,33): warning CS8981: The type name 'disc' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(483,33): warning CS8981: The type name 'well' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(514,33): warning CS8981: The type name 'guard' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(519,33): warning CS8981: The type name 'release' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(524,33): warning CS8981: The type name 'cannon' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(537,33): warning CS8981: The type name 'rush' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(541,37): warning CS8981: The type name 'end' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(542,37): warning CS8981: The type name 'splat' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(543,37): warning CS8981: The type name 'bonk' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(545,33): warning CS8981: The type name 'knock' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(548,33): warning CS8981: The type name 'wall' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(549,33): warning CS8981: The type name 'link' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(554,33): warning CS8981: The type name 'provoke' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(557,37): warning CS8981: The type name 'shove' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(571,33): warning CS8981: The type name 'scrap' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(572,33): warning CS8981: The type name 'rivet' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(576,37): warning CS8981: The type name 'hot' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(584,33): warning CS8981: The type name 'beam' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(595,33): warning CS8981: The type name 'pad' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(597,33): warning CS8981: The type name 'power' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(600,37): warning CS8981: The type name 'overclock' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(601,37): warning CS8981: The type name 'plating' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(602,37): warning CS8981: The type name 'medkit' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(614,33): warning CS8981: The type name 'gain' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(615,33): warning CS8981: The type name 'nova' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(621,33): warning CS8981: The type name 'echo' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(627,33): warning CS8981: The type name 'ram' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(633,33): warning CS8981: The type name 'fix' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(640,33): warning CS8981: The type name 'team' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(684,33): warning CS8981: The type name 'ultcell' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/Assets/NovaStriker/Sim/Config.cs(685,33): warning CS8981: The type name 'fury' only contains lower-cased ascii characters. Such names may become reserved for the language. [/workspace/scratch/7ac9570c3fd7/nova-striker/fresh-start-prototype/unity/SimTests/LevelTests/LevelTests.csproj]
+PASS off: no extra boxes, hazards or lanes (139 boxes)
+PASS tiers: 30 one-way catwalks
+PASS tiers: every catwalk lies inside a zone
+PASS tiers: none sits on a checkpoint
+PASS tiers: a player lands on the gym catwalk (y 4.00)
+PASS tiers off again: the level is as built
+PASS hazards: the vent warns, then fires
+PASS hazards: the vent launches a player standing on it (up to 4.8 m)
+PASS hazards: a shock panel hurts only while it is live
+PASS hazards: a crumbling platform gives way under a player (y 14.5)
+PASS hazards: the platform comes back
+PASS hazards off: no hazard events
+PASS lanes: B hops to the back lane (lane -1)
+PASS lanes: the lane changes halfway through the hop
+PASS lanes: shots miss another lane; blasts reach it
+PASS lanes: leaving the stretch brings a player back to the middle
+PASS lanes off: no hops, everything reaches everything
+PASS nova: solid destination blocks hop
+PASS nova: solid query respects lane mask
+PASS nova: safe outer lane is reachable
+PASS nova: shot/event depth stays at emission lane
+PASS nova: hop rejects unsupported tier destination
+PASS nova: checkpoint/zone respawn resets lane
+PASS echo: solid destination blocks hop
+PASS echo: solid query respects lane mask
+PASS echo: safe outer lane is reachable
+PASS echo: shot/event depth stays at emission lane
+PASS echo: hop rejects unsupported tier destination
+PASS echo: checkpoint/zone respawn resets lane
+PASS ram: solid destination blocks hop
+PASS ram: solid query respects lane mask
+PASS ram: safe outer lane is reachable
+PASS ram: shot/event depth stays at emission lane
+PASS ram: hop rejects unsupported tier destination
+PASS ram: checkpoint/zone respawn resets lane
+PASS fix: solid destination blocks hop
+PASS fix: solid query respects lane mask
+PASS fix: safe outer lane is reachable
+PASS fix: shot/event depth stays at emission lane
+PASS fix: hop rejects unsupported tier destination
+PASS fix: checkpoint/zone respawn resets lane
+PASS feature combination 0: consistent rebuild
+PASS feature combination 1: consistent rebuild
+PASS feature combination 2: consistent rebuild
+PASS feature combination 3: consistent rebuild
+PASS feature combination 4: consistent rebuild
+PASS feature combination 5: consistent rebuild
+PASS feature combination 6: consistent rebuild
+PASS feature combination 7: consistent rebuild
+PASS all hazard families reset and collapse support restores
+PASS crusher: no damage at descent start
+PASS crusher: impact window damages occupant
+PASS hazard mask excludes another lane
+PASS slag: permanent boundary reports active
+PASS nova: upper route yields reachable intermediate waypoint
+PASS echo: upper route yields reachable intermediate waypoint
+PASS ram: upper route yields reachable intermediate waypoint
+PASS fix: upper route yields reachable intermediate waypoint
+PASS vent: damage follows active window
+PASS vent: launch retained
+PASS shock: damage follows active window
+PASS laser: damage follows active window
+PASS lightning: damage follows active window
+PASS crusher: damage follows active window
+PASS slag: damage follows active window
+PASS wind: damage follows active window
+PASS debris: damage follows active window
+PASS crusher: floor impact does not damage empty air above the head
+PASS debris: floor impact does not damage empty air above the head
+PASS nova: all three teammates physically reach the upper route
+PASS echo: all three teammates physically reach the upper route
+PASS deterministic replay: presentation presets and quality do not change simulation
+PASS 30 fps: ten seconds produce 600 decorative steps
+PASS 60 fps: ten seconds produce 600 decorative steps
+PASS 120 fps: ten seconds produce 600 decorative steps
+PASS effect clock: catchup bounded and paused draw consumes no time
+PASS warden: direct factory starts at phase one
+PASS warden phase 1: sweep runs without invalid phase indices
+PASS warden phase 1: hammer runs without invalid phase indices
+PASS warden phase 1: stomp runs without invalid phase indices
+PASS warden phase 1: missiles runs without invalid phase indices
+PASS warden phase 1: charge runs without invalid phase indices
+PASS warden phase 1: laser runs without invalid phase indices
+PASS warden phase 2: sweep runs without invalid phase indices
+PASS warden phase 2: hammer runs without invalid phase indices
+PASS warden phase 2: stomp runs without invalid phase indices
+PASS warden phase 2: missiles runs without invalid phase indices
+PASS warden phase 2: charge runs without invalid phase indices
+PASS warden phase 2: laser runs without invalid phase indices
+PASS stormcaller: direct factory starts at phase one
+PASS stormcaller phase 1: volley runs without invalid phase indices
+PASS stormcaller phase 1: rain runs without invalid phase indices
+PASS stormcaller phase 1: sweep runs without invalid phase indices
+PASS stormcaller phase 1: dive runs without invalid phase indices
+PASS stormcaller phase 2: volley runs without invalid phase indices
+PASS stormcaller phase 2: rain runs without invalid phase indices
+PASS stormcaller phase 2: sweep runs without invalid phase indices
+PASS stormcaller phase 2: dive runs without invalid phase indices
+ALL PASS

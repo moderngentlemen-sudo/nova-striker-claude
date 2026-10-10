@@ -22,7 +22,13 @@ namespace NovaStriker.Game.Three
         public readonly Dictionary<string, object> userData = new Dictionary<string, object>();
         internal readonly List<TMesh> owners = new List<TMesh>();
         // Rig disposal calls this after all owners detach; fixed/shared raw templates stay cached.
-        public void DestroyIfUnused() { if (owners.Count != 0 || fixedMaterial) return; if (rim != null) Object.Destroy(rim); if (m != null) Object.Destroy(m); rim = null; m = null; }
+        public void DestroyIfUnused() { if (owners.Count != 0 || fixedMaterial || retained) return; Release(rim); Release(m); rim = null; m = null; }
+        public bool retained; // Explicit cache ownership where the material can temporarily have no TMesh owners.
+        public static bool ReviewOriginsEnabled;
+        static readonly Dictionary<int, string> reviewOrigins = new Dictionary<int, string>();
+        static void Track(Material material) { if (ReviewOriginsEnabled) reviewOrigins[material.GetInstanceID()] = System.Environment.StackTrace; }
+        static void Release(Material material) { if (material == null) return; reviewOrigins.Remove(material.GetInstanceID()); Object.Destroy(material); }
+        public static string ReviewOrigin(Material material) => reviewOrigins.TryGetValue(material.GetInstanceID(), out var origin) ? origin : "Untracked: " + material.name;
 
         Color _colorLin = Color.white, _emissiveLin = Color.black;   // linear (three.js keeps colours linear too)
         float _emissiveIntensity = 1, _roughness = 1, _metalness = 0, _opacity = 1, _clearcoat, _clearcoatRoughness, _rotation, _normalScale = 1;
@@ -56,7 +62,7 @@ namespace NovaStriker.Game.Three
             };
             c.Build();
             foreach (var kv in userData) c.userData[kv.Key] = kv.Value;
-            if (rim != null) c.rim = new Material(rim);
+            if (rim != null) { c.rim = new Material(rim); Track(c.rim); }
             return c;
         }
 
@@ -101,7 +107,9 @@ namespace NovaStriker.Game.Three
         public Material rim;
         public void AddRim(Color c, float strength = 0.45f, float power = 2.4f)
         {
+            Release(rim);
             rim = new Material(Templates.Rim);
+            Track(rim);
             rim.SetColor("_RimColor", c); rim.SetFloat("_RimStrength", strength); rim.SetFloat("_RimPower", power);
             rim.SetFloat("_BodyAlpha", 1);
             userData["rimBase"] = strength; userData["rimCol"] = c;
@@ -127,9 +135,10 @@ namespace NovaStriker.Game.Three
             else t = _transparent ? Templates.LitT : Templates.Lit;
             var old = m;
             m = new Material(t);
+            Track(m);
             if (IsUnlit && kind == Kind.Sprite) m.SetFloat("_Billboard", 1);
             ApplyAll();
-            if (old != null) { Object.Destroy(old); foreach (var o in owners) o.Refresh(); }
+            if (old != null) { Release(old); foreach (var o in owners) o.Refresh(); }
         }
         void ApplyAll()
         {

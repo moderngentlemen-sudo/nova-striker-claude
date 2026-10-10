@@ -69,7 +69,7 @@ namespace NovaStriker.Game
                 {
                     b.edge.mesh.visible = b.sheath.mesh.visible = b.core.mesh.visible = b.glow.visible = b.core2.visible = b.hit.visible = false;
                     if (closing <= 0) b.pts.Clear();
-                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.destroy(); beams.Remove(p); }
+                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.DestroyOwnedMaterials(); beams.Remove(p); }
                     continue;
                 }
                 float open = Mathf.Min(1, b.age / 0.07f), W = b.W; int n = b.pts.Count; var tint = b.tint;

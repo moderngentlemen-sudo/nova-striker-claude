@@ -551,7 +551,7 @@ namespace NovaStriker.Game
             {
                 if (seen.Contains(kv.Key)) continue;
                 var B = kv.Value; B.core.visible = B.glow.visible = B.feed.visible = false;
-                if (kv.Key.dead || !world.enemies.Contains(kv.Key)) { B.core.destroy(); B.glow.destroy(); B.feed.destroy(); bossBeams.Remove(kv.Key); }
+                if (kv.Key.dead || !world.enemies.Contains(kv.Key)) { B.core.DestroyOwnedMaterials(); B.glow.DestroyOwnedMaterials(); B.feed.DestroyOwnedMaterials(); bossBeams.Remove(kv.Key); }
             }
         }
 

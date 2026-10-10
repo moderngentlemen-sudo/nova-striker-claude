@@ -176,6 +176,18 @@ static class P {
       Check(emissions==600,fps+" fps: ten seconds produce 600 decorative steps");
     }
     {var clock=new NovaStriker.Game.EmissionClock();Check(clock.TakeSteps(1)==8&&clock.TakeSteps(0)==0,"effect clock: catchup bounded and paused draw consumes no time");}
+    // A directly created boss must be usable by preview tools and every named attack, too.
+    foreach(var type in new[]{"warden","stormcaller"}) {
+      var initial=Enemies.CreateEnemy(type,87,0);
+      Check(initial.phase==1,type+": direct factory starts at phase one");
+      foreach(int phase in new[]{1,2}) foreach(var attack in type=="warden"?new[]{"sweep","hammer","stomp","missiles","charge","laser"}:new[]{"volley","rain","sweep","dive"}) {
+        var w=Make(false,false,false,type=="warden"?"arena":"skyline");var p=w.AddPlayer("keyboard","ram");p.x=type=="warden"?87:305;p.y=type=="warden"?0:Bosses.STORM.floor;p.mercy=999;
+        var e=Enemies.CreateEnemy(type,p.x-4,p.y+(type=="warden"?0:Bosses.STORM.hover));e.phase=phase;w.enemies.Add(e);
+        Bosses.ForceBossAttack(w,e,attack);bool selected=e.atk!=null&&e.atk.kind==attack;
+        for(int tick=0;tick<360;tick++){p.hp=p.maxHp;p.state="normal";p.mercy=999;Enemies.UpdateEnemy(e,w);w.tick++;}
+        Check(selected&&!e.dead,type+" phase "+phase+": "+attack+" runs without invalid phase indices");
+      }
+    }
     Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
     Environment.ExitCode = fails == 0 ? 0 : 1;
   }

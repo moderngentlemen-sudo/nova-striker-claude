@@ -38,7 +38,8 @@ namespace NovaStriker.Game
             if (root != null) {
                 var materials = new HashSet<TMat>(); var meshes = new HashSet<Mesh>();
                 root.traverse(o => { if (o is TMesh m) { if (m.material != metal && m.material != grate && m.material != pale) materials.Add(m.material); if (!boxCache.ContainsValue(m.geometry)) meshes.Add(m.geometry); } });
-                root.destroy(); foreach (var m in materials) if (m != null) Object.Destroy(m.m); foreach (var m in meshes) if (m != null) Object.Destroy(m);
+                foreach (var h in hazards) materials.Add(h.glow); materials.Add(trim); materials.Add(warn);
+                root.destroy(); foreach (var m in materials) m?.DestroyIfUnused(); foreach (var m in meshes) if (m != null) Object.Destroy(m);
             }
             hazards.Clear(); collapses.Clear();
             root = Group.Make(name: "level features"); view.scene.add(root);

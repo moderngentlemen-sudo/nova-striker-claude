@@ -109,6 +109,14 @@ namespace NovaStriker.Game.Three
             for (int i = 0; i < children.Count; i++) children[i].traverse(fn);
         }
         public void destroy() { traverse(o => o.OnDestroy()); removeFromParent(); Object.Destroy(go); }
+        // For graphs with their own transient materials. Shared meshes and cached raw materials stay alive.
+        public void DestroyOwnedMaterials()
+        {
+            var materials = new HashSet<TMat>();
+            traverse(o => { if (o is TMesh mesh && mesh.material != null) materials.Add(mesh.material); });
+            destroy();
+            foreach (var material in materials) material.DestroyIfUnused();
+        }
         public virtual void OnDestroy() { }
         // World position in three.js space
         public Vector3 worldPos { get { var p = tr.position; return new Vector3(p.x, p.y, -p.z); } }
