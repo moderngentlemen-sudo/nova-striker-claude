@@ -55,6 +55,7 @@ namespace NovaStriker.Game
         readonly Material grade;
         readonly TMat skyMat;
         Color skyTop, skyMid, skyBot, fogColor;
+        public Color SkyTop => skyTop; public Color SkyBot => skyBot;   // (the clouds' and gulls' ambient light)
         float fogNear, fogFar;
 
         sealed class LookState { public float key, fill, rim, env, exposure, sat, contrast, vignette; public Color rimColor; public Vector3 lift, gamma, gain; }

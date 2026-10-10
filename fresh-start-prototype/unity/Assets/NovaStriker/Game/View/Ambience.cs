@@ -9,6 +9,7 @@ using NovaStriker.Sim;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using Sprite = NovaStriker.Game.Three.Sprite;
+using static NovaStriker.Sim.Cfg;
 
 namespace NovaStriker.Game
 {
@@ -36,9 +37,12 @@ namespace NovaStriker.Game
         readonly Flock[] flocks = new Flock[FLOCKS];
         readonly Camera cam;
 
+        CloudLayer cloudLayer; Birds gulls;
+
         public Ambience(View view, Light sun, TMesh sunGlow)
         {
             this.view = view; this.sun = sun; this.sunGlow = sunGlow; cam = view.camera;
+            cloudLayer = new CloudLayer(view); gulls = new Birds(view);
             // flecks of light in the air between the deck and the terrace, catching the sun
             var quads = new int[MOTES * 6];
             for (int i = 0; i < MOTES; i++) { int v = i * 4, k = i * 6; quads[k] = v; quads[k + 1] = v + 2; quads[k + 2] = v + 1; quads[k + 3] = v + 1; quads[k + 4] = v + 2; quads[k + 5] = v + 3; }
@@ -100,12 +104,13 @@ namespace NovaStriker.Game
         }
 
         // Something big went off: the nearest flocks scatter, climbing and beating their wings faster for a few seconds
-        public void Startle(float strength = 1) { foreach (var F in flocks) F.startle = Mathf.Min(1.5f, F.startle + strength); }
+        public void Startle(float strength = 1) { foreach (var F in flocks) F.startle = Mathf.Min(1.5f, F.startle + strength); gulls.Startle(strength); }
 
         public void Update(float dt, float camX)
         {
             t += dt;
             UpdateMotes(dt, camX); UpdateBirds(dt, camX);
+            cloudLayer.Update(dt, camX, sky); gulls.Update(dt, camX, sky);
             // the open sky belongs to the Skyport route; elsewhere the effects fade away
             float want = Level.RouteAt(camX).id == "skyport" ? 1 : 0;
             sky += (want - sky) * (1 - Mathf.Exp(-dt * 1.5f));
@@ -120,11 +125,18 @@ namespace NovaStriker.Game
             sunData.lightCookieOffset = cookieAt;
             var ck = sky > 0.02f ? cookieTex : null;
             if (sun.cookie != ck) sun.cookie = ck;
-            // clouds drift, wrapping round
+            // clouds drift, wrapping round (the classic sprites; the volumetric clouds are CloudLayer's). Either way none
+            // may come nearer than 70 m behind the plane the action is in
+            bool classic = SETTINGS.clouds == "classic";
+            var fr = Level.Frame(camX); var fp = new Vector3((float)fr.px, 0, (float)fr.pz); var fn = new Vector3((float)fr.nx, 0, (float)fr.nz);
             foreach (var (s, speed) in clouds)
             {
+                s.visible = classic;
+                if (!classic) continue;
                 s.position.x += speed * dt;
                 if (s.position.x > 480) s.position.x -= 820;
+                var pos = s.position.v; float ahead = Vector3.Dot(new Vector3(pos.x, 0, pos.z) - fp, fn);
+                if (ahead > -70) s.position.copy(pos - fn * (ahead + 70));
             }
             // sunbeams: brightest as the sun breaks out, beside the camera
             float beam = sky * Mathf.Clamp01((cover - 0.6f) / 0.4f);
@@ -169,7 +181,7 @@ namespace NovaStriker.Game
 
         void UpdateBirds(float dt, float camX)
         {
-            birds.visible = sky > 0.05f;
+            birds.visible = sky > 0.05f && SETTINGS.birds == "classic";
             if (!birds.visible) return;
             for (int f = 0; f < FLOCKS; f++)
             {
