@@ -33,7 +33,8 @@ namespace NovaStriker.Game
             [Key.V] = "ult", [Key.N] = "ult",     // ultimate (a gamepad pulls both triggers)
         };
 
-        sealed class DevState { public bool[] prevHeld = new bool[10]; public int grace; public double lfx = 1, lfy; public bool swallow; }
+        sealed class DevState { public bool[] prevHeld = new bool[10]; public int grace; public double lfx = 1, lfy; public bool swallow, prevL3; }
+        int laneKb;   // a depth-lane hop asked for on the keyboard since the last sample: B toward the back, M toward the camera
         sealed class Rep { public float t0, next; public bool done; }
 
         readonly HashSet<string> kbPressed = new HashSet<string>();   // presses since last sample (so fast taps aren't lost)
@@ -68,6 +69,7 @@ namespace NovaStriker.Game
             if (kb != null)
             {
                 foreach (var k in KEYMAP.Keys) if (kb[k].wasPressedThisFrame) { kbPressed.Add(KEYMAP[k]); anyKbm = true; }
+                if (kb[Key.B].wasPressedThisFrame) laneKb = -1; if (kb[Key.M].wasPressedThisFrame) laneKb = 1;
                 if (kb.anyKey.wasPressedThisFrame) anyKbm = true;
                 void Ev(Key k, MenuEv e) { if (kb[k].wasPressedThisFrame) { e.dev = "kbm"; menuEvents.Add(e); } }
                 Ev(Key.Escape, new MenuEv { type = "pause" }); Ev(Key.P, new MenuEv { type = "pause" });
@@ -201,7 +203,8 @@ namespace NovaStriker.Game
                 if (mousePressed.Contains(3)) extra[B("mode")] = true;
                 if (mousePressed.Contains(4)) extra[B("lock")] = true;
                 kbPressed.Clear(); mousePressed.Clear();
-                return Finish(st, held, extra, mx, my, aimFree, ax, ay);
+                var kc = Finish(st, held, extra, mx, my, aimFree, ax, ay); kc.lane = laneKb; laneKb = 0;
+                return kc;
             }
             var pad = PadOf(dev);
             if (pad != null)
@@ -223,6 +226,10 @@ namespace NovaStriker.Game
                 double rm = System.Math.Sqrt(rx * rx + ry * ry);
                 if (rm > 0.35) { aimFree = true; ax = rx / rm; ay = ry / rm; st.grace = 18; st.lfx = ax; st.lfy = ay; }
                 else if (st.grace > 0) { st.grace--; aimFree = true; ax = st.lfx; ay = st.lfy; }
+                // a depth-lane hop: click the left stick, pushed down for the front lane (up or level for the back)
+                bool l3 = Bt(10); int lane = l3 && !st.prevL3 ? (l.y < -0.5f ? 1 : -1) : 0; st.prevL3 = l3;
+                var pc = Finish(st, held, extra, mx, my, aimFree, ax, ay); pc.lane = lane;
+                return pc;
             }
             return Finish(st, held, extra, mx, my, aimFree, ax, ay);
         }

@@ -76,7 +76,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "perfOverlay", label = "Frame time readout", @bool = true },
             new SettingDef { key = "levelTiers", label = "Multi-tier levels (when a zone loads)", @bool = true },
             new SettingDef { key = "levelHazards", label = "Level hazards (when a zone loads)", @bool = true },
-            new SettingDef { key = "depthLanes", label = "Depth lanes: Z / X or L3 + up/down (when a zone loads)", @bool = true },
+            new SettingDef { key = "depthLanes", label = "Depth lanes: B / M or L3 + up/down (when a zone loads)", @bool = true },
         };
         // The pause menu's sections, in order, and which settings go in each (the rest are Game)
         static readonly string[] SECTIONS = { "Game", "Level features", "Effects", "Graphics", "Controls", "Audio" };
@@ -89,6 +89,7 @@ namespace NovaStriker.Game.UI
         static readonly (string kind, string a, string b, string c)[] HELP_ROWS =
         {
             ("R", "Move · crouch", "Left stick", "A/D · S"),
+            ("R", "Depth lanes (in marked stretches): hop to the lane behind or in front. Shots and strikes only reach their own lane; blasts reach all three", "L3 (stick up = back, down = front)", "B back · M front"),
             ("R", "Jump · double jump · wall jump", "A", "Space"),
             ("R", "Dash (8-way) · slide (down + dash)", "B", "Shift"),
             ("R", "Charged dash: hold dash while standing still, aim, let go. Each level goes further; level 2 is briefly invulnerable, level 3 cuts through enemies (afterimages show the level)", "Hold B", "Hold Shift"),

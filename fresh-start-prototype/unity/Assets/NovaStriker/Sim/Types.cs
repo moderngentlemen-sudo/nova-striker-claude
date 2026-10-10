@@ -40,6 +40,7 @@ namespace NovaStriker.Sim
     {
         public double mx, my, ax, ay;
         public bool aimFree;
+        public int lane;   // a depth-lane hop asked for this tick: -1 toward the back, 1 toward the camera
         public Buttons held = new Buttons(), pressed = new Buttons(), released = new Buttons();
         public static readonly Cmd EMPTY = new Cmd();
     }
@@ -283,6 +284,7 @@ namespace NovaStriker.Sim
 
     public sealed class Projectile : Hit
     {
+        public int lane; public bool laneSet;   // (depth lanes: its shooter's lane)
         public double x, y, px, py, vy;
         public double ttl = 60, r = 0.15;
         public HashSet<object> hitSet = new HashSet<object>();

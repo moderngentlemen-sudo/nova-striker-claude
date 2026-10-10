@@ -362,6 +362,7 @@ namespace NovaStriker.Sim
                 {
                     var e = enemies[i];
                     if (e.dead) continue;
+                    if (!LevelFeatures.Same(p, e)) continue;   // (depth lanes: the beam stays in its lane)
                     var hb = Hurtbox(e); bool any = false;
                     foreach (var g in segs) if (SegHitsBox(g, hb, B.width)) { any = true; break; }
                     if (!any) continue;
@@ -467,7 +468,7 @@ namespace NovaStriker.Sim
             var line = new List<(Enemy e, double t)>();
             foreach (var e in enemies.Live())
             {
-                if (e.dead) continue;
+                if (e.dead || !LevelFeatures.Same(p, e)) continue;
                 var hb = Hurtbox(e); var h = Level.RayBoxT(x0, y0, ax, ay, hb.x0 - 0.06, hb.y0 - 0.06, hb.x1 + 0.06, hb.y1 + 0.06);
                 if (h != null && h.Value.t <= wall.t) line.Add((e, h.Value.t));
             }

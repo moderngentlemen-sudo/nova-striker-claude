@@ -110,6 +110,7 @@ namespace NovaStriker.Sim
                 p.aegis = null; p.aegisCd = 0; p.overcharge = 0; p.beam = null;
                 p.dodge = null; p.pound = null; p.burstT = 0; p.subArmed = false; p.ultRun = null; p.lockSuspend = false;
                 p.rush = null; p.link = null; p.leap = null; p.patch = null; p.tossArmed = false; p.integrity = RAM.guard.integrity; p.guardBroken = false; p.kinetic = 0;
+                p.lane = p.laneTo = p.laneFrom = p.laneT = 0;
                 p.plate = 0; p.overclockT = 0; p.tuneT = 0; p.braceT = 0; p.scrap = JMath.Max(p.scrap, FIX.scrap.start); p.fixRevive = false; p.reviveGain = 0;
             }
             projectiles = new List<Projectile>(); shockwaves = new List<Shockwave>(); barriers = new List<Barrier>(); snares = new List<Snare>(); wells = new List<Well>(); ultCast = null;
@@ -967,6 +968,7 @@ namespace NovaStriker.Sim
             UpdateGadgets();
             UpdatePickups();
             LiftTick();
+            LevelFeatures.Step(this, cmds, frozen);   // hazards and depth lanes
             ResolveHitboxes(this);
             if (ultCast != null) UltTick();
             foreach (var b in barriers.Live())
@@ -1230,6 +1232,7 @@ namespace NovaStriker.Sim
         {
             var E = S.def; var list = new List<SpawnDef>(E.waves[S.wave]);
             if (S.wave == 0 && n >= 3 && E.extra != null) list.AddRange(E.extra);
+            if (S.wave == 0 && Level.TIER_SPAWNS.TryGetValue(E.id, out var up)) list.AddRange(up);   // (on the upper tiers)
             for (int i = 0; i < list.Count; i++)
             {
                 var sd = list[i]; int ii = i;

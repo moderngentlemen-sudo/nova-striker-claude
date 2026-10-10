@@ -38,6 +38,7 @@ namespace NovaStriker.Sim
                     {
                         var e = world.enemies[i];
                         if (e.dead || set.Contains(e.id) || !Overlap(hb, Hurtbox(e))) continue;
+                        if (!LevelFeatures.Same(hb.owner, e, hb.radial || hb.scatter || hb.quake || hb.aegisBurst)) continue;   // (depth lanes)
                         set.Add(e.id);
                         // Radial hits push each enemy away from their centre. Bursts and pound shockwaves count as blasts.
                         Hit hit = hb;
@@ -62,6 +63,7 @@ namespace NovaStriker.Sim
                     {
                         if (p.state == "dead" || p.state == "downed" || set.Contains("p" + p.slot)) continue;
                         if (!Overlap(hb, Hurtbox(p))) continue;
+                        if (!LevelFeatures.Same(hb.owner, p, hb.radial || hb.quake)) continue;
                         set.Add("p" + p.slot);
                         // A Bulwark Wall between the striker and the player takes the blow instead
                         var wall = hb.owner != null ? world.WallBetween(hb.owner, p) : null;
@@ -411,12 +413,14 @@ namespace NovaStriker.Sim
 
         static void ProjectileHits(World world, Projectile pr)
         {
+            if (!pr.laneSet) { pr.lane = pr.owner != null ? pr.owner.lane : 0; pr.laneSet = true; }   // (a shot keeps its shooter's lane)
             if (pr.team == "p")
             {
                 for (int i = 0; i < world.enemies.Count; i++)
                 {
                     var e = world.enemies[i];
                     if (e.dead || pr.hitSet.Contains(e.id) || !CircleBox(pr.x, pr.y, pr.r, Hurtbox(e))) continue;
+                    if (!LevelFeatures.Same(pr.lane, e)) continue;
                     pr.hitSet.Add(e.id);
                     if (pr.snare) { world.ApplySnare(e, (Player)pr.owner); pr.dead = true; return; }   // snares wrap around shields
                     if (pr.stick != null)
@@ -456,6 +460,7 @@ namespace NovaStriker.Sim
                 foreach (var p in world.players.Live())
                 {
                     if (p.state == "dead" || p.state == "downed") continue;
+                    if (!LevelFeatures.Same(pr.lane, p)) continue;
                     if (CanDeflect(p, pr)) { world.Deflect(p, pr); return; }
                     if (!CircleBox(pr.x, pr.y, pr.r, Hurtbox(p))) continue;
                     if (pr.blast != null) { Detonate(world, pr, pr.x, pr.y, null, false); pr.dead = true; return; }   // mortar shells burst on contact

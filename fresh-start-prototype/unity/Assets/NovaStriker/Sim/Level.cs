@@ -11,6 +11,7 @@ namespace NovaStriker.Sim
     {
         public double x, y, w, h, vx, vy;
         public double dropT;          // dropping through one-way platforms while > 0
+        public int lane, laneFrom, laneTo, laneT, laneWait;   // depth lanes (LevelFeatures): -1 back, 0 middle, 1 front
         public bool onGround, hitCeil;
         public double hitWall, wallDir;
     }
@@ -67,7 +68,7 @@ namespace NovaStriker.Sim
     public struct RayHit { public double t, nx, ny; }
     public struct CastHit { public double t, x, y, nx, ny; public bool wall; public LevelBox box; }
 
-    public static class Level
+    public static partial class Level
     {
         public const double ARC_START = 104;
         public const double ARC_R = 14;
@@ -226,6 +227,7 @@ namespace NovaStriker.Sim
         // Put every breakable piece back (a reset to a checkpoint, a zone load)
         public static void RestoreBoxes()
         {
+            ApplyFeatures(Cfg.SETTINGS.levelTiers, Cfg.SETTINGS.levelHazards, Cfg.SETTINGS.depthLanes);   // (LevelFeatures.cs)
             foreach (var b in BOXES) if (b.type == 'd') { b.broken = false; b.hp = DESTRUCT[b.tag].hp; }
         }
 

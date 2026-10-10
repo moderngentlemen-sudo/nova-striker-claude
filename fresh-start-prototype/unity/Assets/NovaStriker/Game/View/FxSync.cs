@@ -178,7 +178,7 @@ namespace NovaStriker.Game
                 }
                 if (pr.stuck != null && pr.stuck.t % (pr.stuck.t < 12 ? 3 : 8) == 0) Sprite(pr.x, pr.y, "glow", pr.stuck.t < 12 ? "#ffffff" : "#ff9a4a", 0.5f, 0.08f, 1.2f);
                 double x = pr.px + (pr.x - pr.px) * alpha, y = pr.py + (pr.y - pr.py) * alpha;
-                m.position.copy(S.W(x, y, 0.1));
+                m.position.copy(S.W(x, y, 0.1 + (pr.laneSet ? pr.lane : pr.owner != null ? pr.owner.laneTo : 0) * LevelFeatures.LANE_W));
                 var d = S.Dir(x, pr.vx, pr.vy).normalized;
                 if (pr.kind == "disc")
                 {

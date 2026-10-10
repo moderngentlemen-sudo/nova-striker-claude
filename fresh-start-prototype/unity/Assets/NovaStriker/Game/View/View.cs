@@ -44,7 +44,7 @@ namespace NovaStriker.Game
         readonly Light sun, rim;
         Ambience ambience; TMesh sunGlow;
         public Sparks sparks; PlanarReflection reflection;
-        public Vfx vfx; PostFx post;
+        public Vfx vfx; PostFx post; LevelFx levelFx;
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -119,7 +119,7 @@ namespace NovaStriker.Game
             foreach (var c in farClouds) ambience.AddCloud(c);
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
-            vfx = new Vfx(this);
+            vfx = new Vfx(this); levelFx = new LevelFx(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
@@ -262,6 +262,7 @@ namespace NovaStriker.Game
             foreach (var b in Level.BOXES)
             {
                 if (b.type == 'd') continue;   // (breakable pieces have their own meshes: Breakables)
+                if (b.id >= Level.EXTRA_ID) continue;   // (the level features' boxes come and go: LevelFx draws them)
                 float depth = DepthFor(b), hgt = (float)(b.y1 - b.y0);
                 var segs = new List<(double, double)>();
                 bool curved = Level.CurvedSpan(b.x0, b.x1);
@@ -365,7 +366,7 @@ namespace NovaStriker.Game
                     scene.add(rig.root); rigs[p] = rig;
                 }
                 double x = p.prevX + (p.x - p.prevX) * a, y = p.prevY + (p.y - p.prevY) * a;
-                rig.root.position.copy(S.W(x, y));
+                rig.root.position.copy(S.W(x, y, LevelFeatures.Depth(p)));   // (depth lanes: back, middle or front)
                 // Turning round: the rig swings through the turn over TURN_TIME with a twist of the body, instead of
                 // snapping to the mirrored pose in one frame
                 if (rig.turn == null) rig.turn = (float)p.facing;
@@ -396,7 +397,7 @@ namespace NovaStriker.Game
                 seenE.Add(e);
                 if (!enemyRigs.TryGetValue(e, out var R)) { R = EnemyRigs.Build(e.type); Look.AddOutlines(R.root, 0x12060c, 0.018f); scene.add(R.root); enemyRigs[e] = R; }
                 double x = e.prevX + (e.x - e.prevX) * a, y = e.prevY + (e.y - e.prevY) * a;
-                R.root.position.copy(S.W(x, y));
+                R.root.position.copy(S.W(x, y, LevelFeatures.Depth(e)));
                 R.root.rotation.y = S.YawAt(x);
                 EnemyRigs.Animate(R, e, dt, t);
                 if (e.tagged > 0 && R.tag == null)
@@ -587,6 +588,7 @@ namespace NovaStriker.Game
             fx.OnEvent(ev, world);
             string T = ev.type;
             if (T == "boxChip" || T == "boxBreak" || T == "liftBounce") breakables.OnEvent(ev);
+            if (T == "laneHop" || T.StartsWith("hazard")) levelFx.OnEvent(ev);
             if (T == "boxBreak") trauma = Mathf.Min(1, trauma + (ev.box.tag == "pillar" ? 0.4f : ev.box.tag == "glass" ? 0.12f : 0.2f));
             // Shockwaves from the heaviest blows (an impact frame adds its own in StartImpact)
             if (T == "boxBreak" && ev.box.tag == "pillar") Shockwave(ev.x, ev.y, 0.7f);
@@ -748,7 +750,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);
