@@ -4,6 +4,7 @@ using NovaStriker.Sim; using NovaStriker.Game.Three; using UnityEngine; using st
 namespace NovaStriker.Game {
  public sealed partial class GameMain {
   [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights;}
+  [Serializable] sealed class BlastReview {public string preset;public int fire,smoke,sparks;public bool fireInCamera;}
   ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending;
   void LateUpdate() {
    if (review == null || reviewChangePending) return;
@@ -38,19 +39,24 @@ namespace NovaStriker.Game {
    yield return Settle();
    foreach(var preset in new[]{"cinematic","balanced","classic","custom"}) {
     reviewChangePending=true;SETTINGS.fxPreset=preset;yield return null;reviewChangePending=false;
-    view.vfx.ClearParticles();
-    view.OnEvent(new Ev {type="blast",x=human.x+2,y=human.y+1,r=2,level=3,p=human,depth=LevelFeatures.LANE_W});yield return Settle(1);
+    view.vfx.ClearParticles();ParticleBudget.Advancing=true;
+    view.OnEvent(new Ev {type="blast",x=human.x+2,y=human.y+1,r=2,level=3,p=human,depth=LevelFeatures.LANE_W});yield return Settle(2);
+    var fireRenderer=view.vfx.fire.ps.GetComponent<ParticleSystemRenderer>();
+    var sample=new BlastReview {preset=preset,fire=view.vfx.fire.Count,smoke=view.vfx.smoke.Count,sparks=view.vfx.spark.Count,fireInCamera=GeometryUtility.TestPlanesAABB(GeometryUtility.CalculateFrustumPlanes(view.camera),fireRenderer.bounds)};
+    File.WriteAllText(Path.Combine(reviewFolder,"blast_"+preset+".json"),JsonUtility.ToJson(sample,true));
+    if(FxCfg.Explosions=="volumetric"&&(sample.fire==0||!sample.fireInCamera))review.errors.Add("Modern blast fire missing from camera: "+preset);
     // Freeze the ordinary effect clock at a matched age without drawing the pause menu over it.
     paused=true;yield return Capture("effects_"+preset);paused=false;ParticleBudget.Advancing=true;yield return Settle(16);
    }
    SetPaused(true);yield return Settle(3);yield return Capture("paused");SetPaused(false);
    SETTINGS.aiTeammates=3;world.Teleport("skyline");yield return Settle();Directory.CreateDirectory(Path.Combine(reviewFolder,"motion"));
    for(int frame=0;frame<40;frame++){yield return Settle(2);yield return Capture("motion/"+frame.ToString("D3"),false);}
-   SETTINGS.aiTeammates=0;yield return Settle(3);
+   SETTINGS.aiTeammates=0;SETTINGS.levelHazards=false;world.Teleport("gym");yield return Settle();
    foreach(var type in new[]{"swarmer","shield","sniper","brute","post","turret","drone","mortar","charger","warden","stormcaller"}) {
-    world.Teleport("gym");world.enemies.Clear();var enemy=Enemies.CreateEnemy(type,world.players[0].x+4,0);world.enemies.Add(enemy);yield return Settle(6);yield return Capture("enemy_"+type);
+    world.Teleport("gym");world.enemies.Clear();world.players[0].mercy=0;var enemy=Enemies.CreateEnemy(type,world.players[0].x+4,0);world.enemies.Add(enemy);yield return Settle(6);yield return Capture("enemy_"+type);
    }
    // Reset/settings lifecycle counts are evidence, not an assertion of no leak.
+   SETTINGS.levelHazards=true;
    var materialsBeforeResets=new HashSet<int>();foreach(var m in Resources.FindObjectsOfTypeAll<Material>())materialsBeforeResets.Add(m.GetInstanceID());
    for(int i=0;i<10;i++){world.Teleport(i%2==0?"gym":"arena");SETTINGS.enemyModels=i%2==0;yield return Settle(3);review.resetMeshes.Add(Resources.FindObjectsOfTypeAll<Mesh>().Length);review.resetMaterials.Add(Resources.FindObjectsOfTypeAll<Material>().Length);review.resetLights.Add(Resources.FindObjectsOfTypeAll<Light>().Length);}
    // Allow a small bounded difference for active cues; reject the reproduced +38-material/reset leak.

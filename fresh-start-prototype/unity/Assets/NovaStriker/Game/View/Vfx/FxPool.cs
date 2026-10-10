@@ -73,6 +73,9 @@ namespace NovaStriker.Game
             var main = ps.main;
             main.playOnAwake = false; main.loop = true; main.duration = 1;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
+            // Shared emitters stay at the scene origin while their particles span the route.
+            // Automatic culling can pause a looping system before its world-space bounds update.
+            main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
             main.maxParticles = s.max; main.gravityModifier = s.gravity;
             main.startSize3D = s.mesh3D; main.startRotation3D = s.mesh3D;
             main.scalingMode = ParticleSystemScalingMode.Shape;
