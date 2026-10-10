@@ -1,0 +1,7 @@
+ok   NovaStriker.Sim
+  (unresolved GUID:7dbf32976982c98448af054f2512cb79 in Unity.RenderPipelines.Universal.Runtime)
+  (unresolved GUID:d04eb9c554ad44ceab303cecf0c0cf82 in Unity.RenderPipelines.Universal.Runtime)
+  (unresolved GUID:c49c619b6af2be941af9bcbca2641964 in Unity.RenderPipelines.Universal.Runtime)
+ok   NovaStriker.Game
+  (unresolved GUID:41524c21c95e5fe4dbc5b48bd21995a4 in Unity.RenderPipelines.Universal.2D.Runtime)
+  (unresolved GUID:caccfbdb442cdc64fa722b4c5585521f in Unity.RenderPipelines.Universal.2D.Runtime)

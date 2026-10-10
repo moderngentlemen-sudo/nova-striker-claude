@@ -349,7 +349,11 @@ namespace NovaStriker.Game
         }
 
         // ---- Entities ----
-        static void DisposeRig(TObj root) => root.DestroyOwnedMaterials();
+        static void DisposeRig(Rig rig)
+        {
+            rig.root.DestroyOwnedMaterials();
+            foreach (var material in new[] { rig.mats.@base, rig.mats.trim, rig.mats.under, rig.mats.energy, rig.mats.visor, rig.mats.amber }) material?.DestroyIfUnused();
+        }
         static void DisposeEnemyRig(EnemyRig rig)
         {
             rig.root.DestroyOwnedMaterials();
@@ -368,7 +372,7 @@ namespace NovaStriker.Game
                 rigs.TryGetValue(p, out var rig);
                 if (rig == null || rig.@char != p.@char)
                 {
-                    if (rig != null) { rig.skin?.Dispose(); DisposeRig(rig.root); }
+                    if (rig != null) { rig.skin?.Dispose(); DisposeRig(rig); }
                     rig = Rigs.BuildPlayerRig(p.@char);
                     if (p.@char == "ram") { Look.Wear(rig.mats.@base); Look.Wear(rig.mats.trim); }   // (his battle-worn armour)
                     var ringMat = TMat.Basic(0xffffff); ringMat.colorCss = PLAYER_COLORS[p.slot]; ringMat.transparent = true; ringMat.opacity = 0.65f; ringMat.depthWrite = false;
@@ -402,7 +406,7 @@ namespace NovaStriker.Game
                 bool inked = rig.cloak < 0.05f;
                 if (rig.inked != inked) { rig.inked = inked; foreach (var s in rig.shells) s.visible = inked; }
             }
-            foreach (var p in rigs.Keys.ToList()) if (!seen.Contains(p)) { var rig = rigs[p]; rig.skin?.Dispose(); DisposeRig(rig.root); rigs.Remove(p); }
+            foreach (var p in rigs.Keys.ToList()) if (!seen.Contains(p)) { var rig = rigs[p]; rig.skin?.Dispose(); DisposeRig(rig); rigs.Remove(p); }
 
             var seenE = new HashSet<Enemy>();
             foreach (var e in world.enemies)

@@ -37,7 +37,11 @@ namespace NovaStriker.Game
             for (int i = systems.Count - 1; i >= 0; i--)
             {
                 var ps = systems[i]; if (!ps) { systems.RemoveAt(i); continue; }
-                var main = ps.main; main.simulationSpeed = Advancing ? 1 : 0;
+                var main = ps.main;
+                // Native particles use the same bounded presentation delta as legacy effects.
+                // Keep Unity's automatic simulation/jobs; scale its clock instead of simulating twice.
+                float nativeDelta = main.useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                main.simulationSpeed = Advancing && nativeDelta > 0 ? dt / nativeDelta : 0;
                 if (excess > 0) { int n = ps.GetParticles(trim); int drop = Mathf.Min(n, excess); ps.SetParticles(trim, n - drop); excess -= drop; }
             }
             foreach (var trimPool in trimmers) if (excess > 0) excess -= trimPool(excess);

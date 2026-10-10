@@ -1,0 +1,73 @@
+{
+  "evidence": "Updated managed assemblies in preceding Linux player assets; old grading program unsupported. Resource diagnostic only, not visual or clean-build acceptance.",
+  "counts": {
+    "resetMaterials": [
+      634,
+      634,
+      634,
+      634,
+      634,
+      634,
+      634,
+      634,
+      634,
+      634
+    ],
+    "resetMeshes": [
+      2453,
+      2453,
+      2453,
+      2453,
+      2453,
+      2453,
+      2453,
+      2453,
+      2453,
+      2453
+    ],
+    "resetLights": [
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18
+    ],
+    "characterMaterials": [
+      628,
+      622,
+      624,
+      621,
+      628,
+      622,
+      624,
+      621,
+      628,
+      622,
+      624,
+      621
+    ],
+    "characterMeshes": [
+      2453,
+      2454,
+      2461,
+      2453,
+      2453,
+      2454,
+      2461,
+      2453,
+      2453,
+      2454,
+      2461,
+      2453
+    ],
+    "peakParticles": 960,
+    "peakEffectLights": 8,
+    "peakWeatherLights": 3,
+    "errors": []
+  }
+}

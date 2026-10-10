@@ -84,6 +84,8 @@ namespace NovaStriker.Game
         float[] weight; int cur = -1; string curState;
         readonly List<Renderer> renderers = new List<Renderer>();
         readonly List<(Material m, float w)> outlineMats = new List<(Material, float)>();
+        readonly List<Material> ownedMaterials = new List<Material>();
+        readonly List<Mesh> ownedGearMeshes = new List<Mesh>();
         List<TMesh> body; bool rigHidden;
         readonly List<(TObj model, TObj on)> gearModels = new List<(TObj, TObj)>();   // (RAM's modelled Rampart and Breach Cannon: BuildGear)
 
@@ -91,7 +93,7 @@ namespace NovaStriker.Game
         {
             this.rig = rig; @char = charId; D = Def(charId);
             if (D == null) { failed = true; return; }
-            try { Build(); } catch (System.Exception e) { failed = true; Debug.LogWarning("Character model failed to load; keeping the built-in rig: " + e); }
+            try { Build(); } catch (System.Exception e) { failed = true; Dispose(); Debug.LogWarning("Character model failed to load; keeping the built-in rig: " + e); }
         }
 
         void Build()
@@ -119,6 +121,7 @@ namespace NovaStriker.Game
                 {
                     if (m == null) continue;
                     var c = new Material(m);
+                    ownedMaterials.Add(c);
                     foreach (var t in D.tint) if (t.material == m.name) { if (c.HasProperty("_BaseColor")) c.SetColor("_BaseColor", t.color); else if (c.HasProperty("_Color")) c.SetColor("_Color", t.color); }
                     if (c.HasProperty("_Smoothness")) c.SetFloat("_Smoothness", Mathf.Max(c.GetFloat("_Smoothness"), 0.55f));
                     list.Add(c);
@@ -126,6 +129,7 @@ namespace NovaStriker.Game
                 // the outline follows the skeleton too: an extra pass on the same renderer, its width set from
                 // how big the part is drawn against its own units
                 var om = new Material(Templates.Outline);
+                ownedMaterials.Add(om);
                 float units = Mathf.Max(1e-4f, r.transform.lossyScale.magnitude / Mathf.Sqrt(3));
                 om.SetColor("_BaseColor", Th.Hex(0x0b0f18)); om.SetFloat("_Width", 0.016f / units);
                 list.Add(om); outlineMats.Add((om, 0.016f / units));
@@ -292,7 +296,8 @@ namespace NovaStriker.Game
                     g.V(new Vector3(P.p[3 * k], P.p[3 * k + 1], P.p[3 * k + 2]), new Vector3(P.n[3 * k], P.n[3 * k + 1], P.n[3 * k + 2]), new Vector2(P.uv[2 * k], P.uv[2 * k + 1]));
                 for (int k = 0; k < P.i.Length; k += 3) g.T(P.i[k], P.i[k + 1], P.i[k + 2]);
                 var tm = MatFor(P.mat) ?? TMat.Std(0x7b838d, 0.65f, 0.35f);
-                model.add(new TMesh(g.ToMesh(name + "-" + P.mat), tm) { cast = true });
+                var mesh = g.ToMesh(name + "-" + P.mat); ownedGearMeshes.Add(mesh);
+                model.add(new TMesh(mesh, tm) { cast = true });
             }
             Look.AddOutlines(model, 0x0b0f18, 0.016f);
             on.add(model); gearModels.Add((model, on));
@@ -380,9 +385,11 @@ namespace NovaStriker.Game
                 {
                     var m = src[i]; if (m == null) continue;
                     var tm = MatFor(m.name.Replace(" (Instance)", ""));
-                    if (tm != null) { slots.Add((list.Count, tm)); list.Add(tm.m); } else list.Add(new Material(m));
+                    if (tm != null) { slots.Add((list.Count, tm)); list.Add(tm.m); }
+                    else { var owned = new Material(m); ownedMaterials.Add(owned); list.Add(owned); }
                 }
                 var om = new Material(Templates.Outline);
+                ownedMaterials.Add(om);
                 float units = Mathf.Max(1e-4f, r.transform.lossyScale.magnitude / Mathf.Sqrt(3));
                 om.SetColor("_BaseColor", Th.Hex(0x0b0f18)); om.SetFloat("_Width", 0.016f / units);
                 list.Add(om); outlineMats.Add((om, 0.016f / units));
@@ -426,7 +433,10 @@ namespace NovaStriker.Game
         {
             if (graph.IsValid()) graph.Destroy();
             if (holder != null) holder.destroy();
-            foreach (var (g, _) in gearModels) g.destroy();
+            foreach (var (g, _) in gearModels) g.DestroyOwnedMaterials();
+            foreach (var material in ownedMaterials) Object.Destroy(material);
+            foreach (var mesh in ownedGearMeshes) Object.Destroy(mesh);
+            ownedMaterials.Clear(); ownedGearMeshes.Clear(); gearModels.Clear(); outlineMats.Clear();
             if (body != null) foreach (var o in body) o.visible = true;
             ready = false;
         }

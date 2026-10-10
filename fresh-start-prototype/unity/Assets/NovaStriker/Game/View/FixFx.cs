@@ -17,6 +17,7 @@ namespace NovaStriker.Game
         readonly Fx fx; readonly TObj scene; float t; float noScrapT = -9;
         readonly Dictionary<string, TMat> M = new Dictionary<string, TMat>();
         readonly Dictionary<string, TMat> capMats = new Dictionary<string, TMat>();
+        readonly Dictionary<string, TMat> pickupGlows = new Dictionary<string, TMat>(), pickupBeams = new Dictionary<string, TMat>();
         sealed class Beam { public Strip glow, core; public readonly List<Vector3> pts = new List<Vector3>(); public float k; }
         readonly Dictionary<Player, Beam> beams = new Dictionary<Player, Beam>();
         sealed class GM { public TObj root, ring, core, field, head, pod, spring, top; public List<TMesh> pips = new List<TMesh>(); public List<TMesh> rings; public string kind; public float born, hit, pop, boing; }
@@ -37,6 +38,8 @@ namespace NovaStriker.Game
             M["field"] = new TMat(TMat.Kind.Basic) { map = fx.tex.ring, colorCss = MINT, transparent = true, opacity = 0.4f, blending = Blending.Additive, depthWrite = false, side = Side.Double };
             M["coilField"] = new TMat(TMat.Kind.Basic) { map = fx.tex.ring, colorCss = CYAN, transparent = true, opacity = 0.4f, blending = Blending.Additive, depthWrite = false, side = Side.Double };
             foreach (var k in new List<string>(FIX.powers) { "ultcell", "fury" }) capMats[k] = Glow(FIX_LOOK[k].tint, 1.8f);
+            foreach (var material in M.Values) material.retained = true;
+            foreach (var material in capMats.Values) material.retained = true;
         }
 
         // ---- Gadget models ----
@@ -89,15 +92,23 @@ namespace NovaStriker.Game
         }
         TObj PickupMesh(string kind, bool level)
         {
+            TMat SpriteMaterial(Dictionary<string, TMat> cache, float opacity)
+            {
+                if (!cache.TryGetValue(kind, out var material)) cache[kind] = material = new TMat(TMat.Kind.Sprite) {
+                    map = fx.tex.glow, colorCss = FIX_LOOK[kind].tint, opacity = opacity,
+                    blending = Blending.Additive, depthWrite = false, retained = true,
+                };
+                return material;
+            }
             var g = Group.Make(); var body = new TMesh(Geo.Capsule(0.13f, 0.22f, 4, 12), capMats[kind]); body.rotation.z = Mathf.PI / 2; g.add(body);
             if (level)
             {
                 g.scale.setScalar(1.7f);
-                var beam = Three.Sprite.Make(new TMat(TMat.Kind.Sprite) { map = fx.tex.glow, colorCss = FIX_LOOK[kind].tint, opacity = 0.35f, blending = Blending.Additive, depthWrite = false });
+                var beam = Three.Sprite.Make(SpriteMaterial(pickupBeams, 0.35f));
                 beam.scale.set(0.35f, 3.2f, 1); beam.position.y = 1.2f; g.add(beam);
             }
             var band = new TMesh(Geo.Torus(0.15f, 0.03f, 6, 16), M["body"]); band.rotation.y = Mathf.PI / 2; g.add(band);
-            var glow = Three.Sprite.Make(new TMat(TMat.Kind.Sprite) { map = fx.tex.glow, colorCss = FIX_LOOK[kind].tint, blending = Blending.Additive, depthWrite = false });
+            var glow = Three.Sprite.Make(SpriteMaterial(pickupGlows, 1));
             glow.scale.setScalar(0.9f); g.add(glow);
             scene.add(g);
             return g;
@@ -358,7 +369,7 @@ namespace NovaStriker.Game
                 m.rotation.y += dt * 3; m.visible = k.life > 90 || Mathf.FloorToInt(t * 10) % 2 == 0;
                 if (!k.rest && S.Rnd() < 0.7f) F.Burst(x, y, FIX_LOOK[k.kind].tint, 1, 0.5f, 0.18f, 0.25f);
             }
-            foreach (var kv in new List<KeyValuePair<Pickup, TObj>>(pickups)) if (!seenK.Contains(kv.Key)) { kv.Value.destroy(); pickups.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Pickup, TObj>>(pickups)) if (!seenK.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); pickups.Remove(kv.Key); }
             // ---- Boosts on everyone ----
             foreach (var p in world.players)
             {

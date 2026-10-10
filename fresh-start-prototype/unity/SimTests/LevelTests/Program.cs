@@ -188,6 +188,20 @@ static class P {
         Check(selected&&!e.dead,type+" phase "+phase+": "+attack+" runs without invalid phase indices");
       }
     }
+    foreach(var preset in new[]{"cinematic","balanced","classic"}) {
+      SETTINGS=new Settings{quality="high",fxPreset=preset};
+      string Effective() => string.Join("|",NovaStriker.Game.FxCfg.Explosions,NovaStriker.Game.FxCfg.Projectiles,NovaStriker.Game.FxCfg.Trails,NovaStriker.Game.FxCfg.Smoke,NovaStriker.Game.FxCfg.Screen,NovaStriker.Game.FxCfg.Density,NovaStriker.Game.FxCfg.Debris,NovaStriker.Game.FxCfg.Lights,NovaStriker.Game.FxCfg.Distortion,NovaStriker.Game.FxCfg.Decals);
+      string before=Effective();NovaStriker.Game.FxCfg.CaptureCustom();
+      Check(SETTINGS.fxPreset=="custom"&&before==Effective(),preset+": switching to Custom preserves every effective option");
+    }
+    SETTINGS=new Settings{quality="high",fxPreset="custom",fxExplosions="classic",fxProjectiles="energy"};
+    Check(NovaStriker.Game.FxCfg.Classic&&NovaStriker.Game.FxCfg.Projectiles=="energy","Custom: Classic explosions preserve independent energy projectiles");
+    SETTINGS.fxExplosions="volumetric";SETTINGS.fxProjectiles="classic";
+    Check(!NovaStriker.Game.FxCfg.Classic&&NovaStriker.Game.FxCfg.Projectiles=="classic","Custom: rich explosions preserve independent Classic projectiles");
+    SETTINGS.quality="low";SETTINGS.fxLights=true;SETTINGS.fxDistortion=true;SETTINGS.fxDecals=true;
+    Check(NovaStriker.Game.FxCfg.MaxParticles==1200&&NovaStriker.Game.FxCfg.MaxLights==0&&NovaStriker.Game.FxCfg.MaxDecals==0&&!NovaStriker.Game.FxCfg.Distortion,"Low graphics: advertised particle/light/decal/distortion caps apply");
+    SETTINGS.quality="high";SETTINGS.fxPreset="cinematic";SETTINGS.reducedScreenEffects=true;
+    Check(NovaStriker.Game.FxCfg.Screen=="clean"&&!NovaStriker.Game.FxCfg.Distortion&&NovaStriker.Game.FxCfg.Explosions=="volumetric","reduced screen effects preserves combat style and disables screen distortion");
     Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
     Environment.ExitCode = fails == 0 ? 0 : 1;
   }

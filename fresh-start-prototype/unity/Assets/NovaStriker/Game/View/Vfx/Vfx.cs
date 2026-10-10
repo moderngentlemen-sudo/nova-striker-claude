@@ -68,6 +68,8 @@ namespace NovaStriker.Game
                 meshes = new[] { Geo.Box(1, 0.15f, 0.7f), Geo.Tetrahedron(0.6f) }, fade = FxPool.Fade(white, white, 1, 1, 0, 0.85f) });
         }
 
+        public void ClearParticles() { foreach (var layer in all) layer.ps.Clear(); }
+
         public void Update(float dt)
         {
             ParticleBudget.Update(dt);

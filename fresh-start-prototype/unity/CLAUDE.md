@@ -34,7 +34,7 @@ All run without Unity, from `SimTests/`:
   match the browser prototype, and new options may default on.
 - `bash parity.sh`: the C# simulation against the JavaScript prototype, tick by tick. Informational only now: it
   will differ once Unity's gameplay moves on. Use it to spot unintended simulation changes during graphics work.
-- `cd LevelTests && dotnet run`: 70 deterministic checks for lanes, collision masks, projectiles, hazards, resets, combinations and tier waypoints. Failures must return nonzero.
+- `cd LevelTests && dotnet run`: 105 deterministic checks for lanes, collision masks, projectiles, hazards, resets, combinations and tier waypoints. Failures must return nonzero.
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.

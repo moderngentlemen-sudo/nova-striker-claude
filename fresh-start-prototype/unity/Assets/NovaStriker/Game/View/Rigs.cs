@@ -120,6 +120,8 @@ namespace NovaStriker.Game
             // energy, a bare face with spiky blond hair (the helmet and mask are the other looks: Settings, Echo's head)
             var c = CHARS[charId]; var D = Mats(c);
             var M = RimAll(new RigMats { @base = Armour("#efe7d6", 0.4f, 0.1f), trim = Armour("#c8964a", 0.34f, 0.6f), under = Std("#25242b", 0.62f, 0.15f), energy = D.energy, visor = D.visor, amber = D.amber });
+            // These three defaults were replaced by the character-specific armour palette.
+            D.@base.DestroyIfUnused(); D.trim.DestroyIfUnused(); D.under.DestroyIfUnused();
             TMat steel = Std("#3a3d45", 0.35f, 0.7f), cloth = Std("#efe6d3", 0.85f, 0);
             TObj root = G(), size = G(), flip = G(), body = G();
             root.add(size); size.add(flip); flip.add(body);
@@ -391,6 +393,8 @@ namespace NovaStriker.Game
         {
             var c = CHARS["ram"]; var D = Mats(c);
             var M = RimAll(new RigMats { @base = Armour("#8f98a3", 0.5f, 0.55f), trim = Armour("#2a2f37", 0.45f, 0.5f), under = Std("#15181d", 0.6f, 0.3f), energy = D.energy, visor = D.visor, amber = D.amber });
+            // These three defaults were replaced by the character-specific armour palette.
+            D.@base.DestroyIfUnused(); D.trim.DestroyIfUnused(); D.under.DestroyIfUnused();
             TMat frame = Armour("#7b838d", 0.65f, 0.35f), core = GlowMat(c.energy, 3.2f);
             var ex = new RigExtra();
             var S = Skeleton("ram", M, 0.095f, 0.11f, 0.42f, 0.16f, 0.31f);

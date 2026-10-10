@@ -373,7 +373,11 @@ namespace NovaStriker.Game
                 else Sc.mat.emissiveIntensity = fast || p.state == "lash" || reel != null ? 1.6f : 0.5f;
                 Sc.dm.visible = rig.root.visible;
             }
-            foreach (var kv in new List<KeyValuePair<Player, Scarf>>(scarves)) if (!seen.Contains(kv.Key)) { kv.Value.dm.obj.DestroyOwnedMaterials(); scarves.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Player, Scarf>>(scarves)) if (!seen.Contains(kv.Key)) {
+                var scarf = kv.Value; var mesh = scarf.dm.obj.geometry; scarf.dm.obj.DestroyOwnedMaterials();
+                foreach (var material in scarf.mats.Values) material.DestroyIfUnused();
+                Object.Destroy(mesh); scarves.Remove(kv.Key);
+            }
         }
         Scarf MakeScarf(Player p, Rig rig)
         {
