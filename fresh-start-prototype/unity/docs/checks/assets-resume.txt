@@ -1,0 +1,29 @@
+enemy_brute.json: 3992 triangles / 7000
+enemy_brute_lod1.json: 1870 triangles / 7000
+enemy_charger.json: 2460 triangles / 7000
+enemy_charger_lod1.json: 1116 triangles / 7000
+enemy_drone.json: 2016 triangles / 3000
+enemy_drone_lod1.json: 942 triangles / 3000
+enemy_mortar.json: 2806 triangles / 3000
+enemy_mortar_lod1.json: 1314 triangles / 3000
+enemy_post.json: 1920 triangles / 3000
+enemy_post_lod1.json: 890 triangles / 3000
+enemy_shield.json: 2396 triangles / 3000
+enemy_shield_lod1.json: 1096 triangles / 3000
+enemy_sniper.json: 2128 triangles / 3000
+enemy_sniper_lod1.json: 972 triangles / 3000
+enemy_stormcaller.json: 7432 triangles / 18000
+enemy_stormcaller_lod1.json: 3476 triangles / 18000
+enemy_swarmer.json: 1708 triangles / 3000
+enemy_swarmer_lod1.json: 786 triangles / 3000
+enemy_turret.json: 1318 triangles / 3000
+enemy_turret_lod1.json: 610 triangles / 3000
+enemy_warden.json: 7362 triangles / 18000
+enemy_warden_lod1.json: 3404 triangles / 18000
+arena_kit.json: 1824 source triangles, 41 placements, 12340 placed triangles
+foundry_kit.json: 2108 source triangles, 246 placements, 71856 placed triangles
+gym_kit.json: 28136 source triangles, 267 placements, 305940 placed triangles
+skyline_kit.json: 1788 source triangles, 105 placements, 30600 placed triangles
+tower_kit.json: 1936 source triangles, 47 placements, 13696 placed triangles
+undercity_kit.json: 6180 source triangles, 234 placements, 76216 placed triangles
+ALL PASS: runtime mesh payloads and effect textures

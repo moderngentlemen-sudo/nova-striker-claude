@@ -1,6 +1,5 @@
-// Scorch marks and scuffs: flat quads laid just above the floor under a blast or where someone lands hard, fading
-// out over several seconds. A pool of FxCfg.MaxDecals (none when off or on Low quality). Floors only: the floor
-// height comes from the level (Level.GroundBelow), the orientation from the path.
+// Scorch/scuff marks use a bounded native URP projector pool with surface-aligned quad fallback.
+// Floor support comes from Level.GroundBelow; wall marks carry the actual hit normal.
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
 using UnityEngine;
@@ -61,7 +60,7 @@ namespace NovaStriker.Game
             d.m.scale.set(size, size, 1);
             d.t = 0; d.life = life; d.op = opacity; d.mat.opacity = opacity; d.live = true;
             d.m.visible = d.projector == null;
-            if (d.projector != null) { d.projected.SetTexture("Base_Map", FxTex.Get(tex)); d.projector.transform.SetPositionAndRotation(Th.P(point) + n * .08f, rotation); d.projector.size = new Vector3(size,size,.4f); d.projector.fadeFactor = opacity; d.projector.enabled = true; }
+            if (d.projector != null) { d.projected.SetTexture("Base_Map", FxTex.Get(tex)); d.projector.transform.SetPositionAndRotation(Th.P(point) + n * .08f, rotation); d.projector.size = new Vector3(size,size,.8f); d.projector.fadeFactor = opacity; d.projector.enabled = true; }
         }
 
         static void Hide(D d) { d.live = false; d.m.visible = false; if (d.projector != null) d.projector.enabled = false; }

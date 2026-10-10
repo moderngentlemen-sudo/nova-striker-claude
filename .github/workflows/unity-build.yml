@@ -156,7 +156,7 @@ jobs:
 
       - name: Capture Linux player review
         if: matrix.name == 'Linux' && steps.secrets.outputs.ok == 'true'
-        timeout-minutes: 17
+        timeout-minutes: 22
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libgl1-mesa-dri libasound2t64 ffmpeg
@@ -164,6 +164,10 @@ jobs:
           player=$(find build/StandaloneLinux64 -name '*.x86_64' -type f -print -quit)
           test -n "$player"
           chmod +x "$player"
+          mkdir -p review/surface-probe
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 180s "$player" \
+            -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
+            -logFile "$GITHUB_WORKSPACE/review/surface-probe/player.log" --nova-surface-review "$GITHUB_WORKSPACE/review/surface-probe" --nova-commit "$GITHUB_SHA"
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s '-screen 0 960x540x24' timeout 900s "$player" \
             -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
             -logFile "$GITHUB_WORKSPACE/review/player.log" \
@@ -185,6 +189,9 @@ jobs:
             -force-glcore -screen-fullscreen 0 -screen-width 960 -screen-height 540 \
             -logFile "$GITHUB_WORKSPACE/review/settings-reload.log" --nova-settings-check "$GITHUB_WORKSPACE/review"
           ffmpeg -hide_banner -loglevel warning -y -framerate 10 -i review/motion/%03d.png -c:v libx264 -pix_fmt yuv420p review/skyline-motion.mp4
+          for effect in nova ram chain; do
+            ffmpeg -hide_banner -loglevel warning -y -framerate 10 -i "review/energy/$effect/%03d.png" -c:v libx264 -pix_fmt yuv420p "review/$effect-energy.mp4"
+          done
       - name: Upload player review evidence
         if: always() && matrix.name == 'Linux'
         uses: actions/upload-artifact@v4

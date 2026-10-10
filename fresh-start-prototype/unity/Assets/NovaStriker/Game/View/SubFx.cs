@@ -22,6 +22,10 @@ namespace NovaStriker.Game
         }
         sealed class Shock { public EnergyTube a, b; public readonly List<Vector3> path = new List<Vector3>(24); public float particles, lightT; }
         readonly Dictionary<Enemy, Shock> shocks = new Dictionary<Enemy, Shock>();
+        readonly List<Enemy> removedEnemies = new List<Enemy>(12);
+        readonly HashSet<Enemy> seenAuras = new HashSet<Enemy>();
+        readonly HashSet<Well> seenWells = new HashSet<Well>();
+        readonly List<Well> removedWells = new List<Well>();
         readonly List<Bolt> bolts = new List<Bolt>();
         readonly Color chainTint;
         readonly Mesh coreGeo, discGeo; readonly TMat coreMat, discMat; readonly Texture2D discTex;
@@ -196,7 +200,7 @@ namespace NovaStriker.Game
         }
         void SyncWells(World world, float alpha, float dt)
         {
-            var seen = new HashSet<Well>(); var F = fx;
+            var seen = seenWells; seen.Clear(); var F = fx;
             foreach (var w in world.wells)
             {
                 seen.Add(w);
@@ -224,7 +228,9 @@ namespace NovaStriker.Game
                     float s = r * 2.4f; P.v = S.Dir(x, -Mathf.Cos(a) * s - Mathf.Sin(a) * s * 0.8f, -Mathf.Sin(a) * s + Mathf.Cos(a) * s * 0.8f); P.drag = 0.97f;
                 }
             }
-            foreach (var kv in new List<KeyValuePair<Well, WellM>>(wells)) if (!seen.Contains(kv.Key)) { kv.Value.g.DestroyOwnedMaterials(); wells.Remove(kv.Key); }
+            removedWells.Clear();
+            foreach (var kv in wells) if (!seen.Contains(kv.Key)) removedWells.Add(kv.Key);
+            foreach (var well in removedWells) { wells[well].g.DestroyOwnedMaterials(); wells.Remove(well); }
         }
 
         public void Update(float dt, World world, View view)
@@ -244,11 +250,10 @@ namespace NovaStriker.Game
                     continue;
                 }
                 b.volume.Visible = b.branchA.Visible = b.branchB.Visible = false;
-                b.glow.Build(pts, cam, i => (0.14f + 0.035f * b.level) * (0.6f + 0.4f * k), i => new Vector4(c.r * 1.3f, c.g * 1.15f, c.b * 0.7f, 0.5f * k * fl));
-                b.core.Build(pts, cam, i => 0.035f + 0.01f * b.level, i => new Vector4(1.9f, 1.85f, 1.6f, k * fl));
+                ClassicBolt(b, cam, k, fl);
             }
             SyncWells(world, view.alpha, dt);
-            var seen = new HashSet<Enemy>();
+            var seen = seenAuras; seen.Clear();
             foreach (var e in world.enemies)
             {
                 if (e.dead) continue;
@@ -272,8 +277,12 @@ namespace NovaStriker.Game
                     if (S.Rnd() < 0.3f) { var P = F.Particle(S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3), SLOW, 0.12f, 0.8f); P.v = new Vector3(0, 0.35f, 0); P.drag = 1; }
                 }
             }
-            foreach (var kv in new List<KeyValuePair<Enemy, Shock>>(shocks)) if (kv.Key.dead || kv.Key.shockT <= 0 || !world.enemies.Contains(kv.Key) || FxCfg.Projectiles == "classic") { kv.Value.a.Dispose(); kv.Value.b.Dispose(); shocks.Remove(kv.Key); }
-            foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(auras)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); auras.Remove(kv.Key); }
+            removedEnemies.Clear();
+            foreach (var kv in shocks) if (kv.Key.dead || kv.Key.shockT <= 0 || !world.enemies.Contains(kv.Key) || FxCfg.Projectiles == "classic") removedEnemies.Add(kv.Key);
+            foreach (var enemy in removedEnemies) { var shock = shocks[enemy]; shock.a.Dispose(); shock.b.Dispose(); shocks.Remove(enemy); }
+            removedEnemies.Clear();
+            foreach (var kv in auras) if (!seen.Contains(kv.Key)) removedEnemies.Add(kv.Key);
+            foreach (var enemy in removedEnemies) { auras[enemy].DestroyOwnedMaterials(); auras.Remove(enemy); }
             foreach (var p in world.players)
             {
                 var rig = fx.RigOf(p); if (rig == null || !rig.root.visible) continue;
@@ -300,6 +309,13 @@ namespace NovaStriker.Game
                     if (S.Rnd() < 0.5f) F.Smoke(p.x, p.y - 0.2, "#8e97a3", 1, 0.8f, 0.4f, 0.5f, dir: -Mathf.PI / 2, spread: 1, op: 0.35f);
                 }
             }
+        }
+
+        void ClassicBolt(Bolt b, Vector3 cam, float k, float fl)
+        {
+            var c = chainTint;
+            b.glow.Build(b.path, cam, i => (0.14f + 0.035f * b.level) * (0.6f + 0.4f * k), i => new Vector4(c.r * 1.3f, c.g * 1.15f, c.b * 0.7f, 0.5f * k * fl));
+            b.core.Build(b.path, cam, i => 0.035f + 0.01f * b.level, i => new Vector4(1.9f, 1.85f, 1.6f, k * fl));
         }
 
         void Branch(Bolt bolt, EnergyTube mesh, int index, float opacity, float phase)

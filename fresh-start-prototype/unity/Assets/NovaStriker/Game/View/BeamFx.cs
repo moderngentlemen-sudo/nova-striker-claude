@@ -21,6 +21,7 @@ namespace NovaStriker.Game
             public EnergyTube volume, filamentA, filamentB; public float lightT, particleT, stampT; public bool launched;
         }
         readonly Dictionary<Player, B> beams = new Dictionary<Player, B>();
+        readonly List<Player> removedPlayers = new List<Player>(4);
         public BeamFX(Fx fx) { this.fx = fx; scene = fx.scene; }
 
         B Of(Player p)
@@ -60,7 +61,8 @@ namespace NovaStriker.Game
         {
             t += dt;
             var cam = view.camPos;
-            foreach (var kv in new List<KeyValuePair<Player, B>>(beams))
+            removedPlayers.Clear();
+            foreach (var kv in beams)
             {
                 var p = kv.Key; var b = kv.Value;
                 bool live = p.beam != null && p.state == "beam" && p.beam.segs != null && p.beam.segs.Count > 0 && world.players.Contains(p);
@@ -73,26 +75,22 @@ namespace NovaStriker.Game
                     b.edge.mesh.visible = b.sheath.mesh.visible = b.core.mesh.visible = b.glow.visible = b.core2.visible = b.hit.visible = false;
                     b.volume.Visible = b.filamentA.Visible = b.filamentB.Visible = false;
                     if (closing <= 0) b.pts.Clear();
-                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.DestroyOwnedMaterials(); b.volume.Dispose(); b.filamentA.Dispose(); b.filamentB.Dispose(); beams.Remove(p); }
+                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.DestroyOwnedMaterials(); b.volume.Dispose(); b.filamentA.Dispose(); b.filamentB.Dispose(); removedPlayers.Add(p); }
                     continue;
                 }
                 float open = Mathf.Min(1, b.age / 0.07f), W = b.W; int n = b.pts.Count; var tint = b.tint;
                 float bse = open * closing;
-                if (b.ram) b.edge.Build(b.pts, cam, i => W * 1.3f * bse * Mathf.Min(1, 0.45f + i * 0.25f) * (1 + 0.1f * Mathf.Sin(t * 30 - i * 0.7f)),
-                    i => new Vector4(tint.r * 0.25f, tint.g * 0.3f, tint.b * 0.55f, 0.75f * Mathf.Min(1, 0.4f + i * 0.3f) * (i == n - 1 ? 0.3f : 1)));
-                b.edge.mesh.visible = b.ram;
-                float sk = b.ram ? 1.05f : 1.5f;
-                b.sheath.Build(b.pts, cam, i => W * 1.0f * bse * Mathf.Min(1, 0.45f + i * 0.25f) * (1 + 0.16f * Mathf.Sin(t * 38 - i * 0.9f) + 0.06f * Mathf.Sin(t * 91 + i)),
-                    i => new Vector4(tint.r * sk, tint.g * sk, tint.b * sk, (b.ram ? 0.8f : 0.5f) * Mathf.Min(1, 0.4f + i * 0.3f) * (i == n - 1 ? 0.3f : 1)));
                 float flick = SETTINGS.reducedScreenEffects ? 1 : 1 + 0.15f * Mathf.Sin(t * 31);
-                b.core.Build(b.pts, cam, i => W * (b.ram ? 0.24f : 0.36f) * bse * flick * Mathf.Min(1, 0.5f + i * 0.3f), i => new Vector4(2.6f, 2.5f, 2.3f, 0.95f));
                 bool modern = FxCfg.Projectiles != "classic";
                 if (modern) {
                     b.edge.mesh.visible = b.sheath.mesh.visible = b.core.mesh.visible = false;
                     b.volume.Build(b.pts, W * 0.48f * bse, Color.Lerp(tint * 2.3f, Color.white * 3.2f, 0.25f), 0.7f, t);
                     b.filamentA.Build(b.pts, W * 0.065f * bse, tint * 2.8f, 0.95f, t, W * 0.65f * bse);
                     b.filamentB.Build(b.pts, W * 0.055f * bse, Color.Lerp(tint, Color.white, 0.6f) * 2, 0.8f, t, W * 0.65f * bse, Mathf.PI);
-                } else b.volume.Visible = b.filamentA.Visible = b.filamentB.Visible = false;
+                } else {
+                    b.volume.Visible = b.filamentA.Visible = b.filamentB.Visible = false;
+                    ClassicGeometry(b, cam, bse, flick);
+                }
                 Vector3 a = b.pts[0], e = b.pts[n - 1];
                 b.glow.position.copy(a); b.glow.material.colorLin = tint; b.glow.scale.setScalar((1.0f + Mathf.Sin(t * 40) * 0.12f) * bse); b.glow.material.opacity = 0.7f; b.glow.visible = true;
                 b.core2.position.copy(a); b.core2.material.colorCss = "#ffffff"; b.core2.scale.setScalar(0.9f * bse * flick); b.core2.visible = true;
@@ -125,7 +123,20 @@ namespace NovaStriker.Game
                     } finally { fx.effectDepth = previous; }
                 }
             }
+            foreach (var player in removedPlayers) beams.Remove(player);
             // a beam whose player has no entry yet appears on its start event (OnEvent makes it)
+        }
+
+        // Keep classic strip/delegate work outside the production 3D path.
+        void ClassicGeometry(B b, Vector3 cam, float bse, float flick)
+        {
+            float W = b.W, sk = b.ram ? 1.05f : 1.5f; int n = b.pts.Count; var tint = b.tint;
+            if (b.ram) b.edge.Build(b.pts, cam, i => W * 1.3f * bse * Mathf.Min(1, 0.45f + i * 0.25f) * (1 + 0.1f * Mathf.Sin(t * 30 - i * 0.7f)),
+                i => new Vector4(tint.r * 0.25f, tint.g * 0.3f, tint.b * 0.55f, 0.75f * Mathf.Min(1, 0.4f + i * 0.3f) * (i == n - 1 ? 0.3f : 1)));
+            b.edge.mesh.visible = b.ram;
+            b.sheath.Build(b.pts, cam, i => W * bse * Mathf.Min(1, 0.45f + i * 0.25f) * (1 + 0.16f * Mathf.Sin(t * 38 - i * 0.9f) + 0.06f * Mathf.Sin(t * 91 + i)),
+                i => new Vector4(tint.r * sk, tint.g * sk, tint.b * sk, (b.ram ? 0.8f : 0.5f) * Mathf.Min(1, 0.4f + i * 0.3f) * (i == n - 1 ? 0.3f : 1)));
+            b.core.Build(b.pts, cam, i => W * (b.ram ? 0.24f : 0.36f) * bse * flick * Mathf.Min(1, 0.5f + i * 0.3f), i => new Vector4(2.6f, 2.5f, 2.3f, 0.95f));
         }
 
         void Modern(B b, Vector3 start, Vector3 end, float dt)

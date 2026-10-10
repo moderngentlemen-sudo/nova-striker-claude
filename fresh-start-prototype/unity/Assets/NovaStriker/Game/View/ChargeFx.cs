@@ -65,11 +65,14 @@ namespace NovaStriker.Game
             public TMesh[] motes;
             public DynMesh dots; public int dotN;
             public Apex apex; public float spin;
-            public EnergyTube[] coils; public readonly List<Vector3> energyPath = new List<Vector3>(40);
+            public EnergyTube[] coils; public readonly List<Vector3> energyPath = new List<Vector3>(40), previewPath = new List<Vector3>(40);
             public float seedCarry, lightT;
         }
         readonly Dictionary<Player, St> state = new Dictionary<Player, St>();
         readonly Dictionary<Projectile, Ribbon> trails = new Dictionary<Projectile, Ribbon>();
+        readonly HashSet<Player> seenPlayers = new HashSet<Player>();
+        readonly List<Player> removedPlayers = new List<Player>(4);
+        readonly List<Projectile> removedTrails = new List<Projectile>();
         sealed class Flash { public TMesh m; public float life, max, @base = 1, size, grow, r0 = float.NaN, r1, travel; public Vector3 dir, from; public bool sprite, dead; }
         readonly List<Flash> flashes = new List<Flash>();
         public const int MaxFlashes = 80;
@@ -165,7 +168,7 @@ namespace NovaStriker.Game
         public void Update(float dt, World world, View view)
         {
             t += dt; advance = dt;
-            var seen = new HashSet<Player>();
+            var seen = seenPlayers; seen.Clear();
             foreach (var p in world.players)
             {
                 seen.Add(p);
@@ -177,7 +180,9 @@ namespace NovaStriker.Game
                 else WeaponCharge(p, Sx, rig);
                 if (p.state == "dashCharge") DashAura(p, Sx, rig);
             }
-            foreach (var kv in new List<KeyValuePair<Player, St>>(state)) if (!seen.Contains(kv.Key)) { Dispose(kv.Value); state.Remove(kv.Key); }
+            removedPlayers.Clear();
+            foreach (var kv in state) if (!seen.Contains(kv.Key)) removedPlayers.Add(kv.Key);
+            foreach (var player in removedPlayers) { Dispose(state[player]); state.Remove(player); }
             UpdateTrails(dt, view.camPos);
             UpdateFlashes(dt);
         }
@@ -270,7 +275,7 @@ namespace NovaStriker.Game
         // Level 4 is ready: a flickering white guide line where the beam will go, to the first wall
         void BeamPreview(Player p, St Sx, Vector3 at)
         {
-            var c = PlayerSim.Chest(p); var h = Level.RayCast(c.x + p.aimX * 0.6, c.y + p.aimY * 0.6, p.aimX, p.aimY, MARKSMAN.beam.range);
+            var c = PlayerSim.Chest(p); var h = Level.RayCast(c.x + p.aimX * 0.6, c.y + p.aimY * 0.6, p.aimX, p.aimY, MARKSMAN.beam.range, p.lane);
             var end = S.W(h.x, h.y, LevelFeatures.Depth(p) + 0.25);
             Span(Sx.sight, at, end); Sx.sight.material.colorCss = "#ffffff";
             Sx.sight.material.opacity = 0.35f + 0.3f * Mathf.Abs(Mathf.Sin(t * 22)); Sx.sight.scale.x = Sx.sight.scale.z = 1.4f;
@@ -290,10 +295,10 @@ namespace NovaStriker.Game
             double dx = p.aimX, dy = p.aimY + MARKSMAN.arc.lift, m = JMath.Hypot(dx, dy); if (m == 0) m = 1;
             double x = cx + p.aimX * 0.7, y = cy + p.aimY * 0.7, vx = dx / m * MARKSMAN.arc.speed, vy = dy / m * MARKSMAN.arc.speed;
             const double dt = 0.045;
-            var pts = new List<Vector3>(); bool hit = false; int i = 0;
+            var pts = Sx.previewPath; pts.Clear(); bool hit = false; int i = 0;
             for (; i < Sx.dotN; i++)
             {
-                for (int s = 0; s < 3 && !hit; s++) { vy -= MARKSMAN.arc.gravity * dt / 3; x += vx * dt / 3; y += vy * dt / 3; if (Level.PointInSolid(x, y)) hit = true; }
+                for (int s = 0; s < 3 && !hit; s++) { vy -= MARKSMAN.arc.gravity * dt / 3; x += vx * dt / 3; y += vy * dt / 3; if (Level.PointInSolid(x, y, p.lane)) hit = true; }
                 pts.Add(S.W(x, y, LevelFeatures.Depth(p) + 0.1));
                 if (hit) { i++; break; }
             }
@@ -343,10 +348,10 @@ namespace NovaStriker.Game
             if (p.rifleT < HUNTER.rifle.raise || p.state == "attack") return;
             bool ready = p.rifleCd == 0; float k = (float)PlayerSim.RifleFocus(p.rifleT); bool full = k >= 1;
             var at = Muzzle(p, rig); var c = PlayerSim.Chest(p); double x0 = c.x + p.aimX * 0.9, y0 = c.y + p.aimY * 0.9;
-            double tEnd = Level.RayCast(x0, y0, p.aimX, p.aimY, HUNTER.rifle.range).t; Enemy hitE = null;
+            double tEnd = Level.RayCast(x0, y0, p.aimX, p.aimY, HUNTER.rifle.range, p.lane).t; Enemy hitE = null;
             foreach (var e in world.enemies)
             {
-                if (e.dead) continue;
+                if (e.dead || !LevelFeatures.Same(p, e)) continue;
                 var hb = Combat.Hurtbox(e); var h = Level.RayBoxT(x0, y0, p.aimX, p.aimY, hb.x0 - 0.06, hb.y0 - 0.06, hb.x1 + 0.06, hb.y1 + 0.06);
                 if (h != null && h.Value.t < tEnd) { tEnd = h.Value.t; hitE = e; }
             }
@@ -545,16 +550,18 @@ namespace NovaStriker.Game
         void UpdateTrails(float dt, Vector3 cam)
         {
             if (FxCfg.Trails == "off" || FxCfg.Projectiles != "classic") { foreach (var r in trails.Values) r.Dispose(); trails.Clear(); return; }
-            foreach (var kv in new List<KeyValuePair<Projectile, Ribbon>>(trails))
+            removedTrails.Clear();
+            foreach (var kv in trails)
             {
                 var pr = kv.Key; var r = kv.Value;
                 if (pr.dead || r.orphan)
                 {
                     r.orphan = true; if (r.pts.Count > 0) r.pts.RemoveAt(r.pts.Count - 1); r.fade -= dt * 6;
-                    if (r.pts.Count == 0 || r.fade <= 0) { r.Dispose(); trails.Remove(pr); continue; }
+                    if (r.pts.Count == 0 || r.fade <= 0) { r.Dispose(); removedTrails.Add(pr); continue; }
                 }
                 r.Rebuild(cam);
             }
+            foreach (var projectile in removedTrails) trails.Remove(projectile);
         }
     }
 }
