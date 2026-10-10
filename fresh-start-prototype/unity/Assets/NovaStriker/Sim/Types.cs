@@ -389,7 +389,7 @@ namespace NovaStriker.Sim
         public List<ChainPt> pts;
         public string[] chars;
         public double x, y, x0, y0, x1, y1, dx, dy, ax, ay, nx, ny, vy, r, k, h, f, n, i, dir, level, tier, ticks, dmg, frac, left, power, sp, slot, cost, top, ang, cone;
-        public string kind, attach, mode, sub, id, text, name, title, why, what, reason, cat, source;
+        public string kind, attach, mode, sub, id, text, name, title, why, what, reason, cat, source, surface;
         public bool perfect, over, heavy, big, charged, climb, closed, full, on, parried, secondWind, wasHidden, weak, wall, bolt, rivet, cannon, dashJump,
             armored, broken, max, spot, flourish, team, hard, pit, high, air;
         public double fall;

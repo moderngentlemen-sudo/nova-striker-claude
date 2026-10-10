@@ -51,8 +51,8 @@ namespace NovaStriker.Game
                     break;
                 }
                 case "playerHit": Impact(ev.x, ev.y, "#ffffff", 0.8f); return true;
-                case "projWall": Impact(ev.x, ev.y, ev.pr != null ? TrailColor(ev.pr) : "#ffffff", 0.6f); return true;
-                case "deflect": case "ricochet": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); return true;
+                case "projWall": case "ricochet": case "rivetStick": SurfaceImpact(ev); return true;
+                case "deflect": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); return true;
                 case "guardBreak": Shards(ev.x, ev.y, 10, new Color(1, 0.6f, 0.8f), 6); Flash(ev.x, ev.y, "#ffffff", 1.6f, 0.12f); break;
                 case "shot": Muzzle(ev, own); break;
                 case "tracer": Muzzle(ev, ECHO_ORANGE); return true;
@@ -92,14 +92,38 @@ namespace NovaStriker.Game
         void Flash(double x, double y, string css, float size, float life) => V.flash.Emit(W(x, y, 0.4f), Vector3.zero, size, life, Hdr(css, 4));
 
         // A hit or a ricochet: a star flash, a fan of sparks, a puff of glow
-        public void Impact(double x, double y, string css, float k = 1)
+        public void Impact(double x, double y, string css, float k = 1, Vector3? normal = null)
         {
             if (V == null) return;
             var c = S.Lin(css);
             V.flash.Emit(W(x, y, 0.4f), Vector3.zero, 0.9f * k, 0.08f, Hdr(c, 5));
             V.glow.Emit(W(x, y, 0.3f), Vector3.zero, 1.1f * k, 0.18f, Hdr(c, 1.6f));
             int n = Count(8 * k);
-            for (int i = 0; i < n; i++) V.spark.Emit(W(x, y, 0.3f), Rnd3() * (6 + 5 * k) + Vector3.up * 2, 0.05f + 0.03f * k, 0.25f + Random.value * 0.35f, Hdr(c, 3 + Random.value * 2));
+            for (int i = 0; i < n; i++) {
+                var direction = Rnd3();
+                if (normal.HasValue) { var axis = normal.Value.normalized; if (Vector3.Dot(direction, axis) < 0) direction = -direction; direction = (direction + axis * .7f).normalized; }
+                V.spark.Emit(W(x, y, .3f), direction * (6 + 5 * k) + Vector3.up * 2, .05f + .03f * k, .25f + Random.value * .35f, Hdr(c, 3 + Random.value * 2));
+            }
+        }
+
+        void SurfaceImpact(Ev ev)
+        {
+            var normal = S.Dir(ev.x, ev.nx, ev.ny); bool known = normal.sqrMagnitude > .001f;
+            if (known) normal.Normalize();
+            string tint = ev.pr != null ? TrailColor(ev.pr) : "#ffffff";
+            Impact(ev.x, ev.y, tint, .6f, known ? normal : (Vector3?)null);
+            if (!known || ev.box == null) return;
+            // Small contact chips differ from a destroyed object; all use the existing decorative budget.
+            if (FxCfg.Debris != "off") {
+                var color = ev.surface == "glass" ? new Color(.72f,.9f,1) : ev.surface == "crate" ? new Color(.5f,.32f,.18f) : new Color(.58f,.6f,.65f);
+                for (int i = 0; i < Count(3); i++) {
+                    var scatter = Rnd3(); if (Vector3.Dot(scatter, normal) < 0) scatter = -scatter;
+                    var velocity = (normal + scatter).normalized * (2 + Random.value * 4) + Vector3.up;
+                    float size = .04f + Random.value * .04f;
+                    V.debris.Emit3D(W(ev.x,ev.y,.05f),velocity,new Vector3(size,size*.5f,size),.6f+Random.value*.4f,color,Rnd3()*3,Rnd3()*8);
+                }
+            }
+            V.decals.StampSurface(W(ev.x,ev.y),normal,.55f,ev.surface=="glass"||ev.surface=="crate"?"scuff":"scorch",6,.7f);
         }
 
         void Muzzle(Ev ev, string css)

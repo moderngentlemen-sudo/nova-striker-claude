@@ -1,0 +1,22 @@
+PASS default: LT dodges
+PASS shield: LT raises the shield
+PASS shield: blocked 5 hits
+PASS shield: absorbed energy 88.0
+PASS shield: no damage taken while it holds (hp 100.0/100)
+PASS shield: damage multiplier 1.88
+PASS shield: energy 88 raises damage 1.50 -> 2.82
+PASS energy holds (50) then drains (7.2)
+PASS shield lowered when LT released
+PASS a perfect shield block was registered
+PASS stun option: a perfect shield block stuns the attacker (offset 15, state hitstun, dizzy True)
+PASS fire with the shield up: 4 shots, shield still up (nshield)
+PASS charged shot from behind the shield: shot,splash,projWall,chargeLevel
+PASS melee still lowers it
+PASS charge overfills and caps at 150 (150.0)
+PASS one 'full' and one 'max' event
+PASS x2.50 at 150
+PASS x2.00 at 100
+PASS no stun without the option
+PASS sentinel: perfect parry happened
+PASS sentinel + stun option: perfect parry stuns
+ALL PASS

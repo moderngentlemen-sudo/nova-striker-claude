@@ -207,7 +207,7 @@ namespace NovaStriker.Game
         // The floor under a sim point, if it is within `reach` m below
         public double? FloorUnder(double x, double y, double reach = 1.2)
         {
-            double g = Level.GroundBelow(x, y + 0.25);
+            double g = Level.GroundBelow(x, y + 0.25, Mathf.Clamp(Mathf.RoundToInt((float)(effectDepth / LevelFeatures.LANE_W)), -1, 1));
             return !double.IsNegativeInfinity(g) && y - g <= reach ? g : (double?)null;
         }
         const string DUST = "#b9c1cb";

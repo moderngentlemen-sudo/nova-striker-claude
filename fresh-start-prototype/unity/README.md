@@ -2,7 +2,7 @@
 
 **Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The graphics and level update has authored features and desktop build evidence. See [current verification status](docs/GRAPHICS_UPDATE_STATUS.md), [effect coverage](docs/VFX_COVERAGE.md) and [Blender review sheets](docs/art-review/). Unity runtime acceptance is tracked separately from source compilation. Unity is the primary platform and browser parity is informational.
 
-**Download the updated player:** [Build and launch instructions](docs/BUILD_DELIVERY.md). Code commit `007975e` has successful Windows/macOS/Linux builds and a Linux graphical smoke review with zero shader failures or runtime exceptions. Full playthroughs, owner-editor compatibility and reference-GPU performance remain open. If pulling the source, run **Nova Striker › Set Up Project** again to apply the updated renderer/depth configuration.
+**Download the updated player:** [Build and launch instructions](docs/BUILD_DELIVERY.md). The latest exact build and rendered-review results are recorded there, including 3D charged beams, chain lightning and background cloud volume. Full playthroughs, owner-editor compatibility and reference-GPU performance remain open. If pulling the source, run **Nova Striker › Set Up Project** again to apply the updated renderer/depth configuration.
 
 Nova Striker uses Unity 6000.3.25f1 and URP 17.3.0. It grew from the Version 13 browser prototype in
 `../game`, retaining the four characters, kits, zones, bosses, teammates and ultimates. Unity now drives
@@ -14,12 +14,12 @@ Sound and music are synthesized by the existing audio engine.
 
 | Part | How far it has been checked |
 |---|---|
-| Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 105 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
+| Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 132 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
 | Sound and music engine | **Rendered offline.** Outside Unity it rendered the score at all three intensities, plus a run of sound effects, to WAV. Levels were sensible, with no NaNs, at about 20× real time. |
-| View, effects, rigs, UI, input, editor setup | **Built** with pinned Unity 6000.3.25f1 / URP 17.3.0 for all desktop targets. The Linux graphical smoke review produced 24 stills and 40 motion frames; stage/enemy/preset stills were inspected. Exact checks and remaining manual gates are recorded in the status file. |
+| View, effects, rigs, UI, input, editor setup | **Built** with pinned Unity 6000.3.25f1 / URP 17.3.0 for all desktop targets. The graphical review includes 44 named stills, skyline frames and controlled charged-beam/lightning motion; stage/enemy/effect stills are inspected separately from full playthroughs. Exact checks and remaining manual gates are recorded in the status file. |
 
 The automated graphical review captures all six zones, both boss spaces, eleven enemy models, four effect
-presets, pause and skyline motion. It also checks resource counts over resets and character swaps. Full
+presets, Nova/RAM charge and release, chain lightning, cloud modes, surface projection, pause and skyline motion. It also checks resource counts over resets and character swaps. Full
 playthroughs, every effect trigger, controller navigation and reference GPU profiling remain separate gates
 in the status file.
 
@@ -33,7 +33,8 @@ in the status file.
    - the template materials (`Resources/NovaStriker/*.mat`)
    - the URP pipeline asset with two renderers. Renderer 0 is for High and Low. Renderer 1 is for Ultra and
      adds Screen Space Ambient Occlusion. Both run the Grade pass as a Full Screen Pass feature after
-     post-processing and copy opaque depth before transparent soft particles draw.
+     post-processing, copy opaque depth before transparent soft particles draw, and include native projected
+     decals plus the bounded background volume before foreground transparency.
    - linear colour space and the Input System backend
    - the scene `Scenes/NovaStriker.unity`, with its `GameMain` object
 
@@ -155,8 +156,11 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     them with **B** and **M** on the keyboard, or click the left stick while holding it up or down. Attacks
     only reach their own lane, except area attacks.
   - The data and rules are in `Sim/LevelFeatures.cs`; `SimTests/LevelTests` tests them.
+  - Sentries, traps and gravity wells keep their placement lane after their owner moves. Sentry shots and
+    direct device/pad interactions use that lane; friendly fields and area attacks retain all-lanes reach.
+    Devices fall when their supporting deck collapses.
 
-**Known limits:** tier waypoints and hazard avoidance are headless checked, but complete human/bot traversal and keyboard/gamepad testing remain required. Projected decals use Unity's shipped decal graph with a surface-aligned quad fallback; reactor, dome, cooling tower and train have spatial LOD owners. The new volume/beam/decal features require their updated CI captures to pass. City-block LODs, all impact/material cases and target-GPU profiling remain open. Software CI captures do not establish 60 fps or compatibility with the owner's 6000.6.2f1 editor.
+**Known limits:** tier waypoints and hazard avoidance are headless checked, but complete human/bot traversal and keyboard/gamepad testing remain required. Projected decals use Unity's shipped decal graph with a surface-aligned quad fallback; reactor, dome, cooling tower and train have spatial LOD owners. City blocks retain 48 m cells with reduced distant facades. Full impact/material coverage and target-GPU profiling remain open; actual beam/cloud/decal captures and limitations are recorded in the delivery. Software CI captures do not establish 60 fps or compatibility with the owner's 6000.6.2f1 editor.
 
 ### Earlier additions
 

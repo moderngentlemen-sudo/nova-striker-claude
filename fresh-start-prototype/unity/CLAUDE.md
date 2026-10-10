@@ -6,7 +6,7 @@ Notes for whoever continues this work.
 
 - **Work only on `nova-striker-unity-sol-6-1` for this copy.** The owner's branch instruction supersedes the inherited source-branch rule.
 - **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. The core implementation and Blender source review are present. Read GRAPHICS_UPDATE_STATUS.md for exact checks and remaining release gates.
-- **Delivered build:** code commit `007975e`, [run 38035359477](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38035359477). Actual Windows/macOS/Linux builds and the Linux graphical smoke suite pass. Read [`docs/BUILD_DELIVERY.md`](docs/BUILD_DELIVERY.md) for downloads; owner's 6.6 compatibility, full playthroughs and reference-GPU profiling are still unverified. The follow-up commit changes documentation only.
+- **Delivered build:** read [`docs/BUILD_DELIVERY.md`](docs/BUILD_DELIVERY.md) for the exact built commit, downloads and actual results. Keep older diagnostic runs separate. Owner's 6.6 compatibility, full playthroughs and reference-GPU profiling remain distinct checks.
 - **Leave the source branch `nova-striker-unity-claude` unchanged.**
 - **Leave alone** `nova-striker-unity-astra` (the owner's separate copy) and `claude/wizardly-wozniak-r0q6no`.
 - **Pull requests:** don't open one unless asked.
@@ -19,8 +19,8 @@ Notes for whoever continues this work.
     `ProjectSettings/ProjectVersion.txt` and `Packages/manifest.json`.
   - When a change needs *Nova Striker › Set Up Project* run again, tell them. That is any change to
     `Editor/NovaSetup.cs`, a new shader, or a new template material.
-  - This update requires that setup menu again: both renderers now copy opaque depth before transparency,
-    and the game camera requires depth/colour textures for soft particles. These settings are verified in the
+  - This update requires that setup menu again: both renderers copy opaque depth before transparency, enable native decals and the bounded cloud
+    renderer feature, and the game camera requires depth/colour textures for soft particles. These settings are verified in the
     pinned 6.3 player; do not infer 6.6 compatibility from that result.
 - **GitHub build:** the workflow `.github/workflows/unity-build.yml` (GameCI) still builds with **6000.3.25f1**,
   the pinned version. It runs on every push under `fresh-start-prototype/unity/**`.
@@ -38,7 +38,7 @@ All run without Unity, from `SimTests/`:
   match the browser prototype, and new options may default on.
 - `bash parity.sh`: the C# simulation against the JavaScript prototype, tick by tick. Informational only now: it
   will differ once Unity's gameplay moves on. Use it to spot unintended simulation changes during graphics work.
-- `cd LevelTests && dotnet run`: 105 deterministic checks for lanes, collision masks, projectiles, hazards, resets, combinations and tier waypoints. Failures must return nonzero.
+- `cd LevelTests && dotnet run`: 132 deterministic checks for lanes, collision masks, projectiles, hazards, resets, combinations and tier waypoints. Failures must return nonzero.
 - `cd ShieldTests && dotnet run`: headless tests of the Unity-only options. These cover Nova's shield (blocks,
   energy, overfill to 150%, firing behind it, perfect blocks) and the parry stun. It must print `ALL PASS`.
   Extend it when you change those options.
@@ -117,7 +117,8 @@ The README's *Unity-only additions* has the full description.
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
     Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
   - **Energy:** existing BeamFX/ChargeFX/SubFX own bounded `EnergyTube` meshes and the shared energy particle layer; use `Th.P` once. Chain endpoints snapshot depth before hit/removal. Keep Classic independent from explosion style and separate pause drawing from time advancement.
-  - **Limits:** full human/bot traversal, all impact/trigger cases, city-block LODs, owner-editor compatibility and target-GPU profiling remain pending. Volume, beam and projected-decal authoring must pass actual CI shader/player/capture review before approval.
+  - **Origins:** devices/traps/pickups snapshot placement lane; sentries target/emit in that lane and gadgets lose collapsed support. `Fx.AtDepth` scopes sustained/delayed helpers. All-lanes fields/barriers and shockwave cores use the loaded lane envelope; pending menu options do not change geometry before reload.
+  - **Limits:** full human/bot traversal, all impact/trigger cases, owner-editor compatibility and target-GPU profiling remain pending. Beam/cloud rendering is verified in actual pinned-player captures; floor/wall mark approval requires the focused visible-pixel probe and image inspection.
 
 ## Open threads and ideas
 
@@ -133,15 +134,10 @@ The README's *Unity-only additions* has the full description.
   Breach Cannon (`ram_cannon.json`) are in the game, driven by the rig like Nova's. His helmet
   is knocked off at critical health (`ramHead` setting). His face is our design (the concept shows none): a grey
   buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. RAM is present in the automated Unity zone captures; a complete manual move/helmet review remains open.
-- **Effects to add later** (the owner asked to keep these for later):
-  - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
-    Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with
-    blinking lights).
-  - **Light:** deck lights that flicker when something heavy lands, sweeping floodlights, a subtle lens flare
-    toward the sun, and heat shimmer (furnaces, Nova's beam).
-  - **The world reacting:** scuff marks that fade, railings that rattle, crash mats that dent, flags that whip
-    when someone dashes past, chips and sparks off deck panels on big hits, and a dust or droplet overlay in mist
-    and smoke.
+- **Dressing follow-up:** per-zone weather, background traffic, impact deck lights, dash flags, scuffs and the gym ticker are implemented; inspect their motion in the current player. Remaining optional ideas:
+  - **Atmosphere:** a shifting time of day or a sunset zone and additional distant traffic.
+  - **Light:** additional variations in floodlights, sun flare and local heat shimmer after profiling.
+  - **The world reacting:** railing motion, mat compression and a dust/droplet overlay where they fit the measured budget.
   - **Living environment:** a scrolling stats ticker on the sign, distant trainees on far decks, and spinning
     vent fans, steam puffs and maintenance drones.
 - **Reflections, sparks, birds and motes in Unity.** The software-rendered skyline clip provides limited rendered evidence; full FOV, reflection API and bird motion review remain open.

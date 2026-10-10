@@ -142,7 +142,7 @@ namespace NovaStriker.Game
                 case "dashSlash":
                 {
                     var p = ev.p; float a = Mathf.Atan2(F(ev.dy), F(ev.dx)), T = F(ev.tier); string col = ev.tier >= 3 ? "#fff1d6" : ECHO_ORANGE;
-                    slashes[p] = new SlashRec { x0 = p.x, y0 = p.y + 0.95, tier = T };
+                    slashes[p] = new SlashRec { x0 = p.x, y0 = p.y + 0.95, depth = effectDepth, tier = T };
                     Sprite(p.x, p.y + 0.9, "ring", col, 0.6f + T * 0.15f, 0.18f, 2.4f);
                     Burst(p.x, p.y + 0.9, col, 10 + T * 6, 8 + T * 2, 0.3f, 0.25f, dir: a + PI, spread: 1);
                     if (p.onGround) Smoke(p.x, p.y + 0.15, "#9aa3ae", 3 + T * 2, 3 + T, 0.4f, 0.4f, dir: a + PI, spread: 0.7f, op: 0.45f);
@@ -566,6 +566,7 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 if (!e.boss || e.dead || e.hp > e.maxHp * 0.6) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(e));
                 float k = 1 - F(e.hp / (e.maxHp * 0.6));
                 if (S.Rnd() < 0.15f + 0.4f * k) Smoke(e.x + (S.Rnd() - 0.5f) * e.w * 0.8, e.y + e.h * (0.4f + S.Rnd() * 0.5f), "#5d6674", 1, 0.8f, 0.5f + 0.3f * k, 0.9f, dir: PI / 2, spread: 0.8f, grav: -1, op: 0.45f);
                 if (S.Rnd() < 0.06f + 0.2f * k) Burst(e.x + (S.Rnd() - 0.5f) * e.w, e.y + e.h * S.Rnd(), S.Rnd() < 0.5f ? "#ffffff" : "#ffd2e4", 4, 5, 0.14f, 0.25f, grav: 12);
@@ -573,7 +574,7 @@ namespace NovaStriker.Game
         }
 
         // Echo's Dash Slash: as the lunge ends, a bright cut line along his whole path flashes and fades
-        sealed class SlashRec { public double x0, y0; public float tier; public bool drawn; }
+        sealed class SlashRec { public double x0, y0, depth; public float tier; public bool drawn; }
         readonly Dictionary<Player, SlashRec> slashes = new Dictionary<Player, SlashRec>();
         void UpdateSlashes(World world)
         {
@@ -585,13 +586,13 @@ namespace NovaStriker.Game
                 Sl.drawn = true;
                 double x1 = p.x, y1 = p.y + 0.95, len = JMath.Hypot(x1 - Sl.x0, y1 - Sl.y0);
                 if (len < 1) continue;
-                Vector3 a = W(Sl.x0, Sl.y0, 0.3), b = W(x1, y1, 0.3);
+                Vector3 a = S.W(Sl.x0, Sl.y0, Sl.depth + .3), b = S.W(x1, y1, LevelFeatures.Depth(p) + .3);
                 var core = charge.Line("#ffffff", 0.03f + Sl.tier * 0.012f); var glow = charge.Line(ECHO_ORANGE, 0.09f + Sl.tier * 0.03f);
                 charge.Span(core, a, b); charge.Span(glow, a, b);
                 charge.AddFlash(core, 0.26f, 1); charge.AddFlash(glow, 0.3f, 0.75f);
                 for (double d = 0; d < len; d += 0.4)
                 {
-                    double u = d / len; Burst(Sl.x0 + (x1 - Sl.x0) * u, Sl.y0 + (y1 - Sl.y0) * u, S.Rnd() < 0.4f ? "#ffffff" : ECHO_ORANGE, 1, 2, 0.2f, 0.3f);
+                    double u = d / len; using var origin = AtDepth(Sl.depth + (LevelFeatures.Depth(p) - Sl.depth) * u); Burst(Sl.x0 + (x1 - Sl.x0) * u, Sl.y0 + (y1 - Sl.y0) * u, S.Rnd() < 0.4f ? "#ffffff" : ECHO_ORANGE, 1, 2, 0.2f, 0.3f);
                 }
             }
         }
@@ -603,6 +604,7 @@ namespace NovaStriker.Game
             {
                 if (p.state != "slide" || !p.onGround) continue;
                 var rig = RigOf(p); if (rig == null || !rig.root.visible) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 float back = p.vx > 0 ? PI - 0.35f : 0.35f, sp = Mathf.Min(1, Mathf.Abs(F(p.vx)) / 10);
                 if (p.@char == "echo")
                 {
@@ -693,6 +695,7 @@ namespace NovaStriker.Game
             foreach (var p in world.players)
             {
                 if (!(p.rocketT > 0 && p.vy > 6 && !p.onGround)) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 float k = Mathf.Min(1, F(p.vy) / 30) * Or(p.rocketPow, 0.5);
                 for (int i = 0; i < 1 + k * 3; i++)
                     Burst(p.x + (S.Rnd() - 0.5f) * 0.25f, p.y - 0.05, S.Rnd() < 0.5f ? "#fff1c9" : NOVA_GOLD, 1, 2, 0.3f + k * 0.2f, 0.22f, dir: -PI / 2, spread: 0.6f);
@@ -706,6 +709,7 @@ namespace NovaStriker.Game
             foreach (var p in world.players)
             {
                 if (!p.wallSliding) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 double wx = p.x + p.wallDir * p.w / 2; float speed = Mathf.Min(1, F(-p.vy) / 6);
                 if (S.Rnd() < 0.2f + speed * 0.4f) Smoke(wx, p.y + p.h * 0.85, "#aab2bc", 1, 1.0f, 0.22f, 0.35f, dir: PI / 2, spread: 1, op: 0.45f);
                 if (S.Rnd() < 0.3f + speed * 0.5f) Smoke(wx, p.y + 0.08, "#a3abb5", 1, 1.4f, 0.28f, 0.4f, dir: PI / 2 + F(p.wallDir) * 0.6f, spread: 0.8f, op: 0.5f);
@@ -720,6 +724,7 @@ namespace NovaStriker.Game
             foreach (var p in world.players)
             {
                 if (!p.thrusting) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 foreach (var dz in new[] { -0.13f, 0.13f })
                 {
                     var v = W(p.x + (S.Rnd() - 0.5f) * 0.1f, p.y - 0.05, dz);

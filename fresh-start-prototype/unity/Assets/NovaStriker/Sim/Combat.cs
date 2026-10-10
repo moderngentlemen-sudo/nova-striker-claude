@@ -429,7 +429,7 @@ namespace NovaStriker.Sim
                     {   // a Hot Rivet: it hits, then stays stuck in the enemy until its fuse runs out
                         HitEnemy(world, e, AsHit(pr, sign(pr.vx) * or(pr.kbs, 2), 1), "proj");
                         pr.stuck = new StuckInfo { e = e, ox = pr.x - e.x, oy = pr.y - e.y, t = pr.stick.fuse }; pr.vx = 0; pr.vy = 0;
-                        world.Emit("rivetStick", new Ev { p = pr.owner as Player, x = pr.x, y = pr.y, e = e });
+                        world.Emit("rivetStick", new Ev { p = pr.owner as Player, pr = pr, x = pr.x, y = pr.y, e = e });
                         return;
                     }
                     if (pr.blast != null) { Detonate(world, pr, pr.x, pr.y, null, false); pr.dead = true; return; }
@@ -523,6 +523,10 @@ namespace NovaStriker.Sim
         // surface. Returns true when the projectile is gone.
         static bool HitWall(World world, Projectile pr, double ox, double oy)
         {
+            // Snapshot contact before breakage/reflection. Only the event changes; movement/damage keep their rules.
+            double travel = JMath.Hypot(pr.x - ox, pr.y - oy);
+            var contact = Level.RayCast(ox, oy, travel > 0 ? (pr.x - ox) / travel : 0, travel > 0 ? (pr.y - oy) / travel : 0, travel + .05, pr.lane);
+            Ev ContactEvent() => new Ev { x = contact.wall ? contact.x : ox, y = contact.wall ? contact.y : oy, nx = contact.nx, ny = contact.ny, box = contact.box, surface = contact.box?.tag, pr = pr };
             // A breakable piece takes the shot's damage (enemy fire wears cover down too); blasting shells do it in Explode
             var bk = pr.blast == null ? Level.BreakableAt(pr.x, pr.y, 0.05, pr.lane) : null;
             if (bk != null) world.DamageBox(bk, JMath.Max(0.5, pr.dmg) * (pr.heavy ? 2 : 1), pr.x, pr.y, pr.owner as Player);
@@ -534,26 +538,26 @@ namespace NovaStriker.Sim
                 pr.x = ox; pr.y = oy;
                 if (pr.disc.phase == "out") DiscTurn(pr, pr.disc.hover > 0 ? "hover" : "back");
                 else if (pr.disc.phase == "hover") { pr.vx = 0; pr.vy = 0; }
-                world.Emit("ricochet", new Ev { x = ox, y = oy, pr = pr });
+                world.Emit("ricochet", ContactEvent());
                 return false;
             }
             if (truthy(pr.bouncy)) { Bounce(world, pr, ox, oy, flipX, flipY); return false; }
             if (pr.stick != null)
             {   // a Hot Rivet sticks in the wall where it struck
                 pr.x = ox; pr.y = oy; pr.vx = 0; pr.vy = 0; pr.stuck = new StuckInfo { e = null, ox = ox, oy = oy, t = pr.stick.fuse };
-                world.Emit("rivetStick", new Ev { p = pr.owner as Player, x = ox, y = oy, e = null });
+                var ev = ContactEvent(); ev.p = pr.owner as Player; world.Emit("rivetStick", ev);
                 return true;
             }
             if (pr.bounces > 0)
             {
                 pr.x = ox; pr.y = oy; if (flipX) pr.vx = -pr.vx; if (flipY) pr.vy = -pr.vy; pr.bounces--;
-                world.Emit("ricochet", new Ev { x = ox, y = oy, pr = pr });
+                world.Emit("ricochet", ContactEvent());
                 return false;
             }
             Detonate(world, pr, ox, oy, null, true);
             if (pr.prism != null) world.SplitPrism(pr, ox, oy, flipX ? -pr.vx : pr.vx, flipY ? -pr.vy : pr.vy, null);
             else if (pr.snare) world.SnareLanded(pr, ox, oy);
-            pr.dead = true; world.Emit("projWall", new Ev { x = pr.x, y = pr.y, pr = pr });
+            pr.dead = true; world.Emit("projWall", ContactEvent());
             return true;
         }
 

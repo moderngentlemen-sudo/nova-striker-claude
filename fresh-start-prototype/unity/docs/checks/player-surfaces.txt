@@ -1,0 +1,4 @@
+C# reference compilation against actual pinned Unity 6000.3.25f1 player managed assemblies:
+NovaStriker.Sim ok
+NovaStriker.Game ok
+Does not compile shaders or count as an actual new player build.

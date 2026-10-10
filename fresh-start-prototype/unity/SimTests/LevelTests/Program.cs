@@ -68,6 +68,16 @@ static class P {
       w.DeployGadget(p);var g=w.gadgets.Single();g.lane=1;p.lane=-1;
       Check(w.GadgetNear(p)&&w.GadgetAt(g.x,g.y+.4,.2,-1)==g,"lanes off: deployed queries preserve legacy all-lanes access");
     }
+    // Production wall collision snapshots the actual face before projectile reflection or removal.
+    foreach(var face in new[]{"wall","floor","ceiling"}) {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","nova");p.lane=p.laneTo=p.laneFrom=1;var savedBoxes=Level.BOXES.ToArray();Level.BOXES.Clear();
+      var box=face=="wall"?new LevelBox{x0=53,x1=54,y0=0,y1=4,type='s',tag="panel",laneMask=4}:new LevelBox{x0=50,x1=54,y0=face=="floor"?-1:3,y1=face=="floor"?0:4,type='s',tag="deck",laneMask=4};Level.BOXES.Add(box);
+      var shot=new Projectile{owner=p,team="p",kind="slug",x=face=="wall"?52.9:52,y=face=="wall"?2:face=="floor"?.1:2.9,vx=face=="wall"?18:0,vy=face=="wall"?0:face=="floor"?-18:18,ttl=60,dmg=1};w.SpawnProjectile(shot);p.lane=-1;
+      Combat.UpdateProjectiles(w);var impact=w.events.Single(e=>e.type=="projWall");
+      Check(shot.dead&&impact.box==box&&impact.surface==box.tag&&impact.depth==LevelFeatures.LANE_W,face+": real projectile contact retains surface and emission lane after removal");
+      Check(face=="wall"?impact.x==53&&impact.nx==-1&&impact.ny==0:impact.y==(face=="floor"?0:3)&&impact.nx==0&&impact.ny==(face=="floor"?1:-1),face+": impact normal points out of the actual struck face");
+      Level.BOXES.Clear();Level.BOXES.AddRange(savedBoxes);
+    }
     // Backdrop bounds sample across staging gaps and outside zones; every frame must remain finite.
     {
       bool finite=true,orthogonal=true;

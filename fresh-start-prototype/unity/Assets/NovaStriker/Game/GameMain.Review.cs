@@ -3,7 +3,7 @@ using System; using System.IO; using System.Collections; using System.Collection
 using NovaStriker.Sim; using NovaStriker.Game.Three; using UnityEngine; using static NovaStriker.Sim.Cfg;
 namespace NovaStriker.Game {
  public sealed partial class GameMain {
-  [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights,cloudFrames,cloudSteps,landmarkLods,projectedDecals,floorMarkPixels,wallMarkPixels;public bool settingsRoundtrip;}
+  [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights,cloudFrames,cloudSteps,landmarkLods,projectedDecals,floorMarkPixels,wallMarkPixels,projectileMarkPixels;public bool settingsRoundtrip;}
   [Serializable] sealed class BlastReview {public string preset;public int fire,smoke,sparks;public bool fireInCamera;}
   ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending,reviewHoldSimulation;
   bool reviewWallCamera;Vector3 reviewWallEye,reviewWallTarget;
@@ -137,7 +137,15 @@ namespace NovaStriker.Game {
     var surface=S.W(panel.x0,panel.y0+1.2,0);reviewWallEye=S.W(panel.x0-6,panel.y0+2.5,5);reviewWallTarget=surface;reviewWallCamera=true;
     yield return Settle(2);yield return Capture("projected_wall_decal_before",false);
     view.vfx.decals.StampSurface(surface,S.Dir(panel.x0,-1,0),2,"scorch",20);yield return Settle(2);yield return Capture("projected_wall_decal");
-    review.wallMarkPixels=MarkPixels("projected_wall_decal",surface);reviewWallCamera=false;paused=false;
+    review.wallMarkPixels=MarkPixels("projected_wall_decal",surface);
+    // Trigger through production collision; the owner is in middle while the immutable shot is in front.
+    yield return Capture("projectile_wall_impact_before",false);world.events.Clear();
+    var shot=new Projectile {team="p",owner=human,kind="slug",lane=1,laneSet=true,x=panel.x0-.08,y=panel.y0+2.4,vx=18,ttl=60,dmg=1,r=.08};world.SpawnProjectile(shot);Combat.UpdateProjectiles(world);
+    var impact=world.events.Find(ev=>ev.type=="projWall");
+    if(impact==null||impact.nx!=-1||impact.depth!=LevelFeatures.LANE_W)review.errors.Add("Production projectile wall contact snapshot missing");
+    paused=false;ParticleBudget.Advancing=true;foreach(var ev in world.events)view.OnEvent(ev);world.events.Clear();yield return Settle(2);paused=true;
+    yield return Capture("projectile_wall_impact");review.projectileMarkPixels=MarkPixels("projectile_wall_impact",S.W(panel.x0,panel.y0+2.4,LevelFeatures.LANE_W));
+    reviewWallCamera=false;paused=false;
    } else review.errors.Add("Gym wall projection test surface missing");
    review.landmarkLods=view.landmarkLods?.Count??0;if(review.landmarkLods==0)review.errors.Add("Landmark LODs missing");
   }
