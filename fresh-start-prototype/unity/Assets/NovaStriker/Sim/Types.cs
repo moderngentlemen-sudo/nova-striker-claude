@@ -334,7 +334,7 @@ namespace NovaStriker.Sim
         public Player owner;
         public double x, y, nx, ny, half, ttl, max, hp, maxHp, hitT;
     }
-    public sealed class Snare { public Player owner; public double x, y, armT, ttl; public bool dead; }
+    public sealed class Snare { public Player owner; public int lane; public double x, y, armT, ttl; public bool dead; }
     public sealed class Well
     {
         public int lane;
@@ -345,7 +345,7 @@ namespace NovaStriker.Sim
     }
     public sealed class Gadget
     {
-        public int id;
+        public int id, lane; // placement snapshot; moving the owner never moves the deployed device
         public string kind;
         public Player owner;
         public double x, y, py, gy, vy, level, pts, t, life, hp, maxHp, cd, rocketCd, aim, aimY, h, hitT;
@@ -354,7 +354,7 @@ namespace NovaStriker.Sim
     }
     public sealed class Pickup
     {
-        public int id;
+        public int id, lane;
         public string kind;
         public Player owner;
         public double x, y, px, py, vx, vy, t, life;

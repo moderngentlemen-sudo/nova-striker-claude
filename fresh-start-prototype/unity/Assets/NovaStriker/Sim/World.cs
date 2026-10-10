@@ -162,6 +162,7 @@ namespace NovaStriker.Sim
             {
                 // An impact belongs to its victim; a flight event belongs to the shot's frozen lane.
                 if (data.pr != null) data.depth = data.pr.lane * LevelFeatures.LANE_W;
+                else if (data.g != null) data.depth = data.g.lane * LevelFeatures.LANE_W;
                 else if ((type == "shot" || type == "burst" || type == "grenadeThrow" || type == "discThrow") && data.p != null) data.depth = data.p.lane * LevelFeatures.LANE_W;
                 else data.depth = LevelFeatures.Depth((Body)data.e ?? data.p ?? data.owner);
             }
@@ -398,7 +399,7 @@ namespace NovaStriker.Sim
             if (b.attach == "volley" && b.pulse % B.volleyEvery == 0)
             {
                 double a = JMath.Atan2(b.dy, b.dx) + (JRandom.Next() - 0.5) * 0.9, sx0 = c.x + b.dx * 0.7, sy0 = c.y + b.dy * 0.7;
-                var target = NearestEnemyInCone(sx0, sy0, b.dx, b.dy, MARKSMAN.volley.seekRange, MARKSMAN.volley.seekCone);
+                var target = NearestEnemyInCone(sx0, sy0, b.dx, b.dy, MARKSMAN.volley.seekRange, MARKSMAN.volley.seekCone, p.lane);
                 SpawnProjectile(new Projectile
                 {
                     team = "p", owner = p, x = sx0, y = sy0, vx = JMath.Cos(a) * MARKSMAN.volley.speed, vy = JMath.Sin(a) * MARKSMAN.volley.speed, ttl = MARKSMAN.life, r = MARKSMAN.volley.r,
@@ -726,7 +727,7 @@ namespace NovaStriker.Sim
         {
             w.phase = "open"; w.t = 0;
             // A well that opens at floor level lifts a little, so what it catches floats up into it
-            double gy = Level.GroundBelow(w.x, w.y + 0.05);
+            double gy = Level.GroundBelow(w.x, w.y + 0.05, w.lane);
             if (gy > double.NegativeInfinity && w.y - gy < SUB.well.lift && !Level.PointInSolid(w.x, gy + SUB.well.lift)) w.y = gy + SUB.well.lift;
             Emit("wellOpen", new Ev { p = w.owner, depth = w.lane * LevelFeatures.LANE_W, x = w.x, y = w.y, r = w.r, level = w.level });
         }
@@ -740,8 +741,8 @@ namespace NovaStriker.Sim
                 {
                     double nx = w.x + w.vx * DT, ny = w.y + w.vy * DT;
                     bool open = w.t >= SUB.well.travel[(int)w.level] || gone;
-                    if (Level.PointInSolid(nx, ny)) open = true; else { w.x = nx; w.y = ny; }
-                    if (!open) foreach (var e in enemies.Live()) { if (!e.dead && JMath.Abs(e.x - w.x) < e.w / 2 + 0.35 && w.y > e.y - 0.35 && w.y < e.y + e.h + 0.35) { open = true; break; } }
+                    if (Level.PointInSolid(nx, ny, w.lane)) open = true; else { w.x = nx; w.y = ny; }
+                    if (!open) foreach (var e in enemies.Live()) { if (!e.dead && LevelFeatures.Same(w.lane, e) && JMath.Abs(e.x - w.x) < e.w / 2 + 0.35 && w.y > e.y - 0.35 && w.y < e.y + e.h + 0.35) { open = true; break; } }
                     if (open) OpenWell(w);
                     continue;
                 }
@@ -770,7 +771,7 @@ namespace NovaStriker.Sim
                     {
                         // Heavy: dragged along the ground toward it
                         double step = ux * SUB.well.pull[L] * SUB.well.heavy * DT, nx = e.x + step;
-                        if (!Level.PointInSolid(nx + sign(step) * e.w / 2, e.y + 0.3)) e.x = nx;
+                        if (!Level.PointInSolid(nx + sign(step) * e.w / 2, e.y + 0.3, e.lane)) e.x = nx;
                         e.wellT = 2;
                     }
                 }
@@ -788,7 +789,7 @@ namespace NovaStriker.Sim
                     var S = SUB.well.implode[L];
                     Explode(new ExplodeArgs
                     {
-                        owner = gone ? null : w.owner, x = w.x, y = w.y, level = L + 1, perfect = w.perfect, kind = "wellCollapse",
+                        owner = gone ? null : w.owner, x = w.x, y = w.y, level = L + 1, perfect = w.perfect, kind = "wellCollapse", depth = w.lane * LevelFeatures.LANE_W,
                         spec = new Blast { r = S.r * (w.perfect ? 1.2 : 1), dmg = S.dmg * w.mult, poise = S.poise * w.mult, armorBreak = S.armorBreak },
                     });
                     w.dead = true;
@@ -923,7 +924,7 @@ namespace NovaStriker.Sim
         {
             var c = Chest(p);
             // Bola throw: flies straight at an enemy inside the throw cone; otherwise arcs out and plants as a trap
-            var t = NearestEnemyInCone(c.x, c.y, p.aimX, p.aimY, 10, JMath.PI / 6);
+            var t = NearestEnemyInCone(c.x, c.y, p.aimX, p.aimY, 10, JMath.PI / 6, p.lane);
             double vx, vy, gravity;
             if (t != null)
             {
@@ -934,19 +935,19 @@ namespace NovaStriker.Sim
             SpawnProjectile(new Projectile { team = "p", owner = p, x = c.x + p.aimX * 0.6, y = c.y + p.aimY * 0.6, vx = vx, vy = vy, gravity = gravity, r = 0.3, ttl = 110, dmg = 0, snare = true, kind = "snare" });
             Emit("snareThrow", new Ev { p = p, x = c.x, y = c.y });
         }
-        public void PlantSnare(Player p) { AddSnare(p, p.x + p.facing * 0.6, p.y); }
+        public void PlantSnare(Player p) { AddSnare(p, p.x + p.facing * 0.6, p.y, p.lane); }
         public void SnareLanded(Projectile pr, double x, double y)
         {
-            double gy = Level.GroundBelow(x, y + 0.2);
-            if (gy > double.NegativeInfinity && y - gy < 6) AddSnare((Player)pr.owner, x, gy);
+            double gy = Level.GroundBelow(x, y + 0.2, pr.lane);
+            if (gy > double.NegativeInfinity && y - gy < 6) AddSnare((Player)pr.owner, x, gy, pr.lane);
         }
-        void AddSnare(Player owner, double x, double y)
+        void AddSnare(Player owner, double x, double y, int lane)
         {
             var mine = snares.FindAll(s => s.owner == owner);
             if (mine.Count >= HUNTER.maxPlanted) mine[0].dead = true;
             snares.RemoveAll(s => s.dead);
-            snares.Add(new Snare { owner = owner, x = x, y = y, armT = HUNTER.armTicks, ttl = HUNTER.life, dead = false });
-            Emit("snarePlant", new Ev { x = x, y = y, p = owner });
+            snares.Add(new Snare { owner = owner, lane = lane, x = x, y = y, armT = HUNTER.armTicks, ttl = HUNTER.life, dead = false });
+            Emit("snarePlant", new Ev { x = x, y = y, p = owner, depth = lane * LevelFeatures.LANE_W });
         }
         public void ApplySnare(Enemy e, Player owner)
         {
@@ -973,7 +974,7 @@ namespace NovaStriker.Sim
                     if (e.dead || e.state == "snared" || e.type == "turret") continue;
                     if (JMath.Abs(e.x - s.x) < e.w / 2 + 0.45 && e.y < s.y + 0.6 && e.y + e.h > s.y - 0.1)
                     {
-                        ApplySnare(e, s.owner); s.dead = true; Emit("snareTrigger", new Ev { x = s.x, y = s.y, e = e });
+                        ApplySnare(e, s.owner); s.dead = true; Emit("snareTrigger", new Ev { x = s.x, y = s.y, e = e, depth = s.lane * LevelFeatures.LANE_W });
                         break;
                     }
                 }
@@ -1045,12 +1046,13 @@ namespace NovaStriker.Sim
             if (p.lockLost > LOCK.lost) SetLock(p, null, "sight");
         }
 
-        public Enemy NearestEnemyInCone(double x, double y, double dx, double dy, double range, double half)
+        public Enemy NearestEnemyInCone(double x, double y, double dx, double dy, double range, double half, int? lane = null)
         {
             Enemy best = null; double bd = range, cos = JMath.Cos(half);
             foreach (var e in enemies.Live())
             {
                 if (e.dead || e.type == "post" || e.type == "turret") continue;
+                if (lane.HasValue && !LevelFeatures.Same(lane.Value, e)) continue;
                 double ex = e.x - x, ey = e.y + e.h / 2 - y, d = JMath.Hypot(ex, ey);
                 if (d < bd && (ex * dx + ey * dy) / d > cos) { bd = d; best = e; }
             }

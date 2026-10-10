@@ -18,6 +18,56 @@ static class P {
     return evs;
   }
   static void Main() {
+    // Deployed origins and their direct interactions must outlive an owner's lane change.
+    {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","fix");
+      p.x=12;p.y=0;p.onGround=true;p.scrap=200;p.gadgetSel="sentry";p.lane=p.laneTo=p.laneFrom=1;
+      Check(w.DeployGadget(p),"sentry: deploy on a supported outer lane");var g=w.gadgets.Single();
+      p.lane=p.laneTo=p.laneFrom=-1;
+      Check(g.lane==1&&!w.GadgetNear(p),"sentry: its placement lane persists after the owner hops; remote wrench is unavailable");
+      Check(w.GadgetAt(g.x,g.y+.4,.2,-1)==null&&w.GadgetAt(g.x,g.y+.4,.2,1)==g,"gadget: direct shot collision resolves the device's lane");
+      w.WrenchGadget(g,p);Check(g.pts==0,"gadget: a wrench in another lane cannot upgrade it");
+      var same=Enemies.CreateEnemy("brute",18,0);same.lane=same.laneTo=same.laneFrom=1;same.hp=100;
+      var other=Enemies.CreateEnemy("brute",16,0);other.lane=other.laneTo=other.laneFrom=-1;other.hp=100;
+      w.enemies.Add(same);w.enemies.Add(other);g.cd=0;g.level=3;g.rocketCd=0;w.events.Clear();var emitted=Run(w,p,1,clearEnemies:false);
+      Check(g.target==same,"sentry: selects a reachable same-lane target over a nearer other-lane enemy");
+      var shots=w.projectiles.Where(q=>q.kind=="sentryBolt"||q.kind=="sentryRocket").ToArray();
+      Check(shots.Length==2&&shots.All(q=>q.laneSet&&q.lane==1),"sentry: bolt and rocket snapshot the device lane, not its moving owner");
+      var muzzles=emitted.Where(e=>e.type=="sentryShot"||e.type=="sentryRocket").ToArray();
+      Check(muzzles.Length==2&&muzzles.All(e=>e.depth==LevelFeatures.LANE_W),"sentry: muzzle events use the deployed origin");
+      p.lane=p.laneTo=p.laneFrom=1;Check(w.GadgetNear(p),"gadget: returning to its lane restores wrench access");
+    }
+    {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","fix");p.x=12;p.y=4;p.scrap=200;p.gadgetSel="pylon";p.lane=p.laneTo=p.laneFrom=1;
+      var deck=new LevelBox{x0=10,x1=13,y0=3.6,y1=4,type='o',laneMask=2};Level.BOXES.Add(deck);
+      w.DeployGadget(p);var g=w.gadgets.Single();Check(g.gy==0&&!g.landed,"gadget: a deck in another lane is not invisible supporting geometry");
+      deck.laneMask=4;g.y=g.py=4;g.landed=true;g.gy=4;Run(w,p,1);Check(g.landed&&g.y==4,"gadget: a matching lane deck supplies support");
+      Level.BOXES.Remove(deck);Run(w,p,1);Check(!g.landed&&g.y<4,"gadget: losing a collapsing or removed deck starts a real fall");
+    }
+    {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","fix");p.x=12;p.y=0;p.scrap=200;p.gadgetSel="pylon";p.lane=p.laneTo=p.laneFrom=1;
+      w.DeployGadget(p);var q=w.AddPlayer("pad1","nova");q.x=12;q.y=0;q.lane=q.laneTo=q.laneFrom=-1;q.hp=10;
+      Run(w,p,1);Check(q.hp>10,"pylon: healing remains an explicitly all-lanes area effect");
+    }
+    {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","echo");p.x=12;p.y=0;
+      var pr=new Projectile{owner=p,lane=-1,laneSet=true};p.lane=p.laneTo=p.laneFrom=1;
+      w.SnareLanded(pr,12.8,.1);var trap=w.snares.Single();
+      Check(trap.lane==-1&&w.events.Last(e=>e.type=="snarePlant").depth==-LevelFeatures.LANE_W,"snare: landing retains the emitted shot lane after the thrower hops");
+      var target=Enemies.CreateEnemy("swarmer",trap.x,trap.y);target.lane=target.laneTo=target.laneFrom=1;w.enemies.Add(target);trap.armT=0;
+      var events=Run(w,p,1,clearEnemies:false);
+      Check(events.Any(e=>e.type=="snareTrigger"&&e.depth==-LevelFeatures.LANE_W)&&target.tagged>0,"snare: retains all-lanes area triggering with a fixed trap origin");
+    }
+    {
+      var w=Make(false,false,true,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","nova");p.x=12;p.y=0;p.aimX=1;p.aimY=0;p.sub="well";p.lane=p.laneTo=p.laneFrom=-1;
+      w.FireSub(p,2,false);var well=w.wells.Single();well.phase="open";well.collapse=true;p.lane=p.laneTo=p.laneFrom=1;
+      var events=Run(w,p,1);Check(events.Any(e=>e.type=="wellCollapse"&&e.depth==-LevelFeatures.LANE_W),"well: collapse origin survives the caster changing lanes");
+    }
+    {
+      var w=Make(false,false,false,"gym");SETTINGS.aiTeammates=0;var p=w.AddPlayer("pad0","fix");p.x=12;p.y=0;p.scrap=200;p.gadgetSel="sentry";
+      w.DeployGadget(p);var g=w.gadgets.Single();g.lane=1;p.lane=-1;
+      Check(w.GadgetNear(p)&&w.GadgetAt(g.x,g.y+.4,.2,-1)==g,"lanes off: deployed queries preserve legacy all-lanes access");
+    }
     // Backdrop bounds sample across staging gaps and outside zones; every frame must remain finite.
     {
       bool finite=true,orthogonal=true;

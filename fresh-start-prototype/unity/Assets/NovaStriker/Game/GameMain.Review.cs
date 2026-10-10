@@ -6,8 +6,10 @@ namespace NovaStriker.Game {
   [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights,cloudFrames,cloudSteps,landmarkLods,projectedDecals,floorMarkPixels,wallMarkPixels;public bool settingsRoundtrip;}
   [Serializable] sealed class BlastReview {public string preset;public int fire,smoke,sparks;public bool fireInCamera;}
   ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending,reviewHoldSimulation;
+  bool reviewWallCamera;Vector3 reviewWallEye,reviewWallTarget;
   void LateUpdate() {
    if (review == null || reviewChangePending) return;
+   if (reviewWallCamera) {var eye=Th.P(reviewWallEye);view.camPos=reviewWallEye;view.camera.transform.SetPositionAndRotation(eye,Quaternion.LookRotation(Th.P(reviewWallTarget)-eye,Vector3.up));}
    int particles = ParticleBudget.Live;
    review.peakParticles=Math.Max(review.peakParticles,particles);review.peakEffectLights=Math.Max(review.peakEffectLights,PerfOverlay.Lights);review.peakWeatherLights=Math.Max(review.peakWeatherLights,PerfOverlay.WeatherLights);
    if (!reviewBudgetFailed && (particles > FxCfg.MaxParticles || PerfOverlay.Lights > FxCfg.MaxLights || PerfOverlay.WeatherLights > 3 || PerfOverlay.Feedback > 82 || PerfOverlay.ChargeFlashes > ChargeFX.MaxFlashes || EnergyTube.Active > EnergyTube.MaxActive)) {
@@ -24,7 +26,7 @@ namespace NovaStriker.Game {
    int c=Array.IndexOf(args,"--nova-commit");review=new ReviewReport {unity=Application.unityVersion,device=SystemInfo.deviceModel,cpu=SystemInfo.processorType,gpu=SystemInfo.graphicsDeviceName,api=SystemInfo.graphicsDeviceType.ToString(),ramMB=SystemInfo.systemMemorySize,width=Screen.width,height=Screen.height,commit=c>=0&&c+1<args.Length?args[c+1]:"local"};
    TMat.ReviewOriginsEnabled=true;
    Application.logMessageReceived+=(message,trace,type)=>{if(type==LogType.Error||type==LogType.Exception)review.errors.Add(message+"\n"+trace);};
-   QualitySettings.vSyncCount=0;Application.targetFrameRate=60;
+   Application.runInBackground=true;QualitySettings.vSyncCount=0;Application.targetFrameRate=60;
    StartCoroutine(surfacesOnly?ReviewSurfaceScenes():ReviewScenes());
   }
   IEnumerator Settle(int frames=12) {for(int i=0;i<frames;i++)yield return null;}
@@ -131,9 +133,11 @@ namespace NovaStriker.Game {
    var panel=Level.BOXES.Find(box=>box.tag=="panel"&&box.x0<60);
    if(panel!=null) {
     human.x=human.prevX=panel.x0-3;human.y=human.prevY=0;FrameReviewPlayer(human,lead:-3,height:2.4f,distance:10);yield return Settle(2);paused=true;
-    var surface=S.W(panel.x0,panel.y0+1.2,0);yield return Capture("projected_wall_decal_before",false);
+    // Face the collision side directly: the ordinary side-view camera can hide it behind the front cladding.
+    var surface=S.W(panel.x0,panel.y0+1.2,0);reviewWallEye=S.W(panel.x0-6,panel.y0+2.5,5);reviewWallTarget=surface;reviewWallCamera=true;
+    yield return Settle(2);yield return Capture("projected_wall_decal_before",false);
     view.vfx.decals.StampSurface(surface,S.Dir(panel.x0,-1,0),2,"scorch",20);yield return Settle(2);yield return Capture("projected_wall_decal");
-    review.wallMarkPixels=MarkPixels("projected_wall_decal",surface);paused=false;
+    review.wallMarkPixels=MarkPixels("projected_wall_decal",surface);reviewWallCamera=false;paused=false;
    } else review.errors.Add("Gym wall projection test surface missing");
    review.landmarkLods=view.landmarkLods?.Count??0;if(review.landmarkLods==0)review.errors.Add("Landmark LODs missing");
   }

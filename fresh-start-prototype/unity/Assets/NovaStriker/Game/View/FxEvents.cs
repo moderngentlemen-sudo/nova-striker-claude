@@ -403,6 +403,7 @@ namespace NovaStriker.Game
             {
                 if (p.state != "pound" || p.pound == null) continue;
                 var rig = RigOf(p); if (rig == null || !rig.root.visible) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 var Sp = p.pound; string c = CHARS[p.@char].energy;
                 if (Sp.phase == "hold")
                 {
@@ -436,6 +437,7 @@ namespace NovaStriker.Game
             {
                 if (p.state == "dead" || p.state == "downed") continue;
                 var rig = RigOf(p); if (rig == null || !rig.root.visible) continue;
+                using var origin = AtDepth(LevelFeatures.Depth(p));
                 if (p.onGround)
                 {
                     float dl = p.state == "dashCharge" ? (p.dashChargeT >= DASH_CHARGE.charge[2] ? 3 : p.dashChargeT >= DASH_CHARGE.charge[1] ? 2 : p.dashChargeT >= DASH_CHARGE.charge[0] ? 1 : 0.3f) : 0;
@@ -469,17 +471,18 @@ namespace NovaStriker.Game
                 }
             }
             foreach (var e in world.enemies)
-                if (!e.dead && e.type == "charger" && e.state == "charge" && e.onGround && S.Rnd() < 0.6f) Dust(e.x - e.facing * 0.6, e.y, 0.25f, new[] { e.facing > 0 ? PI : 0 }, noRing: true);
+                if (!e.dead && e.type == "charger" && e.state == "charge" && e.onGround && S.Rnd() < 0.6f)
+                    using (AtDepth(LevelFeatures.Depth(e))) Dust(e.x - e.facing * 0.6, e.y, 0.25f, new[] { e.facing > 0 ? PI : 0 }, noRing: true);
         }
 
         // ---- Bosses ----
-        sealed class Boom { public float t; public Enemy e; public double ox, oy, x, y; public double? ground; public bool big, done; }
+        sealed class Boom { public float t; public Enemy e; public double ox, oy, x, y, depth; public double? ground; public bool big, done; }
         readonly List<Boom> booms = new List<Boom>();
         void BossExplosion(Ev ev)
         {
             var e = ev.e;
-            for (int i = 0; i < 9; i++) booms.Add(new Boom { t = i * 0.11f + S.Rnd() * 0.05f, e = e, ox = (S.Rnd() - 0.5f) * e.w, oy = S.Rnd() * e.h });
-            booms.Add(new Boom { t = 1.15f, e = e, ox = 0, oy = e.h * 0.5, big = true });
+            for (int i = 0; i < 9; i++) booms.Add(new Boom { t = i * 0.11f + S.Rnd() * 0.05f, e = e, depth = ev.depth ?? LevelFeatures.Depth(e), ox = (S.Rnd() - 0.5f) * e.w, oy = S.Rnd() * e.h });
+            booms.Add(new Boom { t = 1.15f, e = e, depth = ev.depth ?? LevelFeatures.Depth(e), ox = 0, oy = e.h * 0.5, big = true });
         }
         void UpdateBooms(float dt)
         {
@@ -487,6 +490,7 @@ namespace NovaStriker.Game
             foreach (var b in booms)
             {
                 b.t -= dt; if (b.t > 0) continue;
+                using var origin = AtDepth(b.depth);
                 b.done = true; b.x = b.e.x + b.ox; b.y = b.e.y + b.oy; b.ground = FloorUnder(b.e.x, b.e.y, 1) != null ? b.e.y : (double?)null;
                 if (!b.big) { Fireball(b.x, b.y, "#ff5aa0", 0.9f, 0.22f); Burst(b.x, b.y, HOSTILE, 14, 7, 0.3f, 0.35f, grav: 6); Smoke(b.x, b.y, "#6d7480", 3, 1.4f, 0.6f, 0.8f, op: 0.5f); continue; }
                 Fireball(b.x, b.y, "#ffd2e4", 3, 0.4f); Sprite(b.x, b.y, "star", "#ffffff", 5, 0.25f, 1.5f);
@@ -511,6 +515,7 @@ namespace NovaStriker.Game
                 if (!e.boss || e.dead || A == null || !(e.state == "laser" || (e.state == "windup" && (A.kind == "laser" || A.kind == "sweep")))) continue;
                 if (A.span.x0 == 0 && A.span.x1 == 0 && A.span.y == 0) continue;
                 seen.Add(e);
+                using var origin = AtDepth(LevelFeatures.Depth(e));
                 if (!bossBeams.TryGetValue(e, out var B))
                 {
                     TMesh Mk(float r, Color col, float op)

@@ -23,6 +23,13 @@ namespace NovaStriker.Game
         sealed class GM { public TObj root, ring, core, field, head, pod, spring, top; public List<TMesh> pips = new List<TMesh>(); public List<TMesh> rings; public string kind; public float born, hit, pop, boing; }
         readonly Dictionary<Gadget, GM> gadgets = new Dictionary<Gadget, GM>();
         readonly Dictionary<Pickup, TObj> pickups = new Dictionary<Pickup, TObj>();
+        readonly HashSet<Player> seenBeams = new HashSet<Player>();
+        readonly HashSet<Gadget> seenGadgets = new HashSet<Gadget>();
+        readonly HashSet<Pickup> seenPickups = new HashSet<Pickup>();
+        readonly List<Player> removedBeams = new List<Player>(4);
+        readonly List<Gadget> removedGadgets = new List<Gadget>();
+        readonly List<Pickup> removedPickups = new List<Pickup>();
+        readonly List<(double x, double y)> arcPath = new List<(double, double)>(8);
         sealed class Pod { public TObj g; public float t, drop, fade; public bool alive, landed; public double x, y; }
         readonly Dictionary<Player, Pod> pods = new Dictionary<Player, Pod>();
         sealed class Arc { public Strip glow, core; public float life, max; public List<Vector3> pts; public Color color; }
@@ -174,7 +181,7 @@ namespace NovaStriker.Game
                     var c = PlayerSim.Chest(p);
                     for (int i = 0; i < 10; i++)
                     {
-                        var w = S.W(ev.x + (S.Rnd() - 0.5f) * 0.6f, ev.y + (S.Rnd() - 0.5f) * 0.6f, 0.3); var to = S.W(c.x, c.y, 0.3);
+                        var w = S.W(ev.x + (S.Rnd() - 0.5f) * 0.6f, ev.y + (S.Rnd() - 0.5f) * 0.6f, (ev.depth ?? 0) + 0.3); var to = S.W(c.x, c.y, LevelFeatures.Depth(p) + 0.3);
                         var pt = F.Particle(w, S.Rnd() < 0.5f ? HAZARD : "#c8cdd4", 0.16f, 0.45f); pt.v = (to - w) * 2.2f; pt.v.y += 2 + S.Rnd() * 2; pt.drag = 0.97f;
                     }
                     break;
@@ -190,7 +197,7 @@ namespace NovaStriker.Game
                 case "sparkRing":
                     F.Sprite(ev.x, ev.y, "ring", CYAN, (float)ev.r * 0.8f, 0.3f, 3); F.Sprite(ev.x, ev.y, "star", WHITE, 1.4f, 0.14f, 1.5f);
                     for (int i = 0; i < 26; i++) { float a = S.Rnd() * Mathf.PI * 2; F.Burst(ev.x + Mathf.Cos(a) * 0.3f, ev.y + Mathf.Sin(a) * 0.3f, S.Rnd() < 0.5f ? WHITE : CYAN, 1, 9, 0.2f, 0.25f, dir: a, spread: 0.2f); }
-                    ArcBurst(ev.x, ev.y, (float)ev.r);
+                    ArcBurst(ev.x, ev.y, (float)ev.r, ev.depth ?? 0);
                     break;
                 case "repairPulse": F.GroundRing(ev.x, ev.y, MINT, 0.3f, (float)ev.r, 0.35f, 0.8f); F.Burst(ev.x, ev.y + 0.5, MINT, 14, 4, 0.24f, 0.4f, dir: Mathf.PI / 2, spread: 1.6f); break;
                 case "patchOn": case "patchTarget": if (ev.q != null) { var c = PlayerSim.Chest(ev.q); F.Sprite(c.x, c.y, "ring", MINT, 1.0f, 0.25f, 2.2f); } break;
@@ -240,20 +247,21 @@ namespace NovaStriker.Game
             return P;
         }
         // A crackle of short arcs from a point
-        void ArcBurst(double x, double y, float r)
+        void ArcBurst(double x, double y, float r, double depth)
         {
             for (int i = 0; i < 4; i++)
             {
-                float a = S.Rnd() * Mathf.PI * 2, d = r * (0.6f + S.Rnd() * 0.4f); var pts = new List<(double, double)>();
+                float a = S.Rnd() * Mathf.PI * 2, d = r * (0.6f + S.Rnd() * 0.4f); var pts = arcPath; pts.Clear();
                 for (int j = 0; j <= 6; j++) { float u = j / 6f; bool mid = u > 0 && u < 1; pts.Add((x + Mathf.Cos(a) * d * u + (S.Rnd() - 0.5f) * 0.3f * (mid ? 1 : 0), y + Mathf.Sin(a) * d * u + (S.Rnd() - 0.5f) * 0.3f * (mid ? 1 : 0))); }
-                AddArc(pts, CYAN, 0.12f);
+                AddArc(pts, CYAN, 0.12f, depth);
             }
         }
-        void AddArc(List<(double x, double y)> pts, string color, float life)
+        void AddArc(List<(double x, double y)> pts, string color, float life, double depth, double? endDepth = null)
         {
             var A = arcs.Find(a => a.life <= 0);
             if (A == null) { if (arcs.Count >= 10) A = arcs[0]; else { A = new Arc { glow = new Strip(scene, 5), core = new Strip(scene, 6) }; arcs.Add(A); } }
-            A.pts = new List<Vector3>(); foreach (var q in pts) A.pts.Add(S.W(q.x, q.y, 0.3));
+            if (A.pts == null) A.pts = new List<Vector3>(8); A.pts.Clear();
+            for (int i = 0; i < pts.Count; i++) { var q = pts[i]; double u = i / (double)System.Math.Max(1, pts.Count - 1); A.pts.Add(S.W(q.x, q.y, depth + ((endDepth ?? depth) - depth) * u + .3)); }
             A.life = A.max = life; A.color = S.Lin(color);
         }
 
@@ -262,7 +270,7 @@ namespace NovaStriker.Game
             t += dt;
             var F = fx; var cam = view.camPos;
             // ---- The Patch Beam ----
-            var seenB = new HashSet<Player>();
+            var seenB = seenBeams; seenB.Clear();
             foreach (var p in world.players)
             {
                 if (p.@char != "fix" || p.state != "patch" || p.patch == null) continue;
@@ -277,7 +285,7 @@ namespace NovaStriker.Game
                     for (int i = 0; i < 3; i++) { var pt = F.Particle(tip, S.Rnd() < 0.6f ? "#fff6d0" : HAZARD, 0.12f, 0.3f); pt.v = new Vector3((S.Rnd() - 0.5f) * 4, S.Rnd() * 3, (S.Rnd() - 0.5f) * 2); pt.grav = 9; pt.drag = 0.95f; }
                     continue;
                 }
-                var end = S.W(q.x, q.y + q.h * (q.state == "downed" ? 0.3 : 0.55), 0.25); const int n = 18; var pts = B.pts; pts.Clear();
+                var end = S.W(q.x, q.y + q.h * (q.state == "downed" ? 0.3 : 0.55), LevelFeatures.Depth(q) + 0.25); const int n = 18; var pts = B.pts; pts.Clear();
                 for (int i = 0; i <= n; i++)
                 {
                     float u = (float)i / n; var w = Vector3.Lerp(tip, end, u); float s = Mathf.Sin(u * Mathf.PI);
@@ -289,20 +297,23 @@ namespace NovaStriker.Game
                 B.core.Build(pts, cam, i => 0.045f * k, i => downed ? new Vector4(2.0f, 1.8f, 1.2f, 1) : new Vector4(0.9f, 2.0f, 1.5f, 1));
                 if (S.Rnd() < 0.6f)
                 {
-                    var w = S.W(q.x + (S.Rnd() - 0.5f) * q.w, q.y + S.Rnd() * q.h, 0.3); var pt = F.Particle(w, S.Rnd() < 0.5f ? PALE : MINT, 0.18f, 0.5f);
+                    var w = S.W(q.x + (S.Rnd() - 0.5f) * q.w, q.y + S.Rnd() * q.h, LevelFeatures.Depth(q) + 0.3); var pt = F.Particle(w, S.Rnd() < 0.5f ? PALE : MINT, 0.18f, 0.5f);
                     pt.v = new Vector3(0, 1.6f, 0); pt.drag = 0.98f;
                 }
                 if (S.Rnd() < 0.4f) { var pt = F.Particle(tip, WHITE, 0.14f, 0.12f); pt.v = new Vector3((S.Rnd() - 0.5f) * 3, S.Rnd() * 2, 0); }
             }
-            foreach (var kv in new List<KeyValuePair<Player, Beam>>(beams)) if (!seenB.Contains(kv.Key)) { var B = kv.Value; B.glow.mesh.visible = B.core.mesh.visible = false; B.k = 0; if (!world.players.Contains(kv.Key)) beams.Remove(kv.Key); }
+            removedBeams.Clear();
+            foreach (var kv in beams) if (!seenB.Contains(kv.Key)) { var B = kv.Value; B.glow.mesh.visible = B.core.mesh.visible = false; B.k = 0; if (!world.players.Contains(kv.Key)) { B.glow.mesh.DestroyOwnedMaterials(); B.core.mesh.DestroyOwnedMaterials(); removedBeams.Add(kv.Key); } }
+            foreach (var p in removedBeams) beams.Remove(p);
             // ---- Gadgets ----
-            var seenG = new HashSet<Gadget>();
+            var seenG = seenGadgets; seenG.Clear();
             foreach (var g in world.gadgets)
             {
                 seenG.Add(g);
+                using var origin = F.AtDepth(g.lane * LevelFeatures.LANE_W);
                 if (!gadgets.TryGetValue(g, out var G)) { G = Build(g); gadgets[g] = G; }
                 double y = g.py + (g.y - g.py) * view.alpha;
-                G.root.position.copy(S.W(g.x, y, 0));
+                G.root.position.copy(S.W(g.x, y, g.lane * LevelFeatures.LANE_W));
                 G.root.rotation.y = S.YawAt(g.x);
                 float age = t - G.born, grow = Mathf.Min(1, age / 0.25f); G.pop = Mathf.Max(0, G.pop - dt * 3);
                 G.hit = Mathf.Max(0, G.hit - dt * 6);
@@ -314,7 +325,7 @@ namespace NovaStriker.Game
                 {
                     float r = (float)FIX.gadget["pylon"].r[(int)g.level - 1];
                     G.ring.rotation.z += dt * 2; G.core.scale.setScalar(1 + 0.15f * Mathf.Sin(t * 5));
-                    G.field.scale.setScalar(r * (0.97f + 0.03f * Mathf.Sin(t * 3))); M["field"].opacity = 0.22f + 0.1f * Mathf.Sin(t * 3);
+                    G.field.position.z = -(float)(g.lane * LevelFeatures.LANE_W); G.field.scale.set(r, S.AreaSpan(g.x, r * 2) / 2, 1); M["field"].opacity = 0.22f + 0.1f * Mathf.Sin(t * 3);
                     if (S.Rnd() < 0.25f) F.Burst(g.x + (S.Rnd() - 0.5f) * r * 1.4f, g.y + 0.2, MINT, 1, 1, 0.16f, 0.7f, dir: Mathf.PI / 2, spread: 0.2f);
                 }
                 else if (g.kind == "sentry")
@@ -329,16 +340,16 @@ namespace NovaStriker.Game
                 {
                     float r = (float)FIX.gadget["coil"].r[(int)g.level - 1];
                     for (int i = 0; i < G.rings.Count; i++) { G.rings[i].rotation.z += dt * (2 + i); G.rings[i].scale.setScalar(1 + 0.1f * Mathf.Sin(t * 8 + i)); }
-                    G.field.scale.setScalar(r); M["coilField"].opacity = 0.2f + 0.1f * Mathf.Sin(t * 6);
+                    G.field.position.z = -(float)(g.lane * LevelFeatures.LANE_W); G.field.scale.set(r, S.AreaSpan(g.x, r * 2) / 2, 1); M["coilField"].opacity = 0.2f + 0.1f * Mathf.Sin(t * 6);
                     if (S.Rnd() < 0.08f)
                     {
                         double tx = g.x, ty = g.y + 1.42;
                         foreach (var q in world.players)
                         {
                             if (q.state == "dead" || JMath.Hypot(q.x - g.x, q.y + q.h * 0.5 - (g.y + 0.8)) > r) continue;
-                            var c = PlayerSim.Chest(q); var pts = new List<(double, double)>();
+                            var c = PlayerSim.Chest(q); var pts = arcPath; pts.Clear();
                             for (int j = 0; j <= 7; j++) { double u = j / 7.0; bool mid = j > 0 && j < 7; pts.Add((tx + (c.x - tx) * u + (mid ? (S.Rnd() - 0.5f) * 0.4f : 0), ty + (c.y - ty) * u + (mid ? (S.Rnd() - 0.5f) * 0.4f : 0))); }
-                            AddArc(pts, CYAN, 0.1f);
+                            AddArc(pts, CYAN, 0.1f, g.lane * LevelFeatures.LANE_W, LevelFeatures.Depth(q));
                         }
                     }
                 }
@@ -349,7 +360,8 @@ namespace NovaStriker.Game
                 }
                 if (G.hit > 0) G.root.position.x += (S.Rnd() - 0.5f) * 0.04f * G.hit;
             }
-            foreach (var kv in new List<KeyValuePair<Gadget, GM>>(gadgets)) if (!seenG.Contains(kv.Key)) { kv.Value.root.destroy(); gadgets.Remove(kv.Key); }
+            removedGadgets.Clear(); foreach (var kv in gadgets) if (!seenG.Contains(kv.Key)) removedGadgets.Add(kv.Key);
+            foreach (var g in removedGadgets) { gadgets[g].root.DestroyOwnedMaterials(); gadgets.Remove(g); }
             // ---- Arcs ----
             foreach (var A in arcs)
             {
@@ -359,34 +371,39 @@ namespace NovaStriker.Game
                 A.core.Build(A.pts, cam, i => 0.03f, i => new Vector4(1.6f, 1.8f, 2, k));
             }
             // ---- Power-up capsules ----
-            var seenK = new HashSet<Pickup>();
+            var seenK = seenPickups; seenK.Clear();
             foreach (var k in world.pickups)
             {
                 seenK.Add(k);
+                double depth = k.lane * LevelFeatures.LANE_W;
+                if (k.target != null) depth += (LevelFeatures.Depth(k.target) - depth) * Mathf.Min(1, (float)k.t / 12);
+                using var origin = F.AtDepth(depth);
                 if (!pickups.TryGetValue(k, out var m)) { m = PickupMesh(k.kind, k.level); pickups[k] = m; }
                 float a = view.alpha; double x = k.px + (k.x - k.px) * a, y = k.py + (k.y - k.py) * a;
-                m.position.copy(S.W(x, y + (k.rest ? 0.12 + Mathf.Sin(t * 4 + k.id) * 0.06 : 0), 0.15));
+                m.position.copy(S.W(x, y + (k.rest ? 0.12 + Mathf.Sin(t * 4 + k.id) * 0.06 : 0), depth + 0.15));
                 m.rotation.y += dt * 3; m.visible = k.life > 90 || Mathf.FloorToInt(t * 10) % 2 == 0;
                 if (!k.rest && S.Rnd() < 0.7f) F.Burst(x, y, FIX_LOOK[k.kind].tint, 1, 0.5f, 0.18f, 0.25f);
             }
-            foreach (var kv in new List<KeyValuePair<Pickup, TObj>>(pickups)) if (!seenK.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); pickups.Remove(kv.Key); }
+            removedPickups.Clear(); foreach (var kv in pickups) if (!seenK.Contains(kv.Key)) removedPickups.Add(kv.Key);
+            foreach (var k in removedPickups) { pickups[k].DestroyOwnedMaterials(); pickups.Remove(k); }
             // ---- Boosts on everyone ----
             foreach (var p in world.players)
             {
+                using var origin = F.AtDepth(LevelFeatures.Depth(p));
                 if (p.state == "dead") continue;
                 var rig = F.RigOf(p); if (rig == null || !rig.root.visible) continue;
                 if (p.plate > 0.5 && S.Rnd() < 0.18f + (float)p.plate / 200)
                 {
-                    float a = S.Rnd() * Mathf.PI * 2; var c = PlayerSim.Chest(p); double r = p.h * 0.5; var w = S.W(c.x + Mathf.Cos(a) * r * 0.6, c.y + Mathf.Sin(a) * r, 0.35);
+                    float a = S.Rnd() * Mathf.PI * 2; var c = PlayerSim.Chest(p); double r = p.h * 0.5; var w = S.W(c.x + Mathf.Cos(a) * r * 0.6, c.y + Mathf.Sin(a) * r, LevelFeatures.Depth(p) + 0.35);
                     var pt = F.Particle(w, PLATE, 0.2f, 0.3f); pt.v = new Vector3(0, 0.3f, 0); pt.drag = 0.9f;
                 }
                 if (p.overclockT > 0 && S.Rnd() < 0.5f)
                 {
-                    var w = S.W(p.x + (S.Rnd() - 0.5f) * p.w, p.y + S.Rnd() * p.h, 0.35); var pt = F.Particle(w, S.Rnd() < 0.5f ? WHITE : CYAN, 0.16f, 0.3f);
+                    var w = S.W(p.x + (S.Rnd() - 0.5f) * p.w, p.y + S.Rnd() * p.h, LevelFeatures.Depth(p) + 0.35); var pt = F.Particle(w, S.Rnd() < 0.5f ? WHITE : CYAN, 0.16f, 0.3f);
                     pt.v = new Vector3(0, 3 + S.Rnd() * 2, 0); pt.drag = 0.92f;
                 }
                 if (p.overclockT > 0 && p.onGround && Mathf.Floor(t * 2.2f) != Mathf.Floor((t - dt) * 2.2f)) F.GroundRing(p.x, p.y, CYAN, 0.3f, 1.2f, 0.28f, 0.55f);
-                if (p.ampK > 1 && S.Rnd() < 0.12f) { var w = S.W(p.x, p.y + p.h * 0.5, 0.35); var pt = F.Particle(w, CYAN, 0.12f, 0.25f); pt.v = new Vector3((S.Rnd() - 0.5f) * 2, 1.5f, 0); }
+                if (p.ampK > 1 && S.Rnd() < 0.12f) { var w = S.W(p.x, p.y + p.h * 0.5, LevelFeatures.Depth(p) + 0.35); var pt = F.Particle(w, CYAN, 0.12f, 0.25f); pt.v = new Vector3((S.Rnd() - 0.5f) * 2, 1.5f, 0); }
             }
             // ---- Overhaul's supply pod ----
             foreach (var kv in pods)

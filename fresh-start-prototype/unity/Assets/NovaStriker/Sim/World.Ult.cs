@@ -267,7 +267,7 @@ namespace NovaStriker.Sim
                 if (e == null) continue;
                 double dir = cut.i % 2 != 0 ? 1 : -1;
                 UltHit(p, e, ULT.echo.dmg * R.power, 16, dir * 2);
-                Emit("ultCut", new Ev { p = p, e = e, x = e.x, y = e.y + e.h * 0.55, i = cut.i, dir = dir, ang = ((cut.i * 2.39996) % JMath.PI) - JMath.PI / 2 });
+                Emit("ultCut", new Ev { p = p, e = e, depth = LevelFeatures.Depth(e), x = e.x, y = e.y + e.h * 0.55, i = cut.i, dir = dir, ang = ((cut.i * 2.39996) % JMath.PI) - JMath.PI / 2 });
             }
             if (t == R.fin)
             {

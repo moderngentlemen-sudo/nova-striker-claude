@@ -619,15 +619,15 @@ namespace NovaStriker.Sim
             string kind = p.gadgetSel; var G = FIX.gadget[kind];
             if (p.scrap < G.cost) { Emit("noScrap", new Ev { p = p, kind = kind, cost = G.cost }); return false; }
             double x = p.x + p.facing * 0.95;
-            for (int i = 0; i < 4 && Level.PointInSolid(x, p.y + 0.4); i++) x -= p.facing * 0.3;
-            double gy = Level.GroundBelow(x, p.y + 0.3);
+            for (int i = 0; i < 4 && Level.PointInSolid(x, p.y + 0.4, p.lane); i++) x -= p.facing * 0.3;
+            double gy = Level.GroundBelow(x, p.y + 0.3, p.lane);
             if (double.IsNegativeInfinity(gy)) { Emit("noScrap", new Ev { p = p, kind = kind, cost = G.cost, spot = true }); return false; }   // nothing to stand it on
             var old = gadgets.Find(g => g.owner == p && g.kind == kind && !g.dead);
             if (old != null) { old.dead = true; Emit("gadgetEnd", new Ev { g = old, why = "moved" }); }
             p.scrap -= G.cost;
             var gd = new Gadget
             {
-                id = NewInstance(), kind = kind, owner = p, x = x, y = p.y, py = p.y, gy = gy, vy = 0, landed = p.y - gy < 0.05, level = 1, pts = 0, t = 0, life = G.life[0],
+                id = NewInstance(), lane = p.lane, kind = kind, owner = p, x = x, y = p.y, py = p.y, gy = gy, vy = 0, landed = p.y - gy < 0.05, level = 1, pts = 0, t = 0, life = G.life[0],
                 hp = G.hp, maxHp = G.hp, cd = 24, rocketCd = 50, aim = p.facing, aimY = 0, dead = false, h = GadgetH(kind),
             };
             if (gd.landed) gd.y = gy;
@@ -640,20 +640,20 @@ namespace NovaStriker.Sim
         public void PlacePad(Player p)
         {
             foreach (var g in gadgets.Live()) if (g.owner == p && g.kind == "pad") g.dead = true;
-            double gy = Level.GroundBelow(p.x, p.y + 0.3);
+            double gy = Level.GroundBelow(p.x, p.y + 0.3, p.lane);
             if (double.IsNegativeInfinity(gy) || p.y - gy > 0.3) return;
-            gadgets.Add(new Gadget { id = NewInstance(), kind = "pad", owner = p, x = p.x, y = gy, py = gy, gy = gy, vy = 0, landed = true, level = 1, pts = 0, t = 0, life = FIX.pad.life, hp = 999, maxHp = 999, dead = false, h = GadgetH("pad") });
+            gadgets.Add(new Gadget { id = NewInstance(), lane = p.lane, kind = "pad", owner = p, x = p.x, y = gy, py = gy, gy = gy, vy = 0, landed = true, level = 1, pts = 0, t = 0, life = FIX.pad.life, hp = 999, maxHp = 999, dead = false, h = GadgetH("pad") });
             Emit("padPlace", new Ev { p = p, x = p.x, y = gy });
         }
         // One of her gadgets (not a pad) close in front of her: melee is then the wrench
         public bool GadgetNear(Player p) =>
-            gadgets.Exists(g => g.owner == p && g.kind != "pad" && !g.dead && (g.x - p.x) * p.facing > -0.6 && JMath.Abs(g.x - p.x) < 1.9 && JMath.Abs(g.y - p.y) < 1.6);
+            gadgets.Exists(g => g.owner == p && g.kind != "pad" && !g.dead && LevelFeatures.Same(g.lane, p) && (g.x - p.x) * p.facing > -0.6 && JMath.Abs(g.x - p.x) < 1.9 && JMath.Abs(g.y - p.y) < 1.6);
         // A gadget an enemy shot has reached
-        public Gadget GadgetAt(double x, double y, double r)
+        public Gadget GadgetAt(double x, double y, double r, int lane = 0)
         {
             foreach (var g in gadgets.Live())
             {
-                if (g.dead || g.kind == "pad") continue;
+                if (g.dead || g.kind == "pad" || !LevelFeatures.Same(lane, g.lane)) continue;
                 double nx = JMath.Max(g.x - 0.4, JMath.Min(x, g.x + 0.4)), ny = JMath.Max(g.y, JMath.Min(y, g.y + g.h));
                 if (JMath.Hypot(x - nx, y - ny) < r) return g;
             }
@@ -669,7 +669,7 @@ namespace NovaStriker.Sim
         // A wrench hit: two raise a gadget a level (up to 3), refreshing it; at level 3 they repair it and buy it time
         public void WrenchGadget(Gadget g, Player p)
         {
-            if (g.dead || g.kind == "pad") return;
+            if (g.dead || g.kind == "pad" || !LevelFeatures.Same(g.lane, p)) return;
             var G = FIX.gadget[g.kind];
             if (g.level < 3)
             {
@@ -697,10 +697,13 @@ namespace NovaStriker.Sim
                 var o = g.owner;
                 if (!players.Contains(o) || o.@char != "fix") { g.dead = true; Emit("gadgetEnd", new Ev { g = g, why = "gone" }); continue; }
                 g.py = g.y;
+                if (g.landed && Level.GroundBelow(g.x, g.y + .08, g.lane) < g.y - .08) { g.landed = false; g.vy = 0; }
                 if (!g.landed)
                 {
+                    g.gy = Level.GroundBelow(g.x, g.y + .08, g.lane);
                     g.vy -= GRAVITY * DT; g.y += g.vy * DT;
                     if (g.y <= g.gy) { g.y = g.gy; g.vy = 0; g.landed = true; Emit("gadgetLand", new Ev { g = g }); }
+                    if (g.y < Level.KillYAt(g.x)) { g.dead = true; Emit("gadgetEnd", new Ev { g = g, why = "fell" }); continue; }
                 }
                 if (g.hitT > 0) g.hitT--;
                 if (++g.t >= g.life) { g.dead = true; Emit("gadgetEnd", new Ev { g = g, why = "expire" }); continue; }
@@ -731,9 +734,9 @@ namespace NovaStriker.Sim
             Enemy best = null; double bd = S.range[L];
             foreach (var e in enemies.Live())
             {
-                if (e.dead || e.type == "post") continue;
+                if (e.dead || e.type == "post" || !LevelFeatures.Same(g.lane, e)) continue;
                 double ex = e.x, ey = e.y + e.h * 0.55, d = JMath.Hypot(ex - ox, ey - oy);
-                if (d < bd && !Level.SegmentBlocked(ox, oy, ex, ey)) { bd = d; best = e; }
+                if (d < bd && !Level.SegmentBlocked(ox, oy, ex, ey, g.lane)) { bd = d; best = e; }
             }
             g.target = best;
             if (best == null) return;
@@ -741,7 +744,7 @@ namespace NovaStriker.Sim
             g.aim = dx / m; g.aimY = dy / m;
             if (g.cd <= 0)
             {
-                SpawnProjectile(new Projectile { team = "p", owner = g.owner, x = ox + g.aim * 0.45, y = oy + g.aimY * 0.45, vx = g.aim * S.speed, vy = g.aimY * S.speed, ttl = 60, r = 0.1, dmg = S.dmg[L], poise = S.poise, kbs = 1.5, kind = "sentryBolt", intercept = true, interceptHeavy = false, gadget = true });
+                SpawnProjectile(new Projectile { team = "p", owner = g.owner, lane = g.lane, laneSet = true, x = ox + g.aim * 0.45, y = oy + g.aimY * 0.45, vx = g.aim * S.speed, vy = g.aimY * S.speed, ttl = 60, r = 0.1, dmg = S.dmg[L], poise = S.poise, kbs = 1.5, kind = "sentryBolt", intercept = true, interceptHeavy = false, gadget = true });
                 g.cd = S.every[L];
                 Emit("sentryShot", new Ev { g = g, x = ox + g.aim * 0.45, y = oy + g.aimY * 0.45 });
             }
@@ -749,7 +752,7 @@ namespace NovaStriker.Sim
             {
                 SpawnProjectile(new Projectile
                 {
-                    team = "p", owner = g.owner, x = ox, y = oy + 0.2, vx = g.aim * S.rocketSpeed * 0.5, vy = S.rocketSpeed * 0.6, ttl = 150, r = 0.14, dmg = 0, poise = 0,
+                    team = "p", owner = g.owner, lane = g.lane, laneSet = true, x = ox, y = oy + 0.2, vx = g.aim * S.rocketSpeed * 0.5, vy = S.rocketSpeed * 0.6, ttl = 150, r = 0.14, dmg = 0, poise = 0,
                     kind = "sentryRocket", intercept = false, blast = S.rocketBlast.Clone(), seek = new SeekState { target = best, delay = 8, until = 150, turn = 0.12, age = 0 }, gadget = true,
                 });
                 g.rocketCd = S.rocketEvery;
@@ -762,6 +765,7 @@ namespace NovaStriker.Sim
         {
             foreach (var q in players.Live())
             {
+                if (!LevelFeatures.Same(g.lane, q)) continue;
                 if (q.padCd > 0 || !Bounceable(q.state) || q.vy > 0.5) continue;
                 if (JMath.Abs(q.x - g.x) > (FIX.pad.w + q.w) / 2 || q.y < g.y - 0.05 || q.y > g.y + 0.45) continue;
                 q.vy = FIX.pad.bounce; q.onGround = false; q.coyote = 0; q.jumpsUsed = 0; q.airDashes = 1; q.airRise = true; q.airDodge = true;
@@ -771,6 +775,7 @@ namespace NovaStriker.Sim
             foreach (var e in enemies.Live())
             {
                 if (e.dead || !e.light || e.flier || e.boss || e.state == "launched" || e.state == "plowed") continue;
+                if (!LevelFeatures.Same(g.lane, e)) continue;
                 if (JMath.Abs(e.x - g.x) > (FIX.pad.w + e.w) / 2 || JMath.Abs(e.y - g.y) > 0.3) continue;
                 director.Release(e); e.state = "launched"; e.st = 0; e.vy = FIX.pad.enemyBounce; e.vx = 0;
                 Emit("padBounce", new Ev { e = e, g = g, x = g.x, y = g.y });
@@ -793,7 +798,7 @@ namespace NovaStriker.Sim
             var c = Chest(p); double x = c.x + p.facing * 0.4, y = c.y + 0.25;
             pickups.Add(new Pickup
             {
-                id = NewInstance(), kind = kind, owner = p, x = x, y = y, px = x, py = y, vx = target != null ? or(sign(target.x - p.x), p.facing) * FIX.power.speed * 0.6 : p.facing * 2.5,
+                id = NewInstance(), lane = p.lane, kind = kind, owner = p, x = x, y = y, px = x, py = y, vx = target != null ? or(sign(target.x - p.x), p.facing) * FIX.power.speed * 0.6 : p.facing * 2.5,
                 vy = target != null ? FIX.power.lift : 4, target = target, t = 0, life = FIX.power.life, rest = false, dead = false,
             });
             Emit("powerToss", new Ev { p = p, kind = kind, q = target, x = x, y = y });
@@ -815,8 +820,8 @@ namespace NovaStriker.Sim
                 else if (!k.rest)
                 {
                     k.vy -= FIX.power.gravity * DT; double nx = k.x + k.vx * DT, ny = k.y + k.vy * DT;
-                    if (Level.PointInSolid(nx, k.y)) k.vx *= -0.3; else k.x = nx;
-                    double g = Level.GroundBelow(k.x, k.y + 0.05);
+                    if (Level.PointInSolid(nx, k.y, k.lane)) k.vx *= -0.3; else k.x = nx;
+                    double g = Level.GroundBelow(k.x, k.y + 0.05, k.lane);
                     if (k.vy <= 0 && g > double.NegativeInfinity && ny - 0.18 <= g) { k.y = g + 0.18; k.vy = 0; k.vx = 0; k.rest = true; } else k.y = ny;
                     if (k.y < Level.KillYAt(k.x)) k.dead = true;
                 }
@@ -825,7 +830,7 @@ namespace NovaStriker.Sim
                     if (k.dead || q.state == "dead" || q.state == "downed" || (q == k.owner && k.t < FIX.power.ownerDelay)) continue;
                     if (JMath.Abs(q.x - k.x) < q.w / 2 + FIX.power.grab * 0.5 && k.y > q.y - 0.4 && k.y < q.y + q.h + 0.4) { ApplyPower(q, k.kind, k.owner); k.dead = true; }
                 }
-                if (!k.dead && --k.life <= 0) { k.dead = true; Emit("powerFade", new Ev { x = k.x, y = k.y, kind = k.kind }); }
+                if (!k.dead && --k.life <= 0) { k.dead = true; Emit("powerFade", new Ev { x = k.x, y = k.y, kind = k.kind, depth = k.lane * LevelFeatures.LANE_W }); }
             }
             pickups.RemoveAll(k => k.dead);
         }

@@ -25,7 +25,7 @@ namespace NovaStriker.Game
         sealed class Crack { public TMesh m; public float o, u, w, size, rot, at = -1; }
         sealed class Pane { public TMesh face, crack, rim; public float flash, k, frac = 1; public readonly List<Crack> cracks = new List<Crack>(); }
         readonly Dictionary<Player, Pane> panes = new Dictionary<Player, Pane>();
-        sealed class Wall { public TMesh face, crack, rimA, rimB, top, bas; public TMat faceM, crackM2, edgeM2; public float flash, born; public TMesh[] meshes; }
+        sealed class Wall { public TMesh face, crack, rimA, rimB, top, bas, volume; public TMat faceM, crackM2, edgeM2; public float flash, born; public TMesh[] meshes; }
         readonly Dictionary<Barrier, Wall> walls = new Dictionary<Barrier, Wall>();
         readonly Dictionary<Player, TMesh> wedges = new Dictionary<Player, TMesh>();
         sealed class Link { public Strip glow, core; public readonly List<Vector3> pts = new List<Vector3>(); public float flash, fade; }
@@ -226,7 +226,7 @@ namespace NovaStriker.Game
                 case "rampartReady": { PaneOf(p).frac = 1; var c = PlayerSim.Chest(p); F.Sprite(c.x, c.y, "ring", BLUE, 1.2f, 0.3f, 2.4f); F.Burst(c.x, c.y, PALE, 12, 4, 0.25f, 0.3f); break; }
                 case "kineticRelease":
                 {
-                    float k = (float)ev.k, a0 = Mathf.Atan2((float)ev.ny, (float)ev.nx); var at = S.W(ev.x, ev.y, 0.3); var dir = S.Dir(ev.x, ev.nx, ev.ny).normalized;
+                    float k = (float)ev.k, a0 = Mathf.Atan2((float)ev.ny, (float)ev.nx); var at = S.W(ev.x, ev.y, (ev.depth ?? 0) + 0.3); var dir = S.Dir(ev.x, ev.nx, ev.ny).normalized;
                     F.charge.ShockRing(at, dir, WHITE, 0.4f, 1.4f + 2.2f * k, 0.3f, (float)ev.r * 0.6f);
                     F.charge.ShockRing(at, dir, BLUE, 0.3f, 1.0f + 1.8f * k, 0.38f, (float)ev.r * 0.8f);
                     F.Sprite(ev.x, ev.y, "star", WHITE, 1.6f + 2 * k, 0.2f, 1.5f); F.Sprite(ev.x, ev.y, "glow", BLUE, 2 + 3 * k, 0.3f, 1.6f);
@@ -319,6 +319,7 @@ namespace NovaStriker.Game
             foreach (var p in world.players)
             {
                 if (p.@char != "ram") continue;
+                using var origin = F.AtDepth(LevelFeatures.Depth(p));
                 var rig = fx.RigOf(p); bool vis = rig != null && rig.root.visible && p.state != "dead";
                 var P = PaneOf(p); seenP.Add(p);
                 bool up = vis && p.state == "guard";
@@ -403,13 +404,13 @@ namespace NovaStriker.Game
                     for (int i = 0; i <= n; i++)
                     {
                         double u = (double)i / n, sag = System.Math.Sin(u * System.Math.PI) * 0.6;
-                        pts.Add(S.W(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u - sag + Mathf.Sin(t * 7 + (float)u * 9) * 0.05, 0.25));
+                        pts.Add(S.W(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u - sag + Mathf.Sin(t * 7 + (float)u * 9) * 0.05, LevelFeatures.Depth(p) + (LevelFeatures.Depth(q) - LevelFeatures.Depth(p)) * u + 0.25));
                     }
                     float k = Mathf.Min(1, (float)p.link.t / 40), fl = L.flash;
                     L.glow.Build(pts, cam, i => 0.12f + 0.08f * fl, i => new Vector4(0.35f, 0.65f, 1.0f, (0.22f + 0.4f * fl) * k));
                     int tick14 = Mathf.FloorToInt(t * 14);
                     L.core.Build(pts, cam, i => 0.035f, i => { bool on = ((i + tick14) % 3) != 0; return new Vector4(0.8f, 0.92f, 1.0f, (on ? 0.9f : 0.25f) * k); });
-                    if (S.Rnd() < 0.15f) F.Sprite(b.x, b.y + 0.9, "ring", BLUE, 0.55f, 0.3f, 1.6f);
+                    if (S.Rnd() < 0.15f) { using var receiver = F.AtDepth(LevelFeatures.Depth(q)); F.Sprite(b.x, b.y + 0.9, "ring", BLUE, 0.55f, 0.3f, 1.6f); }
                 }
             }
             foreach (var kv in new List<KeyValuePair<Player, Link>>(links))
@@ -431,7 +432,8 @@ namespace NovaStriker.Game
                 {
                     var g = Geo.Plane(1, 1); TMat face = wallM.clone(), crack = wallCrackM.clone(), edge = edgeM.clone();
                     W = new Wall { face = new TMesh(g, face), crack = new TMesh(g, crack), rimA = new TMesh(g, edge), rimB = new TMesh(g, edge), top = new TMesh(g, edge), bas = new TMesh(g, edge), faceM = face, crackM2 = crack, edgeM2 = edge, born = t };
-                    W.meshes = new[] { W.face, W.crack, W.rimA, W.rimB, W.top, W.bas };
+                    W.volume = new TMesh(Geo.Box(.12f, 1, 1), face) { noOutline = true };
+                    W.meshes = new[] { W.face, W.crack, W.rimA, W.rimB, W.top, W.bas, W.volume };
                     foreach (var m in W.meshes) { m.RenderOrder = 5; scene.add(m); }
                     walls[b] = W;
                 }
@@ -439,6 +441,7 @@ namespace NovaStriker.Game
                 float grow = Mathf.Min(1, (t - W.born) / 0.18f), H = (float)b.half * 2 * grow; double cy = b.y - b.half + H / 2;
                 float frac = Mathf.Max(0, (float)(b.hp / b.maxHp)), endK = Mathf.Min(1, (float)b.ttl / 30);
                 const float D = 0.36f; float blink = b.ttl < 60 && b.ttl % 10 < 5 ? 0.6f : 1;
+                W.volume.position.copy(S.W(b.x, cy)); W.volume.rotation.y = S.YawAt(b.x); W.volume.scale.set(1, H, S.AreaSpan(b.x, 1.6f)); W.volume.visible = Level.InLaneStretch(b.x);
                 PlaceQ(W.face, b.x, cy, 0, 1, 0.1); W.face.scale.set(D * 2, H, 1);
                 PlaceQ(W.crack, b.x, cy, 0, 1, 0.11); W.crack.scale.set(D * 2, H, 1);
                 PlaceQ(W.rimA, b.x - D, cy, 0, 1, 0.12); W.rimA.scale.set(0.05f, H, 1);
@@ -451,7 +454,7 @@ namespace NovaStriker.Game
                 W.faceM.offset = new Vector2(0, t * 0.2f);
                 if (S.Rnd() < 0.3f) F.Burst(b.x + (S.Rnd() - 0.5f) * D * 2, b.y - b.half + S.Rnd() * H, PALE, 1, 0.8f, 0.16f, 0.4f, dir: Mathf.PI / 2, spread: 0.3f);
             }
-            foreach (var kv in new List<KeyValuePair<Barrier, Wall>>(walls)) if (!seenW.Contains(kv.Key)) { foreach (var m in kv.Value.meshes) m.destroy(); walls.Remove(kv.Key); }
+            foreach (var kv in new List<KeyValuePair<Barrier, Wall>>(walls)) if (!seenW.Contains(kv.Key)) { foreach (var m in kv.Value.meshes) m.DestroyOwnedMaterials(); walls.Remove(kv.Key); }
             // ---- Siege Breaker's ram's head: horns of hard light over the wedge ----
             foreach (var p in world.players)
             {
@@ -468,7 +471,7 @@ namespace NovaStriker.Game
                 }
                 float form = R.slamT != 0 ? Mathf.Max(0, 1 - (float)(R.t - R.slamT) / 10) : Mathf.Min(1, (float)(R.t / ULT.ram.brace));
                 if (form <= 0.01f) { Hd.visible = false; continue; }
-                Hd.position.copy(S.W(p.x + R.dx * 1.6, p.y + 1.5, 0.3));
+                Hd.position.copy(S.W(p.x + R.dx * 1.6, p.y + 1.5, LevelFeatures.Depth(p) + 0.3));
                 var rig = fx.RigOf(p);
                 Hd.rotation.y = (rig != null ? rig.root.rotation.y : 0) + (R.dx > 0 ? 0 : Mathf.PI);
                 Hd.scale.setScalar(1.6f * form * (1 + 0.05f * Mathf.Sin(t * 30))); Hd.visible = true;

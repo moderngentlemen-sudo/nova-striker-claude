@@ -79,6 +79,14 @@ namespace NovaStriker.Game
 
         // ---- Building blocks ----
         public double effectDepth;
+        // A value scope keeps sustained owners on the same origin contract as immutable event snapshots.
+        public DepthScope AtDepth(double depth) => new DepthScope(this, depth);
+        public readonly struct DepthScope : System.IDisposable
+        {
+            readonly Fx fx; readonly double previous;
+            public DepthScope(Fx fx, double depth) { this.fx = fx; previous = fx.effectDepth; fx.effectDepth = depth; }
+            public void Dispose() { fx.effectDepth = previous; }
+        }
         public Vector3 W(double x, double y, double depth = 0) => S.W(x, y, effectDepth + depth);
 
         void Flash(double x, double y, string css, float size, float life) => V.flash.Emit(W(x, y, 0.4f), Vector3.zero, size, life, Hdr(css, 4));

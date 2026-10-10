@@ -20,6 +20,8 @@ namespace NovaStriker.Game
             return new Vector3((float)(f.tx * dx), (float)dy, (float)(f.tz * dx));
         }
         public static float YawAt(double x) { var f = Level.Frame(x); return Mathf.Atan2((float)-f.tz, (float)f.tx); }
+        // All-lane fields/warnings use the applied level, so pending menu changes do not alter their reach.
+        public static float AreaSpan(double x, float diameter) => Level.InLaneStretch(x) ? Mathf.Max(diameter, (float)(2 * LevelFeatures.LANE_W + .8)) : diameter;
         // CSS colours as three.js keeps them (linear)
         public static Color Lin(string css) => Th.Hex(css).linear;
         public static float Rnd() => Random.value;

@@ -1,0 +1,127 @@
+PASS sentry: deploy on a supported outer lane
+PASS sentry: its placement lane persists after the owner hops; remote wrench is unavailable
+PASS gadget: direct shot collision resolves the device's lane
+PASS gadget: a wrench in another lane cannot upgrade it
+PASS sentry: selects a reachable same-lane target over a nearer other-lane enemy
+PASS sentry: bolt and rocket snapshot the device lane, not its moving owner
+PASS sentry: muzzle events use the deployed origin
+PASS gadget: returning to its lane restores wrench access
+PASS gadget: a deck in another lane is not invisible supporting geometry
+PASS gadget: a matching lane deck supplies support
+PASS gadget: losing a collapsing or removed deck starts a real fall
+PASS pylon: healing remains an explicitly all-lanes area effect
+PASS snare: landing retains the emitted shot lane after the thrower hops
+PASS snare: retains all-lanes area triggering with a fixed trap origin
+PASS well: collapse origin survives the caster changing lanes
+PASS lanes off: deployed queries preserve legacy all-lanes access
+PASS route frames: backdrop sampling across every zone and staging gap is finite and orthonormal
+PASS route frames: skyport staging gap continues its analytic route
+PASS chain: origin and each cross-lane target have separate depth snapshots
+PASS chain: target removal or later movement cannot drag an existing arc
+PASS chain: missed discharge keeps the emission lane at both endpoints
+PASS off: no extra boxes, hazards or lanes (139 boxes)
+PASS tiers: 30 one-way catwalks
+PASS tiers: every catwalk lies inside a zone
+PASS tiers: none sits on a checkpoint
+PASS tiers: a player lands on the gym catwalk (y 4.00)
+PASS tiers off again: the level is as built
+PASS hazards: the vent warns, then fires
+PASS hazards: the vent launches a player standing on it (up to 4.8 m)
+PASS hazards: a shock panel hurts only while it is live
+PASS hazards: a crumbling platform gives way under a player (y 14.5)
+PASS hazards: the platform comes back
+PASS hazards off: no hazard events
+PASS lanes: B hops to the back lane (lane -1)
+PASS lanes: the lane changes halfway through the hop
+PASS lanes: shots miss another lane; blasts reach it
+PASS lanes: leaving the stretch brings a player back to the middle
+PASS lanes off: no hops, everything reaches everything
+PASS nova: solid destination blocks hop
+PASS nova: solid query respects lane mask
+PASS nova: safe outer lane is reachable
+PASS nova: shot/event depth stays at emission lane
+PASS nova: hop rejects unsupported tier destination
+PASS nova: checkpoint/zone respawn resets lane
+PASS echo: solid destination blocks hop
+PASS echo: solid query respects lane mask
+PASS echo: safe outer lane is reachable
+PASS echo: shot/event depth stays at emission lane
+PASS echo: hop rejects unsupported tier destination
+PASS echo: checkpoint/zone respawn resets lane
+PASS ram: solid destination blocks hop
+PASS ram: solid query respects lane mask
+PASS ram: safe outer lane is reachable
+PASS ram: shot/event depth stays at emission lane
+PASS ram: hop rejects unsupported tier destination
+PASS ram: checkpoint/zone respawn resets lane
+PASS fix: solid destination blocks hop
+PASS fix: solid query respects lane mask
+PASS fix: safe outer lane is reachable
+PASS fix: shot/event depth stays at emission lane
+PASS fix: hop rejects unsupported tier destination
+PASS fix: checkpoint/zone respawn resets lane
+PASS feature combination 0: consistent rebuild
+PASS feature combination 1: consistent rebuild
+PASS feature combination 2: consistent rebuild
+PASS feature combination 3: consistent rebuild
+PASS feature combination 4: consistent rebuild
+PASS feature combination 5: consistent rebuild
+PASS feature combination 6: consistent rebuild
+PASS feature combination 7: consistent rebuild
+PASS all hazard families reset and collapse support restores
+PASS crusher: no damage at descent start
+PASS crusher: impact window damages occupant
+PASS hazard mask excludes another lane
+PASS slag: permanent boundary reports active
+PASS nova: upper route yields reachable intermediate waypoint
+PASS echo: upper route yields reachable intermediate waypoint
+PASS ram: upper route yields reachable intermediate waypoint
+PASS fix: upper route yields reachable intermediate waypoint
+PASS vent: damage follows active window
+PASS vent: launch retained
+PASS shock: damage follows active window
+PASS laser: damage follows active window
+PASS lightning: damage follows active window
+PASS crusher: damage follows active window
+PASS slag: damage follows active window
+PASS wind: damage follows active window
+PASS debris: damage follows active window
+PASS crusher: floor impact does not damage empty air above the head
+PASS debris: floor impact does not damage empty air above the head
+PASS nova: all three teammates physically reach the upper route
+PASS echo: all three teammates physically reach the upper route
+PASS deterministic replay: presentation presets and quality do not change simulation
+PASS 30 fps: ten seconds produce 600 decorative steps
+PASS 60 fps: ten seconds produce 600 decorative steps
+PASS 120 fps: ten seconds produce 600 decorative steps
+PASS effect clock: catchup bounded and paused draw consumes no time
+PASS warden: direct factory starts at phase one
+PASS warden phase 1: sweep runs without invalid phase indices
+PASS warden phase 1: hammer runs without invalid phase indices
+PASS warden phase 1: stomp runs without invalid phase indices
+PASS warden phase 1: missiles runs without invalid phase indices
+PASS warden phase 1: charge runs without invalid phase indices
+PASS warden phase 1: laser runs without invalid phase indices
+PASS warden phase 2: sweep runs without invalid phase indices
+PASS warden phase 2: hammer runs without invalid phase indices
+PASS warden phase 2: stomp runs without invalid phase indices
+PASS warden phase 2: missiles runs without invalid phase indices
+PASS warden phase 2: charge runs without invalid phase indices
+PASS warden phase 2: laser runs without invalid phase indices
+PASS stormcaller: direct factory starts at phase one
+PASS stormcaller phase 1: volley runs without invalid phase indices
+PASS stormcaller phase 1: rain runs without invalid phase indices
+PASS stormcaller phase 1: sweep runs without invalid phase indices
+PASS stormcaller phase 1: dive runs without invalid phase indices
+PASS stormcaller phase 2: volley runs without invalid phase indices
+PASS stormcaller phase 2: rain runs without invalid phase indices
+PASS stormcaller phase 2: sweep runs without invalid phase indices
+PASS stormcaller phase 2: dive runs without invalid phase indices
+PASS cinematic: switching to Custom preserves every effective option
+PASS balanced: switching to Custom preserves every effective option
+PASS classic: switching to Custom preserves every effective option
+PASS Custom: Classic explosions preserve independent energy projectiles
+PASS Custom: rich explosions preserve independent Classic projectiles
+PASS Low graphics: advertised particle/light/decal/distortion caps apply
+PASS reduced screen effects preserves combat style and disables screen distortion
+ALL PASS

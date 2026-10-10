@@ -172,6 +172,8 @@ namespace NovaStriker.Sim
             area || Level.LANES.Count == 0 || a == null || b == null || a.lane == b.lane;
         public static bool Same(int lane, Actor b, bool area = false) =>
             area || Level.LANES.Count == 0 || b == null || lane == b.lane;
+        public static bool Same(int lane, int otherLane, bool area = false) =>
+            area || Level.LANES.Count == 0 || lane == otherLane;
 
         // Where a body is drawn in depth (m toward the camera), easing through a hop
         public static double Depth(Body b)

@@ -52,6 +52,7 @@ namespace NovaStriker.Sim
                         foreach (var g in world.gadgets.Live())
                         {
                             if (g.owner != hb.owner || g.dead || g.kind == "pad" || set.Contains("g" + g.id)) continue;
+                            if (!LevelFeatures.Same(g.lane, hb.owner)) continue;
                             if (!Overlap(hb, new Box2(g.x - 0.45, g.x + 0.45, g.y, g.y + g.h))) continue;
                             set.Add("g" + g.id); world.WrenchGadget(g, (Player)hb.owner);
                         }
@@ -73,6 +74,7 @@ namespace NovaStriker.Sim
                     foreach (var g in world.gadgets.Live())
                     {
                         if (g.dead || g.kind == "pad" || set.Contains("g" + g.id)) continue;
+                        if (!LevelFeatures.Same(g.lane, hb.owner, hb.radial || hb.quake)) continue;
                         if (!Overlap(hb, new Box2(g.x - 0.4, g.x + 0.4, g.y, g.y + g.h))) continue;
                         set.Add("g" + g.id); world.HurtGadget(g, hb.dmg);
                     }
@@ -653,7 +655,7 @@ namespace NovaStriker.Sim
                         var ram = world.RampartCross(ox, oy, pr.x, pr.y, pr.r);
                         if (ram != null) { if (world.BlockShot(ram, pr) == "block") break; continue; }
                         // Fix's gadgets stand in the way of shots too
-                        var g = world.GadgetAt(pr.x, pr.y, pr.r);
+                        var g = world.GadgetAt(pr.x, pr.y, pr.r, pr.lane);
                         if (g != null) { world.HurtGadget(g, pr.blast != null ? pr.blast.dmg : pr.dmg); if (pr.blast != null) world.Emit("enemyBlast", new Ev { x = pr.x, y = pr.y, r = pr.blast.r * 0.6 }); pr.dead = true; break; }
                     }
                     foreach (var b in world.barriers.Live())

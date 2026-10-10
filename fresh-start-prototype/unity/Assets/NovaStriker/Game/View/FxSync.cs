@@ -44,8 +44,8 @@ namespace NovaStriker.Game
         void AddLandingMark(double x, double y, float r, float secs)
         {
             var mat = new TMat(TMat.Kind.Basic) { map = tex.ring, colorCss = HOSTILE, transparent = true, opacity = 0.7f, depthWrite = false, blending = Blending.Additive, side = Side.Double };
-            var mesh = new TMesh(Geo.Plane(r * 2.4f, r * 2.4f), mat);
-            mesh.position.copy(S.W(x, y + 0.04, 0)); mesh.rotation.x = -Mathf.PI / 2;
+            var mesh = new TMesh(Geo.Plane(r * 2.4f, S.AreaSpan(x, r * 2.4f)), mat);
+            mesh.position.copy(S.W(x, y + 0.04, 0)); mesh.rotation.set(-Mathf.PI / 2, S.YawAt(x), 0);
             scene.add(mesh);
             marks.Add(new Mark { mesh = mesh, life = secs, max = secs });
         }
@@ -249,7 +249,7 @@ namespace NovaStriker.Game
                 if (!barrierMeshes.TryGetValue(b, out var m))
                 {
                     var mat = new TMat { colorCss = "#fff0cc", emissiveCss = NOVA_GOLD, emissiveIntensity = 2.2f, transparent = true, opacity = 0.55f, depthWrite = false, side = Side.Double };
-                    m = new TMesh(Geo.Box((float)b.half * 2, 0.22f, 1.6f), mat);
+                    m = new TMesh(Geo.Box((float)b.half * 2, 0.22f, S.AreaSpan(b.x, 1.6f)), mat);
                     var T = S.Dir(b.x, -b.ny, b.nx).normalized; var Nn = S.Dir(b.x, b.nx, b.ny).normalized; var Z = Vector3.Cross(T, Nn).normalized;
                     m.SetQuaternion(ThQ.FromBasis(T, Nn, Z));
                     m.position.copy(S.W(b.x, b.y, 0));
@@ -288,25 +288,34 @@ namespace NovaStriker.Game
         }
 
         // ---- Shockwaves ----
-        readonly Dictionary<Shockwave, TMesh> shockMeshes = new Dictionary<Shockwave, TMesh>();
+        readonly Dictionary<Shockwave, (TObj g, TMesh[] cones)> shockMeshes = new Dictionary<Shockwave, (TObj, TMesh[])>();
+        readonly HashSet<Shockwave> seenShockwaves = new HashSet<Shockwave>();
+        readonly List<Shockwave> removedShockwaves = new List<Shockwave>();
         void SyncShockwaves(World world)
         {
-            var seen = new HashSet<Shockwave>();
+            var seen = seenShockwaves; seen.Clear();
             foreach (var s in world.shockwaves)
             {
                 seen.Add(s);
                 string col = s.team == "p" ? CHARS["ram"].energy : HOSTILE;
-                if (!shockMeshes.TryGetValue(s, out var m))
+                if (!shockMeshes.TryGetValue(s, out var visual))
                 {
-                    m = new TMesh(Geo.Cone(0.45f, 1.1f, 4), new TMat { colorCss = col, emissiveCss = col, emissiveIntensity = 3, transparent = true, opacity = 0.85f });
-                    scene.add(m); shockMeshes[s] = m;
+                    var g = Group.Make(); var cones = new TMesh[3];
+                    var mat = new TMat { colorCss = col, emissiveCss = col, emissiveIntensity = 3, transparent = true, opacity = .85f };
+                    for (int i = 0; i < 3; i++) { cones[i] = new TMesh(Geo.Cone(.45f, 1.1f, 4), mat); g.add(cones[i]); }
+                    scene.add(g); visual = (g, cones); shockMeshes[s] = visual;
                 }
-                m.position.copy(S.W(s.x, s.y + 0.5, 0.2));
-                m.rotation.y += 0.4f;
-                if (S.Rnd() < 0.8f) Burst(s.x, s.y + 0.2, col, 2, 3, 0.35f, 0.25f, dir: Mathf.PI / 2, spread: 1.5f);
-                if (s.team == "p" && S.Rnd() < 0.6f) Dust(s.x, s.y, 0.3f, new[] { s.dir > 0 ? 0 : Mathf.PI }, noRing: true, op: 0.45f);
+                // Shockwaves damage all lanes. Their required cores show that reach even with particles Off.
+                for (int i = 0; i < 3; i++) {
+                    int lane = i - 1; var m = visual.cones[i]; m.visible = lane == 0 || Level.InLaneStretch(s.x);
+                    if (!m.visible) continue; double depth = lane * LevelFeatures.LANE_W;
+                    using var origin = AtDepth(depth); m.position.copy(S.W(s.x, s.y + .5, depth + .2)); m.rotation.y += .4f;
+                    if (S.Rnd() < .8f) Burst(s.x, s.y + .2, col, 2, 3, .35f, .25f, dir: Mathf.PI / 2, spread: 1.5f);
+                    if (s.team == "p" && S.Rnd() < .6f) Dust(s.x, s.y, .3f, new[] { s.dir > 0 ? 0 : Mathf.PI }, noRing: true, op: .45f);
+                }
             }
-            foreach (var kv in new List<KeyValuePair<Shockwave, TMesh>>(shockMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); shockMeshes.Remove(kv.Key); }
+            removedShockwaves.Clear(); foreach (var kv in shockMeshes) if (!seen.Contains(kv.Key)) removedShockwaves.Add(kv.Key);
+            foreach (var s in removedShockwaves) { shockMeshes[s].g.DestroyOwnedMaterials(); shockMeshes.Remove(s); }
         }
 
         // ---- Echo's nano-scarf: a spring chain that becomes the lash ----
@@ -405,9 +414,11 @@ namespace NovaStriker.Game
 
         // ---- Snares and snared bands ----
         readonly Dictionary<Snare, (TObj g, TMesh ring)> snareMeshes = new Dictionary<Snare, (TObj, TMesh)>();
+        readonly HashSet<Snare> seenSnares = new HashSet<Snare>();
+        readonly List<Snare> removedSnares = new List<Snare>();
         void SyncSnares(World world)
         {
-            var seen = new HashSet<Snare>();
+            var seen = seenSnares; seen.Clear();
             foreach (var s in world.snares)
             {
                 seen.Add(s);
@@ -417,12 +428,16 @@ namespace NovaStriker.Game
                     g.add(new TMesh(Geo.Cylinder(0.4f, 0.46f, 0.08f, 20), new TMat { colorCss = "#2a2a31", roughness = 0.5f }));
                     var ring = new TMesh(Geo.Torus(0.42f, 0.04f, 6, 24), new TMat { colorCss = ECHO_ORANGE, emissiveCss = ECHO_ORANGE, emissiveIntensity = 2 });
                     ring.rotation.x = Mathf.PI / 2; ring.position.y = 0.06f; g.add(ring);
-                    g.position.copy(S.W(s.x, s.y + 0.04, 0.35)); scene.add(g); m = (g, ring); snareMeshes[s] = m;
+                    // The body keeps its planted lane; the floor warning shows the retained all-lanes trigger.
+                    var warning = new TMesh(Geo.Plane(.95f, S.AreaSpan(s.x, .95f)), new TMat(TMat.Kind.Basic) { map = tex.ring, colorCss = ECHO_ORANGE, transparent = true, opacity = .65f, depthWrite = false, side = Side.Double }) { cast = false, receive = false, noOutline = true };
+                    warning.rotation.x = -Mathf.PI / 2; warning.position.set(0, .015f, -(float)(s.lane * LevelFeatures.LANE_W)); g.add(warning);
+                    g.position.copy(S.W(s.x, s.y + .04, s.lane * LevelFeatures.LANE_W)); g.rotation.y = S.YawAt(s.x); scene.add(g); m = (g, ring); snareMeshes[s] = m;
                 }
                 bool armed = s.armT <= 0;
                 m.ring.material.emissiveIntensity = armed ? 1.6f + Mathf.Sin(Time.time * 1000 * 0.012f) * 0.9f : 0.4f;
             }
-            foreach (var kv in new List<KeyValuePair<Snare, (TObj g, TMesh ring)>>(snareMeshes)) if (!seen.Contains(kv.Key)) { kv.Value.g.DestroyOwnedMaterials(); snareMeshes.Remove(kv.Key); }
+            removedSnares.Clear(); foreach (var kv in snareMeshes) if (!seen.Contains(kv.Key)) removedSnares.Add(kv.Key);
+            foreach (var s in removedSnares) { snareMeshes[s].g.DestroyOwnedMaterials(); snareMeshes.Remove(s); }
         }
         readonly Dictionary<Enemy, TObj> bands = new Dictionary<Enemy, TObj>();
         void SyncSnaredRings(World world)
@@ -450,7 +465,7 @@ namespace NovaStriker.Game
     // sprites have depth testing off, so they always draw on top), sized as the world-space sprite would be
     public sealed class FxText
     {
-        sealed class Item { public Text t; public Outline o; public double x, y; public float life, max, aspect = 1; public Enemy e; public bool glyph; }
+        sealed class Item { public Text t; public Outline o; public double x, y, depth; public float life, max, aspect = 1; public Enemy e; public bool glyph; }
         readonly List<Item> texts = new List<Item>(), glyphs = new List<Item>();
         readonly RectTransform root;
         readonly Font font;
@@ -471,11 +486,11 @@ namespace NovaStriker.Game
             go.SetActive(false);
             return new Item { t = t, o = o, glyph = glyph };
         }
-        public void Pop(double x, double y, string text, string color, float life)
+        public void Pop(double x, double y, string text, string color, float life, double depth)
         {
             Item it = texts.Find(q => q.life <= 0);
             if (it == null) { if (texts.Count < 8) { it = Make(false); texts.Add(it); } else { it = texts[0]; foreach (var q in texts) if (q.life < it.life) it = q; } }
-            it.t.text = text; it.t.color = Th.Hex(color); it.x = x; it.y = y; it.life = it.max = life; it.t.gameObject.SetActive(true);
+            it.t.text = text; it.t.color = Th.Hex(color); it.x = x; it.y = y; it.depth = depth; it.life = it.max = life; it.t.gameObject.SetActive(true);
         }
         public void Glyph(Enemy e, string ch, string color, float life)
         {
@@ -499,7 +514,7 @@ namespace NovaStriker.Game
                 if (it.life <= 0) { if (it.t.gameObject.activeSelf) it.t.gameObject.SetActive(false); continue; }
                 it.life -= dt; float k = 1 - Mathf.Max(0, it.life) / it.max;
                 float pop = k < 0.12f ? 0.6f + 4 * k : 1.08f - 0.08f * Mathf.Min(1, (k - 0.12f) * 4), h = 0.8f * pop;
-                bool vis = Place(view, S.W(it.x, it.y + k * 0.6, 0.6), h, out var at, out var px);
+                bool vis = Place(view, S.W(it.x, it.y + k * 0.6, it.depth + 0.6), h, out var at, out var px);
                 it.t.gameObject.SetActive(vis);
                 // (the word's glyphs fill about 84/128 of the prototype's sprite height)
                 it.t.fontSize = Mathf.Max(4, Mathf.RoundToInt(px * 84f / 128f * scale));
@@ -513,7 +528,7 @@ namespace NovaStriker.Game
                 it.life -= dt;
                 var e = it.e; if (e == null || e.dead) { it.life = 0; continue; }
                 float k = 1 - Mathf.Max(0, it.life) / it.max, sc = 0.8f * Mathf.Min(1, k / 0.12f);
-                bool vis = Place(view, S.W(e.x, e.y + e.h + 0.6 + k * 0.25, 0.4), sc, out var at, out var px);
+                bool vis = Place(view, S.W(e.x, e.y + e.h + 0.6 + k * 0.25, LevelFeatures.Depth(e) + 0.4), sc, out var at, out var px);
                 it.t.gameObject.SetActive(vis);
                 it.t.fontSize = Mathf.Max(4, Mathf.RoundToInt(px * 0.8f * scale));
                 it.t.rectTransform.position = at;

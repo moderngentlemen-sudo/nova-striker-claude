@@ -1,0 +1,4 @@
+Reference compilation of current sources against Unity 6000.3.25f1 player managed assemblies from actual artifact 11669169226.
+NovaStriker.Sim ok
+NovaStriker.Game ok
+This is C# reference compilation, not a fresh import, shader test or player build.

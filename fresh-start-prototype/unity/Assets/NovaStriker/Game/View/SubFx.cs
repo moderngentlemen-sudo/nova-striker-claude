@@ -204,6 +204,7 @@ namespace NovaStriker.Game
             foreach (var w in world.wells)
             {
                 seen.Add(w);
+                using var origin = F.AtDepth(w.lane * LevelFeatures.LANE_W);
                 if (!wells.TryGetValue(w, out var M)) M = MakeWell(w);
                 double x = w.px + (w.x - w.px) * alpha, y = w.py + (w.y - w.py) * alpha;
                 M.g.position.copy(S.W(x, y, w.lane * LevelFeatures.LANE_W + 0.2));
@@ -257,6 +258,7 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 if (e.dead) continue;
+                using var origin = F.AtDepth(LevelFeatures.Depth(e));
                 if (FxCfg.Projectiles != "classic" && e.shockT > 0) Electrify(e, dt);
                 if (FxCfg.Projectiles == "classic" && e.shockT > 0 && dt > 0 && S.Rnd() < 0.55f)
                 {

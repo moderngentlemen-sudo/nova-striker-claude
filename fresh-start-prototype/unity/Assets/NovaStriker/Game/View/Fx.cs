@@ -266,7 +266,7 @@ namespace NovaStriker.Game
         // A slash mark: a long thin glint across a hit, at an angle
         public void SlashMark(double x, double y, string color, float len, float rot, float life = 0.14f) => Sprite(x, y, "star", color, len * 0.55f, life, 1.25f, 0.45f, 2.6f, rot);
         // Floating words over a hit ("CRIT"), drawn by FxText on the screen over the world
-        public void PopText(double x, double y, string text, string color, float life = 0.7f) => texts.Pop(x, y, text, color, life);
+        public void PopText(double x, double y, string text, string color, float life = 0.7f) => texts.Pop(x, y, text, color, life, effectDepth);
         public void Glyph(Enemy e, string ch, string color, float life = 0.9f) => texts.Glyph(e, ch, color, life);
         // Particles at a world-space point, drifting upward (embers)
         public void BurstAt(Vector3 v, string color, float n = 1, float speed = 1, float size = 0.2f, float life = 0.3f)

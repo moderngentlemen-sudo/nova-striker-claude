@@ -19,8 +19,8 @@ namespace NovaStriker.Game
         sealed class B { public Strip halo, sheath, core; public TMesh sun, sunCore, flare; public readonly List<Vector3> pts = new List<Vector3>(); public float ringT; }
         readonly Dictionary<Player, B> beams = new Dictionary<Player, B>();
         readonly List<(float t, System.Action fn)> pending = new List<(float, System.Action)>();
-        readonly Dictionary<Player, (double x, double y)> lastCut = new Dictionary<Player, (double, double)>();
-        sealed class Eclipse { public TMesh disc, corona, ring; public float t = -1; public double x, y; }
+        readonly Dictionary<Player, (double x, double y, double depth)> lastCut = new Dictionary<Player, (double, double, double)>();
+        sealed class Eclipse { public TMesh disc, corona, ring; public float t = -1; public double x, y, depth; }
         readonly Eclipse eclipse;
 
         public UltFX(Fx fx)
@@ -66,12 +66,12 @@ namespace NovaStriker.Game
                     F.Dust(x, y, 0.8f);
                     break;
                 }
-                case "ultRun": foreach (var m in ev.members) F.Sprite(m.x, m.y + 1, "star", "#ffffff", 2.4f, 0.2f, 1.5f); break;
+                case "ultRun": foreach (var m in ev.members) using (F.AtDepth(LevelFeatures.Depth(m))) F.Sprite(m.x, m.y + 1, "star", "#ffffff", 2.4f, 0.2f, 1.5f); break;
                 case "ultBegin":
                     if (ev.kind == "echo")
                     {
                         var p = ev.p; F.Sprite(p.x, p.y + 1, "ring", ORANGE, 1.1f, 0.3f, 3); F.Burst(p.x, p.y + 1, ORANGE, 30, 8, 0.3f, 0.4f); F.Burst(p.x, p.y + 1, "#ffffff", 14, 6, 0.22f, 0.3f);
-                        lastCut[p] = (p.x, p.y + 1);
+                        lastCut[p] = (p.x, p.y + 1, F.effectDepth);
                     }
                     break;
                 case "ultNova":
@@ -94,6 +94,7 @@ namespace NovaStriker.Game
                     if (ev.flourish) { F.Sprite(p.x, p.y + 1, "ring", ORANGE, 2, 0.4f, 3.6f); F.SlashMark(p.x, p.y + 1, "#fff1d6", 9, 0.1f, 0.3f); F.Burst(p.x, p.y + 1, ORANGE, 40, 12, 0.35f, 0.5f); break; }
                     foreach (var e in ev.targets)
                     {
+                        using var origin = F.AtDepth(LevelFeatures.Depth(e));
                         double x = e.x, y = e.y + e.h * 0.55;
                         F.SlashMark(x, y, "#fff1d6", 3.6f, 0.7f, 0.28f); F.SlashMark(x, y, ORANGE, 3.6f, -0.7f, 0.28f); F.SlashMark(x, y, "#ffffff", 4.4f, 0, 0.2f);
                         F.Sprite(x, y, "star", "#ffffff", 2.4f, 0.2f, 1.5f); F.Burst(x, y, ORANGE, 30, 10, 0.34f, 0.45f); F.Burst(x, y, "#ffffff", 14, 8, 0.24f, 0.3f);
@@ -122,26 +123,28 @@ namespace NovaStriker.Game
             {
                 // Stand the (hidden) rig beside the target for a moment and leave a ghost of it there
                 var pos = rig.root.position.v; float rot = rig.root.rotation.y, fl = rig.flip.scale.x;
-                rig.root.position.copy(S.W(gx, gy, 0)); rig.flip.scale.x = (float)-side;
+                rig.root.position.copy(S.W(gx, gy, F.effectDepth)); rig.flip.scale.x = (float)-side;
                 F.ghosts.Spawn(rig, S.Lin(ORANGE) * 1.8f, 0.6f, 0.3f);
                 rig.root.position.copy(pos); rig.root.rotation.y = rot; rig.flip.scale.x = fl;
             }
             if (lastCut.TryGetValue(p, out var last))
             {
                 const int n = 6;
-                for (int i = 0; i <= n; i++) { double u = (double)i / n; F.Burst(last.x + (gx - last.x) * u, last.y + (gy + 1 - last.y) * u, i % 2 == 1 ? "#ffffff" : ORANGE, 1, 1, 0.18f, 0.16f); }
+                double depth = F.effectDepth;
+                for (int i = 0; i <= n; i++) { double u = (double)i / n; using var origin = F.AtDepth(last.depth + (depth - last.depth) * u); F.Burst(last.x + (gx - last.x) * u, last.y + (gy + 1 - last.y) * u, i % 2 == 1 ? "#ffffff" : ORANGE, 1, 1, 0.18f, 0.16f); }
             }
-            lastCut[p] = (gx, gy + 1);
+            lastCut[p] = (gx, gy + 1, F.effectDepth);
         }
 
         // The team finisher: an eclipse fills the screen, its corona flares, then it shatters into light
         void TeamFinisher(Ev ev)
         {
             var E = eclipse; var F = fx;
-            E.t = 0; E.x = ev.x; E.y = ev.y;
-            double x = ev.x, y = ev.y; var chars = ev.chars;
+            E.t = 0; E.x = ev.x; E.y = ev.y; E.depth = F.effectDepth;
+            double x = ev.x, y = ev.y, depth = F.effectDepth; var chars = ev.chars;
             After(0.42f, () =>
             {
+                using var origin = F.AtDepth(depth);
                 F.Sprite(x, y, "star", "#ffffff", 14, 0.45f, 1.6f); F.Sprite(x, y, "glow", "#ffffff", 16, 0.5f, 1.4f);
                 foreach (var (sz, life, g) in new[] { (3f, 0.5f, 5f), (2f, 0.7f, 7f), (1.2f, 0.9f, 10f) }) F.Sprite(x, y, "ring", "#ffffff", sz, life, g);
                 F.Sprite(x, y, "ring", CYAN, 2.4f, 0.9f, 7);
@@ -155,13 +158,12 @@ namespace NovaStriker.Game
             t += dt;
             var F = fx; var cam = view.camPos;
             for (int i = 0; i < pending.Count; i++) pending[i] = (pending[i].t - dt, pending[i].fn);
-            var due = pending.FindAll(q => q.t <= 0); pending.RemoveAll(q => q.t <= 0);
-            foreach (var q in due) q.fn();
+            for (int i = pending.Count - 1; i >= 0; i--) if (pending[i].t <= 0) { var callback = pending[i].fn; pending.RemoveAt(i); callback(); }
             var E = eclipse;
             if (E.t >= 0)
             {
                 E.t += dt; float k = E.t, grow = Mathf.Min(1, k / 0.3f), gone = k > 0.42f ? Mathf.Max(0, 1 - (k - 0.42f) / 0.12f) : 1;
-                foreach (var s in new[] { E.disc, E.corona, E.ring }) { s.position.copy(S.W(E.x, E.y, 1.5)); s.visible = gone > 0; }
+                foreach (var s in new[] { E.disc, E.corona, E.ring }) { s.position.copy(S.W(E.x, E.y, E.depth + 1.5)); s.visible = gone > 0; }
                 E.disc.scale.setScalar(6.4f * grow); E.disc.material.opacity = gone;
                 E.corona.scale.setScalar(11.5f * grow * (1 + 0.05f * Mathf.Sin(t * 40))); E.corona.material.opacity = gone;
                 E.ring.scale.setScalar(8 * grow); E.ring.material.opacity = 0.9f * gone; E.ring.material.rotation = t * 2;
@@ -172,7 +174,7 @@ namespace NovaStriker.Game
                 foreach (var m in U.members)
                     for (int i = 0; i < 3; i++)
                     {
-                        var w = S.W(m.x + (S.Rnd() - 0.5f) * 1.6f, m.y + S.Rnd() * 0.4f, (S.Rnd() - 0.5f) * 0.8f);
+                        var w = S.W(m.x + (S.Rnd() - 0.5f) * 1.6f, m.y + S.Rnd() * 0.4f, LevelFeatures.Depth(m) + (S.Rnd() - 0.5f) * 0.8f);
                         var P = F.Particle(w, S.Rnd() < 0.5f ? CYAN : "#ffffff", 0.18f, 0.5f); P.v = new Vector3(0, 5 + S.Rnd() * 4, 0); P.drag = 0.97f;
                     }
             // Nova's Supernova
@@ -180,12 +182,13 @@ namespace NovaStriker.Game
             {
                 var R = p.ultRun; bool live = p.state == "ult" && R != null && R.kind == "nova";
                 if (!live && !beams.ContainsKey(p)) continue;
+                using var origin = F.AtDepth(LevelFeatures.Depth(p));
                 var Bm = BeamOf(p);
                 if (!live) { foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.visible = false; continue; }
                 double cx = p.x, cy = p.y + p.h * 0.62;
                 if (R.t <= ULT.nova.gather + 2)
                 {
-                    float k = Mathf.Min(1, (float)(R.t / ULT.nova.gather)); var at = S.W(cx, cy + 1.1, 0.3);
+                    float k = Mathf.Min(1, (float)(R.t / ULT.nova.gather)); var at = S.W(cx, cy + 1.1, F.effectDepth + 0.3);
                     Bm.sun.position.copy(at); Bm.sun.material.colorCss = GOLD; Bm.sun.scale.setScalar(0.4f + 2.4f * k * (1 + 0.08f * Mathf.Sin(t * 50))); Bm.sun.visible = true;
                     Bm.sunCore.position.copy(at); Bm.sunCore.material.colorCss = "#ffffff"; Bm.sunCore.scale.setScalar(0.2f + 1.2f * k); Bm.sunCore.visible = true;
                     for (int i = 0; i < 4; i++)
@@ -198,7 +201,7 @@ namespace NovaStriker.Game
                 if (R.segs == null) { Bm.halo.mesh.visible = Bm.sheath.mesh.visible = Bm.core.mesh.visible = Bm.flare.visible = false; continue; }
                 var g = R.segs[0]; double len = JMath.Hypot(g.x1 - g.x0, g.y1 - g.y0); int n = System.Math.Min(60, (int)System.Math.Ceiling(len / 0.8)); var pts = Bm.pts;
                 pts.Clear();
-                for (int i = 0; i <= n; i++) pts.Add(S.W(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, 0.25));
+                for (int i = 0; i <= n; i++) pts.Add(S.W(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, F.effectDepth + 0.25));
                 float bt = (float)(R.t - ULT.nova.gather), open = Mathf.Min(1, bt / 6), close = Mathf.Min(1, ((float)ULT.nova.beam - bt) / 8), bse = Mathf.Max(0, open * close), W = (float)ULT.nova.width;
                 Bm.halo.Build(pts, cam, i => W * 1.9f * bse * Mathf.Min(1, 0.35f + i * 0.2f), i => new Vector4(0.3f, 0.72f, 1.0f, 0.22f * Mathf.Min(1, 0.3f + i * 0.2f)));
                 Bm.sheath.Build(pts, cam, i => W * bse * Mathf.Min(1, 0.4f + i * 0.25f) * (1 + 0.14f * Mathf.Sin(t * 34 - i * 0.7f) + 0.05f * Mathf.Sin(t * 87 + i)), i => new Vector4(1.35f, 0.92f, 0.38f, 0.62f));
