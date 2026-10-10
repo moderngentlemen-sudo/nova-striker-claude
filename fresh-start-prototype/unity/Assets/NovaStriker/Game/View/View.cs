@@ -121,7 +121,9 @@ namespace NovaStriker.Game
             BuildSky(); BuildBackdrop();
             ambience = new Ambience(this, sun, sunGlow);
             foreach (var c in farClouds) ambience.AddCloud(c);
-            BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
+            BuildLevel(); BuildProps();
+            foreach (var zone in new[] { "gym", "arena", "tower", "skyline", "foundry", "undercity" }) ZoneDressing.Build(this, zone);
+            Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
             vfx = new Vfx(this); levelFx = new LevelFx(this); weather = new Weather(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
@@ -755,7 +757,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky, ambience.Cover); ZoneDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);

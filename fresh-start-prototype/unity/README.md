@@ -141,6 +141,14 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   modelled in Blender (`Art/Blender/build_enemy_*.py`, exported by `export_enemy.py` to
   `Models/enemy_<type>.json`). `EnemyModels.cs` puts them on the enemies' rigs, so they move, flash when hit and
   lose armour as before.
+- **Dressing for every stage.** Like the Movement Gym, the other five stages are dressed with kits modelled in
+  Blender, placed from the level's real boxes (`build_zone_kit.py`, `zone_layout.py`, `export_kit.py <zone>`):
+  - **Concourse Lock:** a transit hall with glass balustrades, holo columns, lock-gate frames and lane markings.
+  - **Storm Spire Climb:** a weather station with wet grating, lightning rods, cable trays and storm shutters.
+  - **Skyline Relay:** relay towers and dishes, antenna arrays, gantries and wind socks.
+  - **Helix Foundry:** glowing furnaces, crucibles, pipework, valves, cranes and warning stripes.
+  - **Undercity Descent:** fire escapes, neon signs, wet pavement, dumpsters, crates, poles and hanging cables.
+  - **The gym's sign** now has a scrolling ticker under it.
 - **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
   and scuff marks fade where players land hard or slide.
 - **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.
@@ -203,7 +211,7 @@ projected decals; distant landmarks have no level-of-detail models yet.
   - **Back terrace:** training gear with soft contact shadows, a glass railing, floodlights and the
     *MOVEMENT GYM* sign.
   - **Surfaces:** painted metal with light wear, rubber and tread plate.
-  - **Code and data:** `GymDressing.cs` places it from `Resources/NovaStriker/Env/gym_kit.json`; the textures
+  - **Code and data:** `ZoneDressing.cs` places it from `Resources/NovaStriker/Env/gym_kit.json`; the textures
     are the `.bytes` files beside it.
 - **Movement in the sky** (the Skyport route; `Ambience.cs`):
   - **Banners and flags:** the terrace banners and three flags on tall poles ripple in the breeze.
@@ -217,7 +225,7 @@ projected decals; distant landmarks have no level-of-detail models yet.
   wall-slides, wall-jumps or lands hard. The sparks bounce along the floor two or three times, and each shower
   lights the deck with a flickering warm light.
 - **Living displays.** The gym's holo screens and agility rings flicker and shimmer, and its sign breathes
-  (`GymDressing.Animate`).
+  (`ZoneDressing.Animate`).
 - **Reflections and sheen** (Settings › *Reflections on the deck*; High and Ultra). A second camera mirrors the
   scene in the floor, and thin sheets over the open sky's floors show it, strongest at grazing angles
   (`PlanarReflection.cs`, `Shaders/Reflect.shader`). High renders it at half size and Ultra at full size. The

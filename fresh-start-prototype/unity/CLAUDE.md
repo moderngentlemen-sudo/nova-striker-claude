@@ -109,6 +109,11 @@ The README's *Unity-only additions* has the full description.
   - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
     Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
+  - **Stage dressing:** `ZoneDressing.Build(view, zone)` loads `Env/<zone>_kit.json`. `SimTests/LevelDump`
+    writes `Art/Blender/level_boxes.json`, which `zone_layout.py` places from (rerun it after changing the
+    level). Build, export and render one stage with `build_zone_kit.py <zone> <out>`, `export_kit.py -- <json>
+    <zone>` and `render_zone.py`. Placed triangles: about 54k (Concourse) to 320k (Foundry, Undercity) per
+    stage, over the plan's 80k, but the 48 m blocks mean only a slice is drawn at a time.
   - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
 
 ## Open threads and ideas
@@ -126,25 +131,19 @@ The README's *Unity-only additions* has the full description.
   is knocked off at critical health (`ramHead` setting). His face is our design (the concept shows none): a grey
   buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. None of this has been seen
   in Unity yet.
-- **Effects to add later** (the owner asked to keep these for later):
-  - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
-    Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with
-    blinking lights).
-  - **Light:** deck lights that flicker when something heavy lands, sweeping floodlights, a subtle lens flare
-    toward the sun, and heat shimmer (furnaces, Nova's beam).
-  - **The world reacting:** scuff marks that fade, railings that rattle, crash mats that dent, flags that whip
-    when someone dashes past, chips and sparks off deck panels on big hits, and a dust or droplet overlay in mist
-    and smoke.
-  - **Living environment:** a scrolling stats ticker on the sign, distant trainees on far decks, and spinning
-    vent fans, steam puffs and maintenance drones.
+- **Effects still to add** (from the owner's list; weather, floodlights, the lens flare, heat shimmer, scuffs,
+  flickering deck lights, whipping flags, panel chips and the sign's ticker are done):
+  - a shifting time of day or a sunset zone;
+  - railings that rattle, crash mats that dent, and a dust or droplet overlay in mist and smoke;
+  - distant trainees on far decks, spinning vent fans and maintenance drones.
 - **Reflections, sparks, birds and motes in Unity.** They have not yet been seen in Unity.
   - **Shader:** `Reflect.shader` is new, so the owner must run *Set Up Project* once. The GitHub build is its
     only compile check.
   - **If the reflection is upside down or offset:** on some graphics APIs the texture comes out flipped. Look at
     the uv in `Reflect.shader`, and the mirror matrix and oblique clip plane in `PlanarReflection.cs`.
 
-- **The gym's dressing in Unity.** It has not yet been seen in Unity. It only dresses the zone (the boxes are
-  unchanged). The next zones can follow the same pattern: a kit, a layout from their boxes, and an export.
+- **The stages' dressing in Unity.** It has not yet been seen in Unity. It only dresses the zones (the boxes are
+  unchanged).
 
 - **Nova's 3D model in Unity.** It has not yet been seen in Unity. If it stands wrong (facing, scale, limbs),
   the code to adjust is `BuildDriven` in `Models.cs`. Settings › *Character models* › *Built-in rigs* is the
