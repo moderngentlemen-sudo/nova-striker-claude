@@ -39,12 +39,12 @@ namespace NovaStriker.Game {
    yield return new WaitForEndOfFrame();var texture=new Texture2D(Screen.width,Screen.height,TextureFormat.RGB24,false);texture.ReadPixels(new Rect(0,0,Screen.width,Screen.height),0,0,false);texture.Apply(false);File.WriteAllBytes(Path.Combine(reviewFolder,name+".png"),texture.EncodeToPNG());Destroy(texture);if(counted)review.captures.Add(name);
   }
   // Compare a frozen surface before/after projection; an enabled component alone is not rendering proof.
-  int MarkPixels(string name,Vector3 surface) {
+  int MarkPixels(string name,Vector3 surface,bool darkOnly=true) {
    var before=new Texture2D(2,2);var after=new Texture2D(2,2);
    before.LoadImage(File.ReadAllBytes(Path.Combine(reviewFolder,name+"_before.png")));after.LoadImage(File.ReadAllBytes(Path.Combine(reviewFolder,name+".png")));
    var a=before.GetPixels32();var b=after.GetPixels32();var p=view.camera.WorldToScreenPoint(Th.P(surface));int changed=0;
-   for(int y=Math.Max(0,(int)p.y-70);y<Math.Min(before.height,(int)p.y+70);y++)for(int x=Math.Max(0,(int)p.x-70);x<Math.Min(before.width,(int)p.x+70);x++) {int i=y*before.width+x;if(a[i].r+a[i].g+a[i].b-b[i].r-b[i].g-b[i].b>75)changed++;}
-   Destroy(before);Destroy(after);if(changed<24)review.errors.Add(name+" surface mark was not visibly rendered ("+changed+" darkened pixels)");return changed;
+   for(int y=Math.Max(0,(int)p.y-70);y<Math.Min(before.height,(int)p.y+70);y++)for(int x=Math.Max(0,(int)p.x-70);x<Math.Min(before.width,(int)p.x+70);x++) {int i=y*before.width+x;int contrast=a[i].r+a[i].g+a[i].b-b[i].r-b[i].g-b[i].b;if((darkOnly?contrast:Math.Abs(contrast))>75)changed++;}
+   Destroy(before);Destroy(after);if(changed<24)review.errors.Add(name+" surface mark was not visibly rendered ("+changed+" visible contrast pixels)");return changed;
   }
   IEnumerator ReviewSurfaceScenes() {
    SETTINGS.aiTeammates=0;SETTINGS.quality="high";SETTINGS.fxPreset="cinematic";SETTINGS.levelHazards=false;
@@ -144,7 +144,8 @@ namespace NovaStriker.Game {
     var impact=world.events.Find(ev=>ev.type=="projWall");
     if(impact==null||impact.nx!=-1||impact.depth!=LevelFeatures.LANE_W)review.errors.Add("Production projectile wall contact snapshot missing");
     paused=false;ParticleBudget.Advancing=true;foreach(var ev in world.events)view.OnEvent(ev);world.events.Clear();yield return Settle(2);paused=true;
-    yield return Capture("projectile_wall_impact");review.projectileMarkPixels=MarkPixels("projectile_wall_impact",S.W(panel.x0,panel.y0+2.4,LevelFeatures.LANE_W));
+    if(view.vfx.decals.ProjectedActive<2)review.errors.Add("Production contact did not activate a native projected mark");review.projectedDecals=view.vfx.decals.ProjectedActive;
+    yield return Capture("projectile_wall_impact");review.projectileMarkPixels=MarkPixels("projectile_wall_impact",S.W(panel.x0,panel.y0+2.4,LevelFeatures.LANE_W),darkOnly:false);
     reviewWallCamera=false;paused=false;
    } else review.errors.Add("Gym wall projection test surface missing");
    review.landmarkLods=view.landmarkLods?.Count??0;if(review.landmarkLods==0)review.errors.Add("Landmark LODs missing");
