@@ -138,6 +138,7 @@ namespace NovaStriker.Game
         public RamFX(Fx fx)
         {
             this.fx = fx; scene = fx.scene;
+            ParticleBudget.Register(() => { int n=0; foreach(var shard in shards) if(shard.life>0)n++; return n; }, excess => { int n=0;foreach(var shard in shards) if(shard.life>0&&n<excess){shard.life=0;shard.m.visible=false;n++;}return n; });
             hexT = HexTex(false); crackedT = HexTex(true);
             TMat Plane(Texture map, string color, float op) => new TMat(TMat.Kind.Basic) { map = map, colorCss = color, transparent = true, opacity = op, blending = Blending.Additive, depthWrite = false, side = Side.Double, fog = false };
             paneM = Plane(hexT, BLUE, 0.6f); crackM = Plane(crackedT, PALE, 0); wallM = Plane(hexT, BLUE, 0.55f); wallCrackM = Plane(crackedT, PALE, 0);
@@ -499,10 +500,11 @@ namespace NovaStriker.Game
             var P = PaneOf(p); var q = P.face.tr.localRotation;
             for (int i = 0; i < n; i++)
             {
+                if (FxCfg.Debris == "off" || !ParticleBudget.Admit()) break;
                 var Sh = shards[si2]; si2 = (si2 + 1) % shards.Count;
                 double u = x == null ? (S.Rnd() - 0.5f) * RAM.guard.half * 2 : (x.Value - cx) * -ny + (y.Value - cy) * nx + (S.Rnd() - 0.5f) * 0.5f;
                 double w = (S.Rnd() - 0.5f) * 0.5f, sx = cx - ny * u + nx * w, sy = cy + nx * u + ny * w;
-                Sh.m.position.copy(S.W(sx, sy, 0.35)); Sh.m.SetQuaternion(q);
+                Sh.m.position.copy(S.W(sx, sy, LevelFeatures.Depth(p) + 0.35)); Sh.m.SetQuaternion(q);
                 float sp = (3 + S.Rnd() * 6) * power, a = Mathf.Atan2((float)ny, (float)nx) + (S.Rnd() - 0.5f) * 1.6f;
                 Sh.v = S.Dir(sx, Mathf.Cos(a) * sp, Mathf.Sin(a) * sp + 2 + S.Rnd() * 3); Sh.v.z += (S.Rnd() - 0.2f) * 3;
                 Sh.spin = new Vector3((S.Rnd() - 0.5f) * 18, (S.Rnd() - 0.5f) * 18, (S.Rnd() - 0.5f) * 18);
@@ -516,6 +518,7 @@ namespace NovaStriker.Game
         {
             foreach (var Sh in shards)
             {
+                if (FxCfg.Debris == "off") Sh.life = 0;
                 if (Sh.life <= 0) { Sh.m.visible = false; continue; }
                 Sh.life -= dt; Sh.v.y -= 14 * dt; Sh.v *= Mathf.Pow(0.985f, dt * 60);
                 Sh.m.position.copy(Sh.m.position.v + Sh.v * dt);
@@ -529,7 +532,8 @@ namespace NovaStriker.Game
         // `owner` keeps one light per player.
         public void Sparks(int owner, double x, double y, float dir, float n, float k = 1)
         {
-            sparks?.Emit(owner, x, y, n, dir > 0 ? Mathf.PI - 0.35f : 0.35f, 9 * k, 0.9f, SPARKS[1], light: Mathf.Min(1.4f, 0.5f + 0.08f * n));
+            var p = fx.view?.world?.players.Find(player => player.slot == owner);
+            sparks?.Emit(owner, x, y, n, dir > 0 ? Mathf.PI - 0.35f : 0.35f, 9 * k, 0.9f, SPARKS[1], light: Mathf.Min(1.4f, 0.5f + 0.08f * n), depth: p == null ? 0 : (float)LevelFeatures.Depth(p), lane: p?.lane ?? 0);
         }
         // A crater in the floor under (x, y), `r` m across its hollow, sized down to fit the ledge it is on
         public void Crater(double x, double y, float r, float heat = 1)

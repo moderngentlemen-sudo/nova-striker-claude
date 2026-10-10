@@ -4,7 +4,15 @@ using NovaStriker.Sim; using UnityEngine; using static NovaStriker.Sim.Cfg;
 namespace NovaStriker.Game {
  public sealed partial class GameMain {
   [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights;}
-  ReviewReport review;string reviewFolder;
+  ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending;
+  void LateUpdate() {
+   if (review == null || reviewChangePending) return;
+   int particles = ParticleBudget.Live;
+   if (!reviewBudgetFailed && (particles > FxCfg.MaxParticles || PerfOverlay.Lights > FxCfg.MaxLights || PerfOverlay.WeatherLights > 3 || PerfOverlay.Feedback > 82 || PerfOverlay.ChargeFlashes > ChargeFX.MaxFlashes)) {
+    reviewBudgetFailed = true;
+    review.errors.Add("Visual budget exceeded: particles="+particles+"/"+FxCfg.MaxParticles+", lights="+PerfOverlay.Lights+"/"+FxCfg.MaxLights+", weather="+PerfOverlay.WeatherLights+", feedback="+PerfOverlay.Feedback+", charge="+PerfOverlay.ChargeFlashes);
+   }
+  }
   void StartReviewIfRequested() {
    var args=Environment.GetCommandLineArgs();int i=Array.IndexOf(args,"--nova-review");if(i<0||i+1>=args.Length)return;
    reviewFolder=Path.GetFullPath(args[i+1]);Directory.CreateDirectory(reviewFolder);
@@ -25,7 +33,8 @@ namespace NovaStriker.Game {
    world.Teleport("gym");world.enemies.Clear();var human=world.players[0];human.x=52;human.y=0;
    yield return Settle();
    foreach(var preset in new[]{"cinematic","balanced","classic","custom"}) {
-    SETTINGS.fxPreset=preset;view.OnEvent(new Ev {type="blast",x=52,y=1,r=2,level=3,p=human,depth=LevelFeatures.LANE_W});yield return Settle(4);yield return Capture("effects_"+preset);
+    reviewChangePending=true;SETTINGS.fxPreset=preset;yield return null;reviewChangePending=false;
+    view.OnEvent(new Ev {type="blast",x=52,y=1,r=2,level=3,p=human,depth=LevelFeatures.LANE_W});yield return Settle(4);yield return Capture("effects_"+preset);
    }
    SetPaused(true);yield return Settle(3);yield return Capture("paused");SetPaused(false);
    world.Teleport("skyline");yield return Settle();Directory.CreateDirectory(Path.Combine(reviewFolder,"motion"));

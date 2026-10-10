@@ -70,6 +70,7 @@ namespace NovaStriker.Game
         void SetPaused(bool on)
         {
             paused = on; ui.SetPaused(on, world);
+            ParticleBudget.Advancing = !on;
             if (!on) input.SwallowAll();
             if (on) haptics.StopAll();
         }

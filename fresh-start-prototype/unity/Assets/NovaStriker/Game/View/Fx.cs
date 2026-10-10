@@ -29,6 +29,7 @@ namespace NovaStriker.Game
         int pi, si;
         DynMesh points, smokePts;
         readonly List<FxSpriteItem> sprites = new List<FxSpriteItem>();
+        readonly FxSpriteItem deniedSprite;
         sealed class Ring { public TMesh m; public float life, max, r0, r1, op; }
         readonly List<Ring> rings = new List<Ring>();
 
@@ -43,6 +44,7 @@ namespace NovaStriker.Game
         public readonly FixFX fixfx;
         public readonly NovaShieldFX nshield;
         public readonly FxText texts;
+        readonly EmissionClock legacyClock = new EmissionClock();
 
         public Fx(TObj scene, Dictionary<Player, Rig> rigs)
         {
@@ -74,6 +76,8 @@ namespace NovaStriker.Game
 
             for (int i = 0; i < N; i++) parts[i] = new Part();
             for (int i = 0; i < SN; i++) sparts[i] = new Part { size = 0.5f, grow = 1, op = 0.5f };
+            deniedSprite = new FxSpriteItem { s = new TMesh(Geo.Plane(1, 1), new TMat(TMat.Kind.Basic)) };
+            deniedSprite.s.visible = false; scene.add(deniedSprite.s);
             points = QuadPool(N, new TMat(TMat.Kind.Basic) { map = tex.glow, vertexColors = true, transparent = true, depthWrite = false, blending = Blending.Additive, fog = false }, "particles");
             smokePts = QuadPool(SN, new TMat(TMat.Kind.Basic) { map = tex.glow, vertexColors = true, transparent = true, depthWrite = false, fog = false }, "smoke");
             smokePts.obj.RenderOrder = 1;
@@ -182,6 +186,7 @@ namespace NovaStriker.Game
         public void GroundRing(double x, double y, string color, float r0, float r1, float life, float opacity = 0.9f) => GroundRing(x, y, S.Lin(color), r0, r1, life, opacity);
         public void GroundRing(double x, double y, Color lin, float r0, float r1, float life, float opacity = 0.9f)
         {
+            if (!ParticleBudget.Advancing) return;
             Ring it = null;
             foreach (var q in rings) if (q.life <= 0) { it = q; break; }
             if (it == null) { it = rings[0]; foreach (var q in rings) if (q.life < it.life) it = q; }
@@ -249,6 +254,7 @@ namespace NovaStriker.Game
             => Sprite(x, y, texName, S.Lin(color), size, life, grow, depth, sx, rot);
         public FxSpriteItem Sprite(double x, double y, string texName, Color lin, float size, float life, float grow = 1.6f, float depth = 0.3f, float sx = 1, float rot = 0)
         {
+            if (!ParticleBudget.Advancing) return deniedSprite;
             FxSpriteItem it = null;
             foreach (var q in sprites) if (q.life <= 0) { it = q; break; }
             if (it == null) { it = sprites[0]; foreach (var q in sprites) if (q.life < it.life) it = q; }
@@ -308,7 +314,23 @@ namespace NovaStriker.Game
         // ---- Per-frame update ----
         public void Update(float dt, World world, View view)
         {
-            this.view = view; renderDt = dt;
+            this.view = view;
+            int steps = legacyClock.TakeSteps(dt);
+            bool advancing = ParticleBudget.Advancing;
+            try {
+                ParticleBudget.Advancing = advancing && steps > 0;
+                for (int i = 0; i < Mathf.Max(1, steps); i++) UpdateStep(steps > 0 ? 1f / 60 : 0, world, view);
+            } finally { ParticleBudget.Advancing = advancing; }
+            // Camera-facing buffers are uploaded once even when two effect steps fit in a rendered frame.
+            FillQuads(smokePts, SN, sPos, sCol, sSize, sAlpha);
+            FillQuads(points, N, pPos, pCol, pSize, pAlpha);
+            int feedback=0;foreach(var s in sprites)if(s.life>0)feedback++;foreach(var r in rings)if(r.life>0)feedback++;
+            PerfOverlay.Feedback = feedback; PerfOverlay.ChargeFlashes = charge.ActiveFlashes;
+            PerfOverlay.Lights = view.vfx.lights.Active + Sparks.ActiveLights;
+        }
+        void UpdateStep(float dt, World world, View view)
+        {
+            renderDt = dt;
             UpdateRings(dt);
             UpdateSmoke(dt);
             UpdateGhosts(world, view);
@@ -342,9 +364,6 @@ namespace NovaStriker.Game
             UpdateMarks(dt);
             ThrusterJets(world, view);
             texts.Update(dt, view);
-            // (the particle buffers are drawn from where everything above left them)
-            FillQuads(smokePts, SN, sPos, sCol, sSize, sAlpha);
-            FillQuads(points, N, pPos, pCol, pSize, pAlpha);
         }
     }
 }

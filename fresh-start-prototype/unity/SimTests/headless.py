@@ -20,6 +20,7 @@ out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
 name = args.project
 sources = sorted((root.parent / 'Assets/NovaStriker/Sim').glob('*.cs'))
 sources += [root / name / 'Program.cs'] if name != 'Trace' else [root / 'Program.cs', root / 'Trace.cs']
+if name == 'LevelTests': sources.insert(0, root.parent / 'Assets/NovaStriker/Game/View/EmissionClock.cs')
 if args.verify_failure:
     if name not in ('ShieldTests', 'LevelTests'): raise SystemExit('Failure probe requires a test suite')
     text = sources[-1].read_text()

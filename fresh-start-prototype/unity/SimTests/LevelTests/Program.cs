@@ -170,6 +170,12 @@ static class P {
       return $"{w.tick}:{p.x:R}:{p.y:R}:{p.hp:R}:{p.lane}:{Level.HAZARDS.Sum(h=>h.hit.Count)}";
     }
     Check(Replay("cinematic","high")==Replay("classic","low")&&Replay("balanced","high")==Replay("custom","ultra"),"deterministic replay: presentation presets and quality do not change simulation");
+    foreach(int fps in new[]{30,60,120}) {
+      var clock=new NovaStriker.Game.EmissionClock();int emissions=0;
+      for(int frame=0;frame<fps*10;frame++)emissions+=clock.TakeSteps(1.0/fps);
+      Check(emissions==600,fps+" fps: ten seconds produce 600 decorative steps");
+    }
+    {var clock=new NovaStriker.Game.EmissionClock();Check(clock.TakeSteps(1)==8&&clock.TakeSteps(0)==0,"effect clock: catchup bounded and paused draw consumes no time");}
     Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
     Environment.ExitCode = fails == 0 ? 0 : 1;
   }

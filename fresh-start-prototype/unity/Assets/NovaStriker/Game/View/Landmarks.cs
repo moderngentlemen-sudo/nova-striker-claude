@@ -186,6 +186,7 @@ namespace NovaStriker.Game
         public Breakables(TObj scene, Fx fx)
         {
             this.scene = scene; this.fx = fx;
+            ParticleBudget.Register(() => {int n=0;foreach(var c in chunks)if(c!=null&&c.life>0)n++;return n;}, excess=>{int n=0;foreach(var c in chunks)if(c!=null&&c.life>0&&n<excess){c.life=0;c.tr.gameObject.SetActive(false);n++;}return n;});
             crate = TMat.Std(0xffffff, 0.85f); crate.map = Landmarks.PlankTex();
             barricade = TMat.Std(0xffffff, 0.6f, 0.3f); barricade.map = Landmarks.StripeTex();
             glass = TMat.Std(0xbfe8ff, 0.05f, 0.1f); glass.transparent = true; glass.opacity = 0.38f; glass.depthWrite = false;
@@ -263,6 +264,7 @@ namespace NovaStriker.Game
 
         void Chunk(double x, double y, float depth, float vx, float vy, float vz, float s, string color, bool isGlass)
         {
+            if (FxCfg.Debris == "off" || !ParticleBudget.Admit()) return;
             var C = chunks[di]; di = (di + 1) % N;
             var w = S.W(x, y, depth); var d = S.Dir(x, vx, vy);
             C.life = C.max = isGlass ? 1.4f : 4.5f; C.x = w.x; C.y = w.y; C.z = w.z; C.vx = d.x; C.vy = d.y; C.vz = d.z + vz * 0.3f;
@@ -300,6 +302,7 @@ namespace NovaStriker.Game
             for (int i = 0; i < N; i++)
             {
                 var C = chunks[i];
+                if (FxCfg.Debris == "off") C.life = 0;
                 if (C.life <= 0) { if (C.max > 0) { C.tr.gameObject.SetActive(false); C.max = 0; } continue; }
                 C.life -= dt; C.vy -= 20 * dt;
                 C.x += C.vx * dt; C.y += C.vy * dt; C.z += C.vz * dt; C.rx += C.wx * dt; C.ry += C.wy * dt;

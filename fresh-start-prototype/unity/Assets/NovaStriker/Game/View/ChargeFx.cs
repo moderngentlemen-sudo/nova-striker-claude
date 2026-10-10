@@ -70,6 +70,13 @@ namespace NovaStriker.Game
         readonly Dictionary<Projectile, Ribbon> trails = new Dictionary<Projectile, Ribbon>();
         sealed class Flash { public TMesh m; public float life, max, @base = 1, size, grow, r0 = float.NaN, r1, travel; public Vector3 dir, from; public bool sprite, dead; }
         readonly List<Flash> flashes = new List<Flash>();
+        public const int MaxFlashes = 80;
+        public int ActiveFlashes => flashes.Count;
+        void Add(Flash flash) {
+            if (flashes.Count >= MaxFlashes) { var old=flashes[0];flashes.RemoveAt(0);Retire(old); }
+            flashes.Add(flash);
+        }
+        static void Retire(Flash flash) {var material=flash.m.material;flash.m.destroy();material.DestroyIfUnused();flash.dead=true;}
 
         public ChargeFX(Fx fx)
         {
@@ -95,7 +102,7 @@ namespace NovaStriker.Game
             m.position.copy(a + d * 0.5f); m.scale.set(m.scale.x == 0 ? 1 : m.scale.x, len, m.scale.z == 0 ? 1 : m.scale.z);
             m.SetQuaternion(ThQ.FromUnitVectors(Vector3.up, d / len)); m.visible = true;
         }
-        public void AddFlash(TMesh m, float life, float @base) => flashes.Add(new Flash { m = m, life = life, max = life, @base = @base });
+        public void AddFlash(TMesh m, float life, float @base) => Add(new Flash { m = m, life = life, max = life, @base = @base });
 
         St Of(Player p)
         {
@@ -435,22 +442,24 @@ namespace NovaStriker.Game
             {
                 var m = Line(perfect ? "#ffffff" : ev.mark ? "#ffe0b0" : "#fff1c9", perfect ? 0.06f : 0.04f);
                 Span(m, at, at + dir * (ev.mark ? 22 : 16));
-                flashes.Add(new Flash { m = m, life = 0.14f, max = 0.14f, @base = 0.9f });
+                Add(new Flash { m = m, life = 0.14f, max = 0.14f, @base = 0.9f });
             }
         }
 
         // A ring that faces along `dir`, grows from r0 to r1 and moves `travel` m forward as it fades
         public void ShockRing(Vector3 at, Vector3 dir, string color, float r0, float r1, float life, float travel)
         {
+            if (!ParticleBudget.Advancing) return;
             var m = new TMesh(Geo.Ring(0.72f, 1, 32), new TMat(TMat.Kind.Basic) { colorCss = color, transparent = true, opacity = 0.8f, blending = Blending.Additive, depthWrite = false, side = Side.Double });
             m.position.copy(at); m.SetQuaternion(ThQ.FromUnitVectors(new Vector3(0, 0, 1), dir.normalized)); m.scale.setScalar(r0); m.RenderOrder = 4;
             scene.add(m);
-            flashes.Add(new Flash { m = m, life = life, max = life, @base = 0.8f, r0 = r0, r1 = r1, dir = dir, travel = travel, from = at });
+            Add(new Flash { m = m, life = life, max = life, @base = 0.8f, r0 = r0, r1 = r1, dir = dir, travel = travel, from = at });
         }
         public void FlashAt(Vector3 at, string texName, string color, float size, float life, float grow)
         {
+            if (!ParticleBudget.Advancing) return;
             var s = MakeSprite(texName); s.material.colorCss = color; s.position.copy(at); s.scale.setScalar(size); s.visible = true;
-            flashes.Add(new Flash { m = s, life = life, max = life, @base = 1, size = size, grow = grow, sprite = true });
+            Add(new Flash { m = s, life = life, max = life, @base = 1, size = size, grow = grow, sprite = true });
         }
         void UpdateFlashes(float dt)
         {
@@ -460,7 +469,7 @@ namespace NovaStriker.Game
                 f.m.material.opacity = f.@base * (1 - k) * (1 - k * 0.3f);
                 if (f.sprite) f.m.scale.setScalar(f.size * (1 + (f.grow - 1) * k));
                 if (!float.IsNaN(f.r0)) { f.m.scale.setScalar(f.r0 + (f.r1 - f.r0) * (1 - (1 - k) * (1 - k))); f.m.position.copy(f.from + f.dir * (f.travel * k)); }
-                if (f.life <= 0) { f.m.destroy(); f.dead = true; }
+                if (f.life <= 0) Retire(f);
             }
             flashes.RemoveAll(f => f.dead);
         }

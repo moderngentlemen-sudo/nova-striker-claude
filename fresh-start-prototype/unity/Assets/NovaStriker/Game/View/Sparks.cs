@@ -42,6 +42,7 @@ namespace NovaStriker.Game
         // at about `speed` m/s. `owner` keeps one light per source (a sliding player keeps relighting the same one).
         public void Emit(int owner, double x, double y, float n, float dir, float speed, float spread = 0.7f, string color = "#ffe2a8", float light = 1, float depth = 0, int lane = 0)
         {
+            if (!ParticleBudget.Advancing) return;
             double floor = Level.GroundBelow(x, y + 0.3, lane);
             if (double.IsNegativeInfinity(floor)) floor = y - 50;
             var c = S.Lin(color);
