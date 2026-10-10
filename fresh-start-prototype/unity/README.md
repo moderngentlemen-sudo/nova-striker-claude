@@ -1,26 +1,27 @@
-# Nova Striker: Unity port of Version 13
+# Nova Striker Unity
 
-**Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The core update is implemented. See [current verification status](docs/GRAPHICS_UPDATE_STATUS.md), [effect coverage](docs/VFX_COVERAGE.md) and [Blender review sheets](docs/art-review/). Unity runtime acceptance is tracked separately from source compilation. Unity is the primary platform and browser parity is informational.
+**Active plan for this branch:** [Graphics and level update execution plan](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It covers the existing implementation, missing stage kits, validation repairs, graphics completion and lane/tier/hazard integration. The graphics and level update has authored features and desktop build evidence. See [current verification status](docs/GRAPHICS_UPDATE_STATUS.md), [effect coverage](docs/VFX_COVERAGE.md) and [Blender review sheets](docs/art-review/). Unity runtime acceptance is tracked separately from source compilation. Unity is the primary platform and browser parity is informational.
 
-This is a port of the Version 13 browser prototype in `../game` to Unity 6.3 with URP. It keeps the
-prototype's scope: an isolated, hypothetical fresh-start track. The characters are procedural placeholder
-rigs, and all sound and music is synthesized placeholder audio.
+**Download the updated player:** [Build and launch instructions](docs/BUILD_DELIVERY.md). Code commit `007975e` has successful Windows/macOS/Linux builds and a Linux graphical smoke review with zero shader failures or runtime exceptions. Full playthroughs, owner-editor compatibility and reference-GPU performance remain open. If pulling the source, run **Nova Striker › Set Up Project** again to apply the updated renderer/depth configuration.
 
-It is the same game: the same four characters and kits, zones, bosses, AI teammates, ultimates, settings and
-look. The simulation is a line-by-line port, checked tick by tick against the JavaScript. The presentation is
-rebuilt on Unity's renderer, audio and UI.
+Nova Striker uses Unity 6000.3.25f1 and URP 17.3.0. It grew from the Version 13 browser prototype in
+`../game`, retaining the four characters, kits, zones, bosses, teammates and ultimates. Unity now drives
+development, including depth lanes, upper routes and hazards. Nova/RAM use Blender character assets;
+Echo/Fix retain their built-in rigs. All eleven enemy/boss types have Blender exports and cheaper LODs.
+Sound and music are synthesized by the existing audio engine.
 
 ## Status: read this first
 
 | Part | How far it has been checked |
 |---|---|
-| Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 70 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
+| Simulation (`Sim/`) | **Headless tested:** 21 shield checks and 105 level checks. Graphics presets do not alter the deterministic replay. Browser parity is informational; this update intentionally adds lane/hazard events. |
 | Sound and music engine | **Rendered offline.** Outside Unity it rendered the score at all three intensities, plus a run of sound effects, to WAV. Levels were sensible, with no NaNs, at about 20× real time. |
-| View, effects, rigs, UI, input, editor setup | **Assembly checked** against pinned Unity 6000.3.25f1 / URP 17.3.0. Licensed CI builds all desktop targets and captures a Linux player review. Exact build, shader and runtime results are recorded in the status file; they are not inferred from this type-check. |
+| View, effects, rigs, UI, input, editor setup | **Built** with pinned Unity 6000.3.25f1 / URP 17.3.0 for all desktop targets. The Linux graphical smoke review produced 24 stills and 40 motion frames; stage/enemy/preset stills were inspected. Exact checks and remaining manual gates are recorded in the status file. |
 
-Expect a first pass in the editor to turn up visual problems that compiling cannot catch: a mirrored axis
-somewhere, a colour that is too bright, a shader keyword that is missing. The code is laid out so these are
-easy to find (see *Where things are*).
+The automated graphical review captures all six zones, both boss spaces, eleven enemy models, four effect
+presets, pause and skyline motion. It also checks resource counts over resets and character swaps. Full
+playthroughs, every effect trigger, controller navigation and reference GPU profiling remain separate gates
+in the status file.
 
 ## Open it
 
@@ -32,7 +33,7 @@ easy to find (see *Where things are*).
    - the template materials (`Resources/NovaStriker/*.mat`)
    - the URP pipeline asset with two renderers. Renderer 0 is for High and Low. Renderer 1 is for Ultra and
      adds Screen Space Ambient Occlusion. Both run the Grade pass as a Full Screen Pass feature after
-     post-processing.
+     post-processing and copy opaque depth before transparent soft particles draw.
    - linear colour space and the Input System backend
    - the scene `Scenes/NovaStriker.unity`, with its `GameMain` object
 
@@ -45,8 +46,7 @@ The controls are the prototype's. See `../README.md`, or press H or View in game
 
 This is the quickest way to try a change: there's no build to wait for.
 
-1. **Get the code.** In GitHub Desktop, clone the repository and switch to the branch you're testing (for
-   example `nova-striker-unity-claude`). Open `fresh-start-prototype/unity` in Unity and follow *Open it*
+1. **Get the code.** In GitHub Desktop, clone the repository and switch to the branch you're testing (`nova-striker-unity-sol-6-1`). Open `fresh-start-prototype/unity` in Unity and follow *Open it*
    above. The first import takes a while; later opens are quick.
 2. **Pick up new changes.** Click *Fetch origin*, then *Pull origin*, in GitHub Desktop. Switch back to Unity:
    it recompiles on its own in a few seconds. Press Play.
@@ -66,9 +66,9 @@ leaves them out:
 - `ProjectSettings/`;
 - every `.meta` file.
 
-Committing from your computer only picks up real changes. Because `.meta` files are ignored, anything you add
-to `Resources/NovaStriker/Models` (character models) stays on your computer too. That is fine for testing. To
-keep models in the repository, the ignore rules for them need changing first.
+Runtime model JSON/FBX inputs and reproducible Blender builders are tracked. Generated templates and
+scene/pipeline assets are rebuilt by Set Up Project. Check `git status` when adding an asset, and commit its
+source inputs or builder so a clean checkout can reproduce it.
 
 ## Where things are
 
@@ -222,7 +222,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   (`GymDressing.Animate`).
 - **Reflections and sheen** (Settings › *Reflections on the deck*; High and Ultra). A second camera mirrors the
   scene in the floor, and thin sheets over the open sky's floors show it, strongest at grazing angles
-  (`PlanarReflection.cs`, `Shaders/Reflect.shader`). High renders it at half size and Ultra at full size. The
+  (`PlanarReflection.cs`, `Shaders/Reflect.shader`). High renders at quarter width/height and Ultra at half width/height; the distant backdrop is excluded. The
   deck, hull paint and sky reflections are glossier too.
 - **Quit game.** The start screen has a *Quit game* button. The pause menu has one too, which asks for a second
   press.
@@ -246,8 +246,8 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   - **Bracer:** the Sentinel Bracer, a long white shell over his right forearm that reaches past the fist.
 
   His face shows, with swept-back dark hair. *Settings › Nova's head* switches to the full white helmet with its
-  gold visor (a Unity-only setting, presentation only). The rig is `Rigs.BuildNovaRig`. It is still a procedural
-  stand-in, until a real model goes in through *Character models*.
+  gold visor (a Unity-only setting, presentation only). The rig is `Rigs.BuildNovaRig`. The built-in rig remains the fallback
+  and pose driver for the Blender character model.
 - **Echo's look.** His rig follows his concept art:
   - **Armour:** cream-white armour with bronze-gold trim over a dark charcoal undersuit, and orange energy.
   - **Head:** his bare face with spiky blond hair is the default (settings saved earlier switch to it once). The
@@ -302,10 +302,11 @@ cd SimTests
 sh parity.sh 1500 "1 2"    # every zone × every character × alone and with three AI teammates
 ```
 
-It needs .NET 8 and Node 18 or later. It last reported every scenario matching.
+It needs .NET 8 and Node 18 or later. The update recorded 0 matching / 128 differing scenarios with new
+features enabled; the first differences are intentional hazard warning events.
 
-Now that Unity is the main version, this is informational: with the level features on, the runs differ from
-the prototype by design. With them off, every scenario still matches.
+Unity is the main version, so this is an informational comparison. The deterministic Unity tests are the
+authority for lane, tier and hazard rules; an older parity result is not a current graphics acceptance pass.
 
 ## Building a game you can run (zip or executable)
 
@@ -327,8 +328,8 @@ It needs your Unity licence once, as three repository secrets (Settings › Secr
 | `UNITY_PASSWORD` | its password |
 | `UNITY_LICENSE` | the whole contents of `Unity_lic.ulf`, which Unity Hub writes once you sign in and activate a licence (the free Personal one is fine). Windows: `C:\ProgramData\Unity\Unity_lic.ulf`; macOS: `/Library/Application Support/Unity/Unity_lic.ulf`; Linux: `~/.local/share/unity3d/Unity/Unity_lic.ulf` |
 
-With a Pro or Plus licence, set `UNITY_SERIAL` instead of `UNITY_LICENSE`. Until the secrets are set, the
-workflow skips the build with a warning.
+If the build uses a Unity serial, set `UNITY_SERIAL` instead of `UNITY_LICENSE`. Missing credentials fail
+the build gate; a skipped player build is not a successful delivery. Do not share secret values in chat.
 
 **On your own machine.** Use the menu **Nova Striker › Build for This Platform**. It runs the setup, then builds
 to `Builds/<platform>/`. You can also build from a terminal:
@@ -338,8 +339,8 @@ Unity -batchmode -projectPath fresh-start-prototype/unity -buildTarget Standalon
       -executeMethod NovaStriker.EditorTools.NovaBuild.Build
 ```
 
-The project is pinned to Unity 6000.3.25f1, the newest 6.3 release GameCI has build images for. Any 6000.3
-editor opens it.
+The project is pinned to Unity 6000.3.25f1, the baseline used for these builds. Compatibility with the owner’s
+6000.6.2f1 editor still needs a separate check.
 
 The template materials keep the shaders and their keyword variants in the build. If a material looks wrong only
 in a build, a keyword was probably stripped. Add a template with that keyword to `NovaSetup.TEMPLATES`.

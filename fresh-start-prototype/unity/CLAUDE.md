@@ -6,6 +6,7 @@ Notes for whoever continues this work.
 
 - **Work only on `nova-striker-unity-sol-6-1` for this copy.** The owner's branch instruction supersedes the inherited source-branch rule.
 - **Active update plan:** [`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`](docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md). It audits the copied baseline and replaces the older plan's execution instructions. The core implementation and Blender source review are present. Read GRAPHICS_UPDATE_STATUS.md for exact checks and remaining release gates.
+- **Delivered build:** code commit `007975e`, [run 38035359477](https://github.com/moderngentlemen-sudo/nova-striker-claude/actions/runs/38035359477). Actual Windows/macOS/Linux builds and the Linux graphical smoke suite pass. Read [`docs/BUILD_DELIVERY.md`](docs/BUILD_DELIVERY.md) for downloads; owner's 6.6 compatibility, full playthroughs and reference-GPU profiling are still unverified. The follow-up commit changes documentation only.
 - **Leave the source branch `nova-striker-unity-claude` unchanged.**
 - **Leave alone** `nova-striker-unity-astra` (the owner's separate copy) and `claude/wizardly-wozniak-r0q6no`.
 - **Pull requests:** don't open one unless asked.
@@ -18,6 +19,9 @@ Notes for whoever continues this work.
     `ProjectSettings/ProjectVersion.txt` and `Packages/manifest.json`.
   - When a change needs *Nova Striker › Set Up Project* run again, tell them. That is any change to
     `Editor/NovaSetup.cs`, a new shader, or a new template material.
+  - This update requires that setup menu again: both renderers now copy opaque depth before transparency,
+    and the game camera requires depth/colour textures for soft particles. These settings are verified in the
+    pinned 6.3 player; do not infer 6.6 compatibility from that result.
 - **GitHub build:** the workflow `.github/workflows/unity-build.yml` (GameCI) still builds with **6000.3.25f1**,
   the pinned version. It runs on every push under `fresh-start-prototype/unity/**`.
   - Code must compile on **both 6.3 and 6.6**. Example: `LayoutGroup.SetLayoutInputForAxis` broke on 6.6, so
@@ -94,7 +98,7 @@ The README's *Unity-only additions* has the full description.
 - **Quit game.** On the start card and in the pause menu (`UiMenus.cs`).
 - **HDR output.** Setting `hdr`; the code is `View.UpdateHdr` and `HdrOut` in `Shaders/Grade.shader`. It has
   not yet been tested on an HDR display.
-- **The graphics and level update** (`docs/NEXT_UPDATE_PLAN.md`). Its source checks and Blender renders are recorded in GRAPHICS_UPDATE_STATUS.md; only actual player evidence can establish Unity review.
+- **The graphics and level update** (`docs/GRAPHICS_UPDATE_EXECUTION_PLAN.md`). Its source checks and Blender renders are recorded in GRAPHICS_UPDATE_STATUS.md; only actual player evidence can establish Unity review.
   - **Effects:** `Game/View/Vfx/`. `Vfx` owns the particle layers (`FxPool`), effect lights, quad decals and the
     colliders particles bounce off (layer 9). `Fx.Cine.cs` reacts to events; `CineEvent` returning true replaces
     the classic reaction. Effects read `FxCfg`, never the raw settings. Textures are PNG data in
@@ -127,8 +131,7 @@ The README's *Unity-only additions* has the full description.
   (`sh preview.sh ram`). His battle-worn 3D model (`ram_model.fbx`), modelled Rampart (`ram_shield.json`) and
   Breach Cannon (`ram_cannon.json`) are in the game, driven by the rig like Nova's. His helmet
   is knocked off at critical health (`ramHead` setting). His face is our design (the concept shows none): a grey
-  buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. None of this has been seen
-  in Unity yet.
+  buzz cut and beard, a scar, a blue cybernetic right eye; the owner may want changes. RAM is present in the automated Unity zone captures; a complete manual move/helmet review remains open.
 - **Effects to add later** (the owner asked to keep these for later):
   - **Atmosphere:** weather per zone (rain or mist on the Storm Spire, steam in the Foundry, drips and haze in the
     Undercity), a shifting time of day or a sunset zone, and more distant traffic (airships and pods with
@@ -140,16 +143,15 @@ The README's *Unity-only additions* has the full description.
     and smoke.
   - **Living environment:** a scrolling stats ticker on the sign, distant trainees on far decks, and spinning
     vent fans, steam puffs and maintenance drones.
-- **Reflections, sparks, birds and motes in Unity.** They have not yet been seen in Unity.
+- **Reflections, sparks, birds and motes in Unity.** The software-rendered skyline clip provides limited rendered evidence; full FOV, reflection API and bird motion review remain open.
   - **Shader:** `Reflect.shader` is new, so the owner must run *Set Up Project* once. The GitHub build is its
     only compile check.
   - **If the reflection is upside down or offset:** on some graphics APIs the texture comes out flipped. Look at
     the uv in `Reflect.shader`, and the mirror matrix and oblique clip plane in `PlanarReflection.cs`.
 
-- **The gym's dressing in Unity.** It has not yet been seen in Unity. It only dresses the zone (the boxes are
-  unchanged). The next zones can follow the same pattern: a kit, a layout from their boxes, and an export.
+- **The gym's dressing in Unity.** The automated gym capture shows the kit. The five other baseline zones now have reproducible kits and Unity captures; moving/collapsing feature visuals have separate owners.
 
-- **Nova's 3D model in Unity.** It has not yet been seen in Unity. If it stands wrong (facing, scale, limbs),
+- **Nova's 3D model in Unity.** It is present in the automated zone captures. If it stands wrong (facing, scale, limbs),
   the code to adjust is `BuildDriven` in `Models.cs`. Settings › *Character models* › *Built-in rigs* is the
   fallback.
 - **Echo's look.** His rig was restyled from the same concept art: cream-white armour, bronze-gold trim, a
