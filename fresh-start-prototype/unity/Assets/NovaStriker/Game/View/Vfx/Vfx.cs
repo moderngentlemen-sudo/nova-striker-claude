@@ -15,7 +15,7 @@ namespace NovaStriker.Game
         public readonly FxColliders colliders;
         public readonly Transform root;
         // the layers
-        public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon;
+        public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze;
         readonly List<FxLayer> all = new List<FxLayer>();
 
         public Vfx(View view)
@@ -56,6 +56,9 @@ namespace NovaStriker.Game
                 fade = FxPool.Fade(white, white, 1, 1, 0) });
             mote = Add(new FxPool.Spec { name = "motes", mat = FxPool.Mat(add, FxTex.Get("ember"), white), max = 800, drag = 0.8f, noise = 1.2f,
                 fade = FxPool.Fade(white, white, 0, 1, 0, 0.2f) });
+            // heat haze and shock rings: they bend the scene behind them (Distort.shader)
+            var hazeMat = new Material(Templates.Distort); hazeMat.SetTexture("_MainTex", FxTex.Get("ripple"));
+            haze = Add(new FxPool.Spec { name = "haze", mat = hazeMat, max = 120, size = FxPool.Curve(0, 0.3f, 1, 1.4f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.25f) });
             // chunky debris and ceramic shards: lit mesh particles that bounce off the level and cast shadows
             var chunkMat = FxPool.Mat(lit, null, new Color(0.55f, 0.58f, 0.62f));
             debris = Add(new FxPool.Spec { name = "debris", mat = chunkMat, max = 220, gravity = 1, collide = true, bounce = 0.3f, mesh3D = true,

@@ -44,7 +44,7 @@ namespace NovaStriker.Game
         readonly Light sun, rim;
         Ambience ambience; TMesh sunGlow;
         public Sparks sparks; PlanarReflection reflection;
-        public Vfx vfx;
+        public Vfx vfx; PostFx post;
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -119,6 +119,7 @@ namespace NovaStriker.Game
             BuildLevel(); BuildProps(); GymDressing.Build(this); Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
             vfx = new Vfx(this);
+            post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
             Resize(Screen.width, Screen.height);
@@ -542,6 +543,10 @@ namespace NovaStriker.Game
             grade.SetFloat("_Sat", low ? 1 : Sx.sat); grade.SetFloat("_Contrast", low ? 1 : Sx.contrast); grade.SetFloat("_Vignette", low ? 0 : Sx.vignette);
         }
 
+        // A blast's kick: a bloom swell (and Phase 4's screen effects), and the flocks scatter
+        public void Kick(float k) { bloomKick = Mathf.Max(bloomKick, k); post?.Kick(k); }
+        public void Startle(float k) => ambience?.Startle(k);
+
         // A shockwave: a ring that bends the picture outward from a big hit (Grade.shader, at most four)
         public void Shockwave(double x, double y, float strength = 1, float dur = 0.5f)
         {
@@ -730,7 +735,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); GymDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); post.Update(dt, ambience.Sky, ambience.Cover); GymDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);

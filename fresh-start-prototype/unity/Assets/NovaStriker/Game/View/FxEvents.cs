@@ -20,6 +20,7 @@ namespace NovaStriker.Game
         public void OnEvent(Ev ev, World world)
         {
             string pc = ev.p != null ? CHARS[ev.p.@char].energy : "#ffffff";
+            if (CineEvent(ev, world)) return;   // (the cinematic effects: Fx.Cine.cs)
             switch (ev.type)
             {
                 case "hit":

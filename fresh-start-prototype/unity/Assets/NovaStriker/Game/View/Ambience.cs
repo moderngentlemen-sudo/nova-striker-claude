@@ -24,6 +24,7 @@ namespace NovaStriker.Game
         readonly Light sun; readonly TMesh sunGlow; readonly View view;
         TMat beamMat;
         float t, sky = 1, cover = 1;
+        public float Sky => sky; public float Cover => cover;   // (the open sky's weight, and 1 when the sun is out: PostFx's flare)
         Vector2 cookieAt;
         UniversalAdditionalLightData sunData;
 

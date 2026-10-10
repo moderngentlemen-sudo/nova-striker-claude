@@ -60,6 +60,7 @@ namespace NovaStriker.EditorTools
             ("ParticleAdd", Templates.PARTICLE_UNLIT, true, false, false),
             ("ParticleAlpha", Templates.PARTICLE_UNLIT, true, false, false),
             ("ParticleLit", Templates.PARTICLE_LIT, true, false, false),
+            ("Distort", "NovaStriker/Distort", false, false, false),
         };
         static void MakeTemplates()
         {

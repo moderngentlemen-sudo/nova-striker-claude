@@ -192,6 +192,7 @@ namespace NovaStriker.Game
                     st.blink = pr.ttl; Sprite(x, y, "glow", pr.ttl < 24 ? "#ff5a3a" : SUB_LOOK["grenade"].tint, 0.55f, 0.08f, 1.2f);
                 }
                 if (pr.amplified) m.scale.setScalar(1.35f);
+                CineProjectile(pr, m.position.v, d);
                 projState[pr] = st;
                 if (charge.WantsTrail(pr)) charge.Trail(pr, m.position.v);
                 if (pr.kind == "sentryRocket" && S.Rnd() < 0.7f) Smoke(x - pr.vx * 0.012, y - pr.vy * 0.012, "#8e97a3", 1, 0.3f, 0.25f, 0.4f, op: 0.4f, grav: -0.3f);
