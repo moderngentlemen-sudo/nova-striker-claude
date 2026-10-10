@@ -56,6 +56,7 @@ namespace NovaStriker.Game
             public float gravity, drag;                 // gravity: times the scene's (negative rises); drag: per second
             public int flipbook;                        // tiles across (8 for the 8 x 8 sheets), 0 = none
             public bool stretch, collide, mesh3D;       // stretched along velocity; bounce off the level; 3D-sized mesh particles
+            public bool castShadows = true;
             public float stretchK = 0.08f, bounce = 0.35f;
             public Mesh[] meshes;
             public AnimationCurve size;                 // size over life (multiplier)
@@ -106,7 +107,7 @@ namespace NovaStriker.Game
             {
                 r.renderMode = ParticleSystemRenderMode.Mesh; r.SetMeshes(s.meshes); r.enableGPUInstancing = true;
                 r.alignment = ParticleSystemRenderSpace.World;
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; r.receiveShadows = true;
+                r.shadowCastingMode = s.castShadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = s.castShadows;
             }
             else if (s.stretch) { r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = s.stretchK; r.lengthScale = 1; }
             else r.renderMode = ParticleSystemRenderMode.Billboard;

@@ -650,12 +650,12 @@ namespace NovaStriker.Sim
                     if (d < bd && d > 1e-3 && (dx * ax + dy * ay) / d > cos && Clear(new V2(x0, y0), m)) { bd = d; first = e; }
                 }
             }
-            var pts = new List<ChainPt> { new ChainPt { x = x0, y = y0 } }; var hit = new HashSet<Enemy>();
+            var pts = new List<ChainPt> { new ChainPt { x = x0, y = y0, depth = LevelFeatures.Depth(p) } }; var hit = new HashSet<Enemy>();
             Enemy cur = first; var from = new V2(x0, y0);
             while (cur != null && hit.Count < SUB.chain.jumps[level])
             {
                 hit.Add(cur);
-                var m = Mid(cur); pts.Add(new ChainPt { x = m.x, y = m.y });
+                var m = Mid(cur); pts.Add(new ChainPt { x = m.x, y = m.y, depth = LevelFeatures.Depth(cur) });
                 HitEnemy(this, cur, new Hit
                 {
                     owner = p, dmg = SUB.chain.dmg[level] * mult, poise = SUB.chain.poise[level] * mult, kb = new[] { or(sign(m.x - from.x), p.facing) * 2, 1.0 }, stun = SUB.chain.stun[level], shock = true,
@@ -670,7 +670,7 @@ namespace NovaStriker.Sim
                 }
             }
             // Nothing in reach: the arc lashes out and earths itself on the nearest surface in front
-            if (first == null) { var h = Level.RayCast(x0, y0, ax, ay, R * 0.7, p.lane); pts.Add(new ChainPt { x = h.x, y = h.y, fizzle = true }); }
+            if (first == null) { var h = Level.RayCast(x0, y0, ax, ay, R * 0.7, p.lane); pts.Add(new ChainPt { x = h.x, y = h.y, depth = LevelFeatures.Depth(p), fizzle = true }); }
             p.burstCd = SUB.chain.cd;
             Emit("chain", new Ev { p = p, pts = pts, level = level, perfect = perfect, n = hit.Count });
         }

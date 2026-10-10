@@ -131,6 +131,7 @@ namespace NovaStriker.Game
 
         void StepSim()
         {
+            if (review != null && reviewHoldSimulation) return;
             bots.Sync(world, (int)SETTINGS.aiTeammates);
             var cmds = new Dictionary<int, Cmd>();
             foreach (var p in world.players.ToList())

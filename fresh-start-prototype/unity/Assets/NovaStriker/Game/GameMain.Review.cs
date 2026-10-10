@@ -5,12 +5,12 @@ namespace NovaStriker.Game {
  public sealed partial class GameMain {
   [Serializable] sealed class ReviewReport {public string unity,device,cpu,gpu,api,commit;public int ramMB,width,height;public List<string> retainedMaterialOrigins=new List<string>();public List<string> errors=new List<string>();public List<string> captures=new List<string>();public List<int> resetMeshes=new List<int>(),resetMaterials=new List<int>(),resetLights=new List<int>(),characterMaterials=new List<int>(),characterMeshes=new List<int>();public double cpuMs,gpuMs;public float p95;public long drawCalls,setPass,triangles,gcBytes;public int particles,particleCap,meshes,materials,lights,peakParticles,peakEffectLights,peakWeatherLights;}
   [Serializable] sealed class BlastReview {public string preset;public int fire,smoke,sparks;public bool fireInCamera;}
-  ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending;
+  ReviewReport review;string reviewFolder;bool reviewBudgetFailed,reviewChangePending,reviewHoldSimulation;
   void LateUpdate() {
    if (review == null || reviewChangePending) return;
    int particles = ParticleBudget.Live;
    review.peakParticles=Math.Max(review.peakParticles,particles);review.peakEffectLights=Math.Max(review.peakEffectLights,PerfOverlay.Lights);review.peakWeatherLights=Math.Max(review.peakWeatherLights,PerfOverlay.WeatherLights);
-   if (!reviewBudgetFailed && (particles > FxCfg.MaxParticles || PerfOverlay.Lights > FxCfg.MaxLights || PerfOverlay.WeatherLights > 3 || PerfOverlay.Feedback > 82 || PerfOverlay.ChargeFlashes > ChargeFX.MaxFlashes)) {
+   if (!reviewBudgetFailed && (particles > FxCfg.MaxParticles || PerfOverlay.Lights > FxCfg.MaxLights || PerfOverlay.WeatherLights > 3 || PerfOverlay.Feedback > 82 || PerfOverlay.ChargeFlashes > ChargeFX.MaxFlashes || EnergyTube.Active > EnergyTube.MaxActive)) {
     reviewBudgetFailed = true;
     review.errors.Add("Visual budget exceeded: particles="+particles+"/"+FxCfg.MaxParticles+", lights="+PerfOverlay.Lights+"/"+FxCfg.MaxLights+", weather="+PerfOverlay.WeatherLights+", feedback="+PerfOverlay.Feedback+", charge="+PerfOverlay.ChargeFlashes);
    }
@@ -49,6 +49,7 @@ namespace NovaStriker.Game {
     paused=true;yield return Capture("effects_"+preset);paused=false;ParticleBudget.Advancing=true;yield return Settle(16);
    }
    SetPaused(true);yield return Settle(3);yield return Capture("paused");SetPaused(false);
+   yield return ReviewEnergy();
    SETTINGS.aiTeammates=3;world.Teleport("skyline");yield return Settle();Directory.CreateDirectory(Path.Combine(reviewFolder,"motion"));
    for(int frame=0;frame<40;frame++){yield return Settle(2);yield return Capture("motion/"+frame.ToString("D3"),false);}
    SETTINGS.aiTeammates=0;SETTINGS.levelHazards=false;world.Teleport("gym");yield return Settle();
@@ -68,6 +69,37 @@ namespace NovaStriker.Game {
    review.cpuMs=PerfOverlay.CpuMs;review.gpuMs=PerfOverlay.GpuMs;review.p95=PerfOverlay.P95;review.drawCalls=PerfOverlay.DrawCalls;review.setPass=PerfOverlay.SetPass;review.triangles=PerfOverlay.Triangles;review.gcBytes=PerfOverlay.GCBytes;review.particles=ParticleBudget.Live;review.particleCap=FxCfg.MaxParticles;review.meshes=Resources.FindObjectsOfTypeAll<Mesh>().Length;review.materials=Resources.FindObjectsOfTypeAll<Material>().Length;review.lights=Resources.FindObjectsOfTypeAll<Light>().Length;
    File.WriteAllText(Path.Combine(reviewFolder,"runtime.json"),JsonUtility.ToJson(review,true));
    Debug.Log("NOVA_REVIEW_COMPLETE "+review.captures.Count+" captures, "+review.errors.Count+" errors");Application.Quit(review.errors.Count==0?0:1);
+  }
+
+  // Seed a valid charge state, release through the production simulation, then render the real owner.
+  // Hold only simulation during captures; presentation advances, and ordinary pause still freezes both.
+  IEnumerator ReviewEnergy() {
+   SETTINGS.aiTeammates=0;SETTINGS.levelHazards=false;SETTINGS.fxPreset="cinematic";
+   world.Teleport("gym");world.enemies.Clear();yield return Settle();reviewHoldSimulation=true;
+   var human=world.players[0];
+   foreach(var character in new[]{"nova","ram"}) {
+    world.SwapCharacter(human,character);human.x=human.prevX=52;human.y=human.prevY=0;human.aimX=1;human.aimY=0;
+    human.state="normal";human.mercy=0;human.onGround=true;human.lane=human.laneTo=human.laneFrom=1;human.laneT=0;
+    human.chargeT=PlayerSim.BeamSpec(human).at;
+    view.vfx.ClearParticles();yield return Settle(7);yield return Capture(character+"_beam_charge");
+    world.Step(new Dictionary<int,Cmd>{{human.slot,new Cmd{ax=1,ay=0,aimFree=true,released=new Buttons{fire=true}}}});
+    foreach(var ev in world.events)view.OnEvent(ev);world.events.Clear();
+    if(human.beam==null) {review.errors.Add(character+" production beam release failed");continue;}
+    world.BeamTick(human);yield return Settle(6);
+    if(EnergyTube.Active<3||view.vfx.energy.Count==0)review.errors.Add(character+" 3D beam/mesh particles missing");
+    yield return Capture(character+"_beam_release");
+    paused=true;yield return Capture(character+"_beam_paused");paused=false;
+    SETTINGS.fxPreset="classic";yield return Settle(3);yield return Capture(character+"_beam_classic");
+    SETTINGS.fxPreset="cinematic";world.EndBeam(human,"review");human.state="normal";yield return Settle(12);
+   }
+   world.SwapCharacter(human,"nova");human.sub="chain";human.state="normal";human.aimX=1;human.aimY=0;
+   for(int lane=-1;lane<=1;lane++) {var enemy=Enemies.CreateEnemy("brute",human.x+3+(lane+1)*2,0);enemy.hp=100;enemy.lane=enemy.laneTo=enemy.laneFrom=lane;world.enemies.Add(enemy);}
+   world.FireSub(human,3,true);foreach(var ev in world.events)view.OnEvent(ev);world.events.Clear();
+   yield return Settle(2);yield return Capture("chain_lightning");
+   paused=true;yield return Capture("chain_lightning_paused");paused=false;
+   yield return Settle(16);yield return Capture("electrified_enemies");
+   world.enemies.Clear();human.sub="scatter";human.chargeT=0;human.beam=null;human.lane=human.laneTo=human.laneFrom=0;
+   yield return Settle(20);reviewHoldSimulation=false;SETTINGS.levelHazards=true;
   }
  }
 }

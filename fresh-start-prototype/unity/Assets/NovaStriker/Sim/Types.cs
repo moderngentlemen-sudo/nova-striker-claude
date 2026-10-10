@@ -370,7 +370,7 @@ namespace NovaStriker.Sim
     }
     public sealed class EncounterState { public EncounterDef def; public string state; public int wave; public Enemy boss; }
     public sealed class Cam { public double x, y, dist, halfW, halfH; }
-    public struct ChainPt { public double x, y; public bool fizzle; }
+    public struct ChainPt { public double x, y; public double? depth; public bool fizzle; } // snapshot each target's lane before damage/removal
 
     // ---- Events: what happened this tick, for rendering, audio, haptics and the interface ----
     public sealed class Ev

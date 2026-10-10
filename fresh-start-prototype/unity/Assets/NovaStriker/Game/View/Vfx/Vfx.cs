@@ -15,7 +15,7 @@ namespace NovaStriker.Game
         public readonly FxColliders colliders;
         public readonly Transform root;
         // the layers
-        public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze;
+        public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze, energy;
         readonly List<FxLayer> all = new List<FxLayer>();
 
         public Vfx(View view)
@@ -56,6 +56,10 @@ namespace NovaStriker.Game
                 fade = FxPool.Fade(white, white, 1, 1, 0) });
             mote = Add(new FxPool.Spec { name = "motes", mat = FxPool.Mat(add, FxTex.Get("ember"), white), max = 800, drag = 0.8f, noise = 1.2f,
                 fade = FxPool.Fade(white, white, 0, 1, 0, 0.2f) });
+            var energyMat = new Material(Templates.Energy); energyMat.SetColor("_Tint", Color.white * 2);
+            energy = Add(new FxPool.Spec { name = "energy seeds", mat = energyMat, max = 800,
+                mesh3D = true, castShadows = false, meshes = new[] { Geo.Octahedron(0.5f) },
+                size = FxPool.Curve(0, 0.3f, 0.2f, 1, 1, 0), fade = FxPool.Fade(white, white, 0.2f, 1, 0, 0.15f) });
             // heat haze and shock rings: they bend the scene behind them (Distort.shader)
             var hazeMat = new Material(Templates.Distort); hazeMat.SetTexture("_MainTex", FxTex.Get("ripple"));
             haze = Add(new FxPool.Spec { name = "haze", mat = hazeMat, max = 120, size = FxPool.Curve(0, 0.3f, 1, 1.4f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.25f) });
@@ -76,6 +80,7 @@ namespace NovaStriker.Game
             if (FxCfg.Smoke == "off") { smoke.ps.Clear(); smokeDark.ps.Clear(); }
             if (FxCfg.Debris == "off") { debris.ps.Clear(); shard.ps.Clear(); }
             if (!FxCfg.Distortion) haze.ps.Clear();
+            if (FxCfg.Projectiles == "classic") energy.ps.Clear();
             lights.Update(dt); decals.Update(dt); colliders.Update();
             int n = ParticleBudget.Live;
             PerfOverlay.Particles = n; PerfOverlay.Lights = lights.Active + Sparks.ActiveLights; PerfOverlay.Decals = decals.Active;

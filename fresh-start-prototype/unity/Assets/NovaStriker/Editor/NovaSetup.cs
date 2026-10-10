@@ -63,6 +63,7 @@ namespace NovaStriker.EditorTools
             ("Distort", "NovaStriker/Distort", false, false, false),
             ("Cloud", "NovaStriker/Cloud", false, false, false),
             ("Bird", "NovaStriker/Bird", false, false, false),
+            ("Energy", "NovaStriker/Energy", false, false, false),
         };
         static void MakeTemplates()
         {

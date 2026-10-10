@@ -175,7 +175,8 @@ jobs:
           log=Path('review/player.log').read_text(errors='replace')
           assert not any(s in log for s in ('GLSL compilation failed', 'ShaderProgram is unsupported', 'Shader error in')), 'Player shader compilation failed'
           assert not r['errors'], r['errors']
-          assert len(r['captures']) == 24, r['captures']
+          assert len(r['captures']) == 35, r['captures']
+          assert all(name in r['captures'] for name in ['nova_beam_charge','nova_beam_release','ram_beam_charge','ram_beam_release','chain_lightning','electrified_enemies']), r['captures']
           assert r['particles'] <= r['particleCap'], r
           print('Player review:',r['unity'],r['gpu'],len(r['captures']),'captures')
           PY

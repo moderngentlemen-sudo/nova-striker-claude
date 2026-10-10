@@ -213,7 +213,7 @@ namespace NovaStriker.Game.Three
     // template is made on the spot from its shader.
     public static class Templates
     {
-        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade, aegis, reflect, pAdd, pAlpha, pLit, distort, cloud, bird;
+        static Material lit, litT, surf, surfT, coat, coatT, unlit, outline, rim, sky, grade, aegis, reflect, pAdd, pAlpha, pLit, distort, cloud, bird, energy;
         public static Material Lit => lit ??= Load("Lit", "Universal Render Pipeline/Lit", false, false);
         public static Material LitT => litT ??= Load("LitTransparent", "Universal Render Pipeline/Lit", true, false);
         public static Material Surf => surf ??= Load("LitSurface", "Universal Render Pipeline/Lit", false, true);
@@ -235,6 +235,7 @@ namespace NovaStriker.Game.Three
         public static Material Distort => distort ??= Load("Distort", "NovaStriker/Distort", false, false);
         public static Material Cloud => cloud ??= Load("Cloud", "NovaStriker/Cloud", false, false);
         public static Material Bird => bird ??= Load("Bird", "NovaStriker/Bird", false, false);
+        public static Material Energy => energy ??= Load("Energy", "NovaStriker/Energy", false, false);
         static Material LoadParticle(string name, string shader)
         {
             var m = Resources.Load<Material>("NovaStriker/" + name);

@@ -14,7 +14,14 @@ namespace NovaStriker.Game
         static string GOLD => CHARS["nova"].energy;
         const string PHASE = "#cfeeff", SLOW = "#9fdcff";
         readonly Fx fx; readonly TObj scene; float t;
-        sealed class Bolt { public Strip glow, core; public float life, max = 1; public List<(double x, double y)> pts = new List<(double, double)>(); public float level; public double depth; }
+        sealed class Bolt {
+            public Strip glow, core; public EnergyTube volume, branchA, branchB;
+            public float life, max = 1; public readonly List<ChainPt> pts = new List<ChainPt>();
+            public readonly List<Vector3> path = new List<Vector3>(72), branch = new List<Vector3>(12);
+            public float level; public double depth;
+        }
+        sealed class Shock { public EnergyTube a, b; public readonly List<Vector3> path = new List<Vector3>(24); public float particles, lightT; }
+        readonly Dictionary<Enemy, Shock> shocks = new Dictionary<Enemy, Shock>();
         readonly List<Bolt> bolts = new List<Bolt>();
         readonly Color chainTint;
         readonly Mesh coreGeo, discGeo; readonly TMat coreMat, discMat; readonly Texture2D discTex;
@@ -27,7 +34,8 @@ namespace NovaStriker.Game
         public SubFX(Fx fx)
         {
             this.fx = fx; scene = fx.scene;
-            for (int i = 0; i < 6; i++) bolts.Add(new Bolt { glow = new Strip(scene, 6), core = new Strip(scene, 7) });
+            for (int i = 0; i < 6; i++) bolts.Add(new Bolt { glow = new Strip(scene, 6), core = new Strip(scene, 7),
+                volume = new EnergyTube(scene.go.transform, "lightning trunk"), branchA = new EnergyTube(scene.go.transform, "lightning branch A"), branchB = new EnergyTube(scene.go.transform, "lightning branch B") });
             chainTint = S.Lin(SUB_LOOK["chain"].tint);
             // The well's accretion disc: bright at its inner edge, streaked with arcs so its spin shows
             discTex = Fx.CanvasTex(256, (g, s) =>
@@ -126,32 +134,49 @@ namespace NovaStriker.Game
         // ---- Chain lightning ----
         void Chain(Ev ev)
         {
+            if (ev.pts == null || ev.pts.Count < 2) return;
             var F = fx; Bolt b = bolts.Find(q => q.life <= 0);
             if (b == null) { b = bolts[0]; foreach (var q in bolts) if (q.life < b.life) b = q; }
-            b.pts.Clear(); foreach (var q in ev.pts) b.pts.Add((q.x, q.y));
+            b.pts.Clear(); b.pts.AddRange(ev.pts);
             b.depth = ev.depth ?? 0; b.level = (float)ev.level; b.life = b.max = 0.2f + 0.05f * b.level + (ev.perfect ? 0.08f : 0);
             string c = SUB_LOOK["chain"].tint; var s0 = ev.pts[0];
             F.Sprite(s0.x, s0.y, "star", "#fff6cc", 0.5f + 0.1f * b.level, 0.1f, 1.4f);
             for (int i = 1; i < ev.pts.Count; i++)
             {
                 var q = ev.pts[i];
+                if (FxCfg.Projectiles != "classic" && fx.view?.vfx != null) {
+                    var v = fx.view.vfx; double depth = q.depth ?? b.depth; var at = S.W(q.x, q.y, depth + 0.25);
+                    int n = Mathf.RoundToInt((q.fizzle ? 9 : 16 + b.level * 3) * FxCfg.Amount);
+                    for (int k = 0; k < n; k++) v.spark.Emit(at, Random.insideUnitSphere * (4 + b.level) + Vector3.up * 2, 0.045f, 0.22f + Random.value * 0.25f, chainTint * 2);
+                    if (!SETTINGS.reducedScreenEffects) v.glow.Emit(at, Vector3.zero, 0.65f, 0.15f, chainTint);
+                    v.lights.Flash(at, chainTint, SETTINGS.reducedScreenEffects ? 1.4f : 3.5f, 4, 0.25f);
+                    double floor = Level.GroundBelow(q.x, q.y, Mathf.Clamp(Mathf.RoundToInt((float)(depth / LevelFeatures.LANE_W)), -1, 1));
+                    if (!double.IsNegativeInfinity(floor) && q.y - floor < 5) v.lights.Flash(S.W(q.x, floor + 0.2, depth), chainTint, 2, 3, 0.25f);
+                    continue;
+                }
+                double previousDepth = F.effectDepth; F.effectDepth = q.depth ?? b.depth;
+                try {
                 if (q.fizzle) { F.Burst(q.x, q.y, c, 8, 4, 0.2f, 0.22f); continue; }
                 F.Sprite(q.x, q.y, "star", "#fff6cc", 0.6f + 0.1f * b.level, 0.12f, 1.4f); F.Sprite(q.x, q.y, "ring", c, 0.35f + 0.08f * b.level, 0.16f, 2);
                 F.Burst(q.x, q.y, S.Rnd() < 0.5f ? "#ffffff" : c, 8 + 2 * b.level, 6 + b.level, 0.18f, 0.22f);
+                } finally { F.effectDepth = previousDepth; }
             }
         }
         // A jagged path through the bolt's points, redrawn every frame so the bolt flickers
         List<Vector3> Jag(Bolt b)
         {
-            var o = new List<Vector3>(); var P = b.pts;
+            var o = b.path; o.Clear(); var P = b.pts;
             for (int i = 0; i < P.Count - 1 && o.Count < 70; i++)
             {
                 var a = P[i]; var c = P[i + 1]; double dx = c.x - a.x, dy = c.y - a.y, len = JMath.Hypot(dx, dy); if (len == 0) len = 1;
                 int m = Mathf.Max(2, Mathf.Min(10, (int)System.Math.Ceiling(len / 0.45))); double nx = -dy / len, ny = dx / len;
                 for (int j = i > 0 ? 1 : 0; j <= m && o.Count < 72; j++)
                 {
-                    double u = (double)j / m, amp = j == 0 || j == m ? 0 : (0.16 + 0.05 * b.level) * System.Math.Sin(System.Math.PI * u) * (S.Rnd() * 2 - 1) * System.Math.Min(1.6, len / 2);
-                    o.Add(S.W(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp, b.depth + 0.25));
+                    double u = (double)j / m, envelope = j == 0 || j == m ? 0 : System.Math.Sin(System.Math.PI * u);
+                    double noise = Mathf.Sin(j * 23.7f + i * 47.1f + Mathf.Floor(t * 24) * 19.3f);
+                    double amp = (0.16 + 0.05 * b.level) * envelope * noise * System.Math.Min(1.6, len / 2);
+                    double depth = (a.depth ?? b.depth) * (1 - u) + (c.depth ?? b.depth) * u;
+                    o.Add(S.W(a.x + dx * u + nx * amp, a.y + dy * u + ny * amp, depth + 0.25 + envelope * noise * 0.12));
                 }
             }
             return o;
@@ -208,10 +233,17 @@ namespace NovaStriker.Game
             var F = fx; var cam = view.camPos;
             foreach (var b in bolts)
             {
-                if (b.life <= 0) { b.glow.mesh.visible = b.core.mesh.visible = false; continue; }
+                if (b.life <= 0) { b.glow.mesh.visible = b.core.mesh.visible = b.volume.Visible = b.branchA.Visible = b.branchB.Visible = false; continue; }
                 b.life -= dt;
-                float k = Mathf.Max(0, b.life / b.max), fl = 0.55f + S.Rnd() * 0.45f; var pts = Jag(b); var c = chainTint;
+                float k = Mathf.Max(0, b.life / b.max), fl = SETTINGS.reducedScreenEffects ? 0.8f : 0.8f + 0.2f * Mathf.Sin(t * 25); var pts = Jag(b); var c = chainTint;
                 if (pts.Count < 2) continue;
+                if (FxCfg.Projectiles != "classic") {
+                    b.glow.mesh.visible = b.core.mesh.visible = false;
+                    b.volume.Build(pts, 0.025f + 0.009f * b.level, Color.Lerp(c, Color.white, 0.65f) * 2.2f, k * fl, t);
+                    Branch(b, b.branchA, pts.Count / 3, k, 0); Branch(b, b.branchB, pts.Count * 2 / 3, k, 2);
+                    continue;
+                }
+                b.volume.Visible = b.branchA.Visible = b.branchB.Visible = false;
                 b.glow.Build(pts, cam, i => (0.14f + 0.035f * b.level) * (0.6f + 0.4f * k), i => new Vector4(c.r * 1.3f, c.g * 1.15f, c.b * 0.7f, 0.5f * k * fl));
                 b.core.Build(pts, cam, i => 0.035f + 0.01f * b.level, i => new Vector4(1.9f, 1.85f, 1.6f, k * fl));
             }
@@ -220,7 +252,8 @@ namespace NovaStriker.Game
             foreach (var e in world.enemies)
             {
                 if (e.dead) continue;
-                if (e.shockT > 0 && S.Rnd() < 0.55f)
+                if (FxCfg.Projectiles != "classic" && e.shockT > 0) Electrify(e, dt);
+                if (FxCfg.Projectiles == "classic" && e.shockT > 0 && dt > 0 && S.Rnd() < 0.55f)
                 {
                     var w = S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3);
                     var P = F.Particle(w, S.Rnd() < 0.5f ? "#ffffff" : SUB_LOOK["chain"].tint, 0.14f, 0.12f); P.v = new Vector3((S.Rnd() - 0.5f) * 6, (S.Rnd() - 0.5f) * 6, 0); P.drag = 0.8f;
@@ -239,6 +272,7 @@ namespace NovaStriker.Game
                     if (S.Rnd() < 0.3f) { var P = F.Particle(S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, LevelFeatures.Depth(e) + 0.3), SLOW, 0.12f, 0.8f); P.v = new Vector3(0, 0.35f, 0); P.drag = 1; }
                 }
             }
+            foreach (var kv in new List<KeyValuePair<Enemy, Shock>>(shocks)) if (kv.Key.dead || kv.Key.shockT <= 0 || !world.enemies.Contains(kv.Key) || FxCfg.Projectiles == "classic") { kv.Value.a.Dispose(); kv.Value.b.Dispose(); shocks.Remove(kv.Key); }
             foreach (var kv in new List<KeyValuePair<Enemy, TMesh>>(auras)) if (!seen.Contains(kv.Key)) { kv.Value.DestroyOwnedMaterials(); auras.Remove(kv.Key); }
             foreach (var p in world.players)
             {
@@ -266,6 +300,39 @@ namespace NovaStriker.Game
                     if (S.Rnd() < 0.5f) F.Smoke(p.x, p.y - 0.2, "#8e97a3", 1, 0.8f, 0.4f, 0.5f, dir: -Mathf.PI / 2, spread: 1, op: 0.35f);
                 }
             }
+        }
+
+        void Branch(Bolt bolt, EnergyTube mesh, int index, float opacity, float phase)
+        {
+            var p = bolt.path; int i = Mathf.Clamp(index, 0, p.Count - 2);
+            var at = p[i]; EnergyTube.Basis(p[i + 1] - at, out var side, out var up);
+            var direction = side * Mathf.Sin(t * 7 + phase) + up * Mathf.Cos(t * 7 + phase);
+            bolt.branch.Clear();
+            for (int k = 0; k < 9; k++) { float u = k / 8f; bolt.branch.Add(at + direction * u * (0.35f + bolt.level * 0.18f) + up * Mathf.Sin(k * 13.4f + Mathf.Floor(t * 24)) * Mathf.Sin(u * Mathf.PI) * 0.1f); }
+            mesh.Build(bolt.branch, 0.012f + bolt.level * 0.003f, chainTint * 1.8f, opacity * 0.7f, t);
+        }
+
+        void Electrify(Enemy enemy, float dt)
+        {
+            if (!shocks.TryGetValue(enemy, out var shock)) {
+                if (shocks.Count >= 12) return;
+                shock = new Shock { a = new EnergyTube(scene.go.transform, "enemy electrical arc A"), b = new EnergyTube(scene.go.transform, "enemy electrical arc B") }; shocks.Add(enemy, shock);
+            }
+            for (int arc = 0; arc < 2; arc++) {
+                shock.path.Clear();
+                for (int i = 0; i <= 18; i++) {
+                    float u = i / 18f, angle = u * Mathf.PI * 3 + t * 5 + arc * Mathf.PI;
+                    double x = enemy.x + Mathf.Cos(angle) * enemy.w * 0.55, y = enemy.y + enemy.h * (0.1 + 0.8 * u);
+                    double depth = LevelFeatures.Depth(enemy) + Mathf.Sin(angle) * enemy.w * 0.4;
+                    shock.path.Add(S.W(x, y, depth + 0.2));
+                }
+                (arc == 0 ? shock.a : shock.b).Build(shock.path, 0.013f, Color.Lerp(chainTint, Color.white, 0.6f) * 1.8f, 0.75f, t);
+            }
+            var v = fx.view?.vfx; if (v == null || dt <= 0) return;
+            shock.particles += dt * 30 * FxCfg.Amount;
+            while (shock.particles >= 1) { shock.particles--; var at = shock.path[Random.Range(0, shock.path.Count)]; v.spark.Emit(at, Random.insideUnitSphere * 3 + Vector3.up, 0.04f, 0.25f, chainTint * 2); }
+            shock.lightT -= dt;
+            if (shock.lightT <= 0) { shock.lightT = 0.18f; v.lights.Flash(S.W(enemy.x, enemy.y + 0.45, LevelFeatures.Depth(enemy)), chainTint, SETTINGS.reducedScreenEffects ? 0.8f : 1.7f, 2.4f, 0.25f); }
         }
     }
 }

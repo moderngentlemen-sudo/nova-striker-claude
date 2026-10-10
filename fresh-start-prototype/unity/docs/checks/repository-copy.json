@@ -1,0 +1,12 @@
+{
+  "requested_name": "X-men Nova GPT 6.1",
+  "github_slug": "X-men-Nova-GPT-6.1",
+  "source_repository": "moderngentlemen-sudo/nova-striker-claude",
+  "source_branch": "nova-striker-unity-sol-6-1",
+  "source_commit": "e8eee6d15ba8f193fef6a18a654db73bbffec0a1",
+  "source_tree": "a51c1f9b5802afed0231d6561dd02a8e29129afc",
+  "history": "complete",
+  "bundle_sha256": "b30bfbd0f00b0a990fb7428ee15d1966f23557df5a1f589b8120f3948a5a5ca2",
+  "bundle_bytes": 13719847,
+  "github_creation": "blocked: connected GitHub tools do not expose repository creation; no authenticated gh CLI available"
+}

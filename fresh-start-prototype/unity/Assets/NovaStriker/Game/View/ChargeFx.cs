@@ -15,7 +15,7 @@ namespace NovaStriker.Game
     public sealed class ChargeFX
     {
         readonly Fx fx; readonly TObj scene;
-        float t;
+        float t, advance;
         static readonly Dictionary<string, (int n, float w)> TRAIL = new Dictionary<string, (int, float)>
         {
             ["lance"] = (8, 0.13f), ["rail"] = (11, 0.2f), ["dart"] = (6, 0.05f), ["shell"] = (10, 0.12f), ["prism"] = (8, 0.12f), ["shard"] = (4, 0.045f),
@@ -65,6 +65,8 @@ namespace NovaStriker.Game
             public TMesh[] motes;
             public DynMesh dots; public int dotN;
             public Apex apex; public float spin;
+            public EnergyTube[] coils; public readonly List<Vector3> energyPath = new List<Vector3>(40);
+            public float seedCarry, lightT;
         }
         readonly Dictionary<Player, St> state = new Dictionary<Player, St>();
         readonly Dictionary<Projectile, Ribbon> trails = new Dictionary<Projectile, Ribbon>();
@@ -147,12 +149,14 @@ namespace NovaStriker.Game
 
         void Dispose(St Sx)
         {
+            if (Sx.coils != null) foreach (var coil in Sx.coils) coil.Dispose();
             foreach (var o in new TObj[] { Sx.orb, Sx.core, Sx.halo, Sx.crystal, Sx.sight, Sx.laser, Sx.laserDot, Sx.aura, Sx.land, Sx.apex.group, Sx.apex.beam }) o.DestroyOwnedMaterials();
             Sx.dots.obj.DestroyOwnedMaterials();
             foreach (var m in Sx.motes) m.DestroyOwnedMaterials(); foreach (var m in Sx.apex.ticks) m.DestroyOwnedMaterials();
         }
         void Hide(St Sx)
         {
+            if (Sx.coils != null) foreach (var coil in Sx.coils) coil.Visible = false;
             Sx.orb.visible = Sx.core.visible = Sx.halo.visible = Sx.crystal.visible = Sx.sight.visible = Sx.laser.visible = Sx.laserDot.visible = false;
             Sx.dots.visible = Sx.aura.visible = Sx.apex.group.visible = Sx.apex.beam.visible = Sx.land.visible = false;
             foreach (var m in Sx.motes) m.visible = false; foreach (var m in Sx.apex.ticks) m.visible = false;
@@ -160,7 +164,7 @@ namespace NovaStriker.Game
 
         public void Update(float dt, World world, View view)
         {
-            t += dt;
+            t += dt; advance = dt;
             var seen = new HashSet<Player>();
             foreach (var p in world.players)
             {
@@ -207,6 +211,11 @@ namespace NovaStriker.Game
                 Sx.halo.position.copy(at); Sx.halo.material.colorCss = perfect || l4 ? "#ffffff" : tint;
                 Sx.halo.scale.setScalar((0.5f + 0.5f * k) * big * (perfect ? 1.3f + Mathf.Sin(t * 40) * 0.2f : l4 ? 1.5f + Mathf.Sin(t * 24) * 0.12f : 1)); Sx.halo.material.rotation = t * (l4 ? 9 : 3);
                 Sx.halo.material.opacity = perfect || l4 ? 0.95f : 0.55f; Sx.halo.visible = true;
+            }
+            if (!burst && mk && f4 > 0 && FxCfg.Projectiles != "classic") {
+                ModernCharge(p, Sx, at, Lin(ATTACH_LOOK[attach].tint), 0.25f + 0.75f * f4, l4);
+                if (l4) BeamPreview(p, Sx, at);
+                return;
             }
             if (!burst && mk && f4 > 0)
             {
@@ -375,11 +384,48 @@ namespace NovaStriker.Game
             Sx.orb.material.opacity = 0.65f + 0.3f * k; Sx.orb.visible = true;
             Sx.core.position.copy(at); Sx.core.material.colorCss = "#ffffff"; Sx.core.scale.setScalar((0.08f + 0.26f * k) * pulse); Sx.core.visible = true;
             if (level >= 2) { Sx.halo.position.copy(at); Sx.halo.material.colorCss = tint; Sx.halo.scale.setScalar(0.5f + 0.5f * k); Sx.halo.material.rotation = t * 3; Sx.halo.material.opacity = 0.55f; Sx.halo.visible = true; }
+            if (p.@char == "ram" && FxCfg.Projectiles != "classic") {
+                ModernCharge(p, Sx, at, Lin(tint), Mathf.Clamp01((float)(p.chargeT / RAM.beam.at)), p.chargeT >= RAM.beam.at);
+                return;
+            }
             for (int i = 0; i < 1 + level; i++)
             {
                 float a = S.Rnd() * Mathf.PI * 2, r = 0.7f + S.Rnd() * 0.5f; var tv = S.Dir(p.x, Mathf.Cos(a) * r, Mathf.Sin(a) * r);
                 Inward(at, tv.x, tv.y, tv.z, S.Rnd() < 0.3f ? "#ffffff" : tint, 0.13f, 0.2f);
             }
+        }
+
+        // A rotating 3D containment cage fills with real mesh particles, pulled from a cone into the muzzle.
+        // The legacy 60-step owner supplies time; paused draws keep the cage but admit no new particles/lights.
+        void ModernCharge(Player p, St state, Vector3 at, Color tint, float charge, bool ready)
+        {
+            if (state.coils == null) { state.coils = new EnergyTube[3]; for (int i = 0; i < 3; i++) state.coils[i] = new EnergyTube(scene.go.transform, "charge coil " + i); }
+            var dir = S.Dir(p.x, p.aimX, p.aimY).normalized; EnergyTube.Basis(dir, out var side, out var up);
+            float radius = (p.@char == "ram" ? 0.22f : 0.18f) + charge * 0.32f;
+            // A small core keeps aiming readable; the cage has actual depth around it.
+            state.orb.scale.setScalar(radius * 1.6f); state.orb.material.opacity = 0.35f;
+            state.core.scale.setScalar(radius * 0.55f); state.halo.visible = false;
+            for (int coil = 0; coil < 3; coil++) {
+                state.energyPath.Clear();
+                float tilt = coil * Mathf.PI / 3 + t * (1.1f + charge), spin = t * (3 + charge * 4);
+                var ax = side * Mathf.Cos(tilt) + up * Mathf.Sin(tilt);
+                var bx = (up * Mathf.Cos(tilt) - side * Mathf.Sin(tilt)) * 0.45f + dir * 0.9f;
+                for (int j = 0; j <= 32; j++) { float a = j * Mathf.PI * 2 / 32 + spin; state.energyPath.Add(at + radius * (ax * Mathf.Cos(a) + bx * Mathf.Sin(a))); }
+                state.coils[coil].Build(state.energyPath, 0.014f + charge * 0.015f, tint * (1.1f + charge), 0.5f + charge * 0.25f, t);
+            }
+            var v = fx.view?.vfx; if (v == null || advance <= 0) return;
+            state.seedCarry += advance * (30 + charge * 100) * FxCfg.Amount;
+            while (state.seedCarry >= 1) {
+                state.seedCarry--; float a = Random.value * Mathf.PI * 2;
+                float distance = 0.6f + Random.value * (0.9f + charge), r = 0.35f + Random.value * (0.3f + charge * 0.6f);
+                var offset = dir * distance + (side * Mathf.Cos(a) + up * Mathf.Sin(a)) * r;
+                float life = 0.22f + Random.value * 0.12f;
+                var colour = Color.Lerp(tint, Color.white, Random.value * 0.6f);
+                v.energy.Emit3D(at + offset, -offset / life, new Vector3(0.045f, 0.045f, 0.08f), life, colour, Vector3.zero, Vector3.one * 4);
+                if (ready && Random.value < 0.15f) v.streak.Emit(at + offset, -offset / life, 0.045f, life, tint * 1.8f);
+            }
+            state.lightT -= advance;
+            if (state.lightT <= 0) { state.lightT = 0.15f; v.lights.Flash(at, tint, (SETTINGS.reducedScreenEffects ? 0.7f : 1.2f) + charge, 2.5f + charge, 0.22f); }
         }
 
         // ---- Both: charged dash ----

@@ -18,6 +18,20 @@ static class P {
     return evs;
   }
   static void Main() {
+    // Chain geometry snapshots each impacted lane, including across lanes, before damage/removal.
+    {
+      var w = Make(false,false,true,"gym"); var p = w.AddPlayer("pad0","nova");
+      p.x=12;p.y=0;p.aimX=1;p.aimY=0;p.sub="chain";p.lane=p.laneTo=p.laneFrom=-1;
+      var a=Enemies.CreateEnemy("brute",16,0);a.lane=a.laneTo=a.laneFrom=1;a.hp=100;
+      var b=Enemies.CreateEnemy("brute",18,0);b.lane=0;b.laneFrom=0;b.hp=100;
+      w.enemies.Add(a);w.enemies.Add(b);w.FireSub(p,3,false);
+      var ev=w.events.First(e=>e.type=="chain");
+      Check(ev.pts.Count>=3 && ev.pts[0].depth==-LevelFeatures.LANE_W && ev.pts[1].depth==LevelFeatures.LANE_W && ev.pts[2].depth==0,"chain: origin and each cross-lane target have separate depth snapshots");
+      a.lane=a.laneTo=-1;a.x+=10;w.enemies.Clear();
+      Check(ev.pts[1].depth==LevelFeatures.LANE_W && ev.pts[1].x==16,"chain: target removal or later movement cannot drag an existing arc");
+      w.events.Clear();w.FireSub(p,0,false);var miss=w.events.First(e=>e.type=="chain");
+      Check(miss.pts.Count==2 && miss.pts[1].fizzle && miss.pts.All(q=>q.depth==-LevelFeatures.LANE_W),"chain: missed discharge keeps the emission lane at both endpoints");
+    }
     // 1. All off: the level is exactly as built
     var w0 = Make(false, false, false, "gym"); int baseCount = Level.BOXES.Count; int baseVersion = Level.Version;
     Check(!Level.BOXES.Any(b => b.id >= Level.EXTRA_ID) && Level.HAZARDS.Count == 0 && Level.LANES.Count == 0, $"off: no extra boxes, hazards or lanes ({baseCount} boxes)");
