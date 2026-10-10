@@ -76,6 +76,7 @@ namespace NovaStriker.EditorTools
                 else m.shader = sh;
                 if (name.StartsWith("Particle")) Templates.ConfigureParticle(m, name);
                 else Templates.Configure(m, transparent, surface, coat);
+                m.enableInstancing = true;   // (repeated props and instanced draws batch)
                 EditorUtility.SetDirty(m);
             }
         }
@@ -103,6 +104,8 @@ namespace NovaStriker.EditorTools
             asset.mainLightShadowmapResolution = 2048;
             asset.shadowDistance = 70;
             asset.shadowCascadeCount = 2;
+            asset.cascade2Split = 0.25f;
+            asset.useSRPBatcher = true;
             EditorUtility.SetDirty(asset);
             return asset;
         }

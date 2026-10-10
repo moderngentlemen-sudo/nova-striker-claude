@@ -160,21 +160,33 @@ namespace NovaStriker.Game
         }
         public void FlushBaked()
         {
+            const float CELL = 48;   // m: baked geometry is merged per material and per cell of the ground plan, so whatever
+                                     // is off screen is culled instead of drawing one mesh that spans the whole level
             foreach (var set in baked.Values)
             {
-                // (in chunks, so a mesh never grows past what a renderer culls well)
-                for (int i = 0; i < set.parts.Count; i += 512)
+                var cells = new Dictionary<(int, int), List<CombineInstance>>();
+                foreach (var ci in set.parts)
                 {
-                    var merged = new Mesh { name = "baked", indexFormat = IndexFormat.UInt32 };
-                    merged.CombineMeshes(set.parts.Skip(i).Take(512).ToArray(), true, true, false);
-                    merged.colors = null; merged.uv2 = null;
-                    if (set.mat.userData.TryGetValue("worldUV", out var tile)) Look.WorldUVs(merged, (float)tile);   // (surface detail tiles in world space)
-                    else merged.RecalculateTangents();
-                    merged.RecalculateBounds();
-                    var m = new TMesh(merged, set.mat) { cast = set.cast, receive = true };
-                    m.go.isStatic = true;
-                    scene.add(m);
+                    var p = ci.transform.GetColumn(3);
+                    var key = (Mathf.FloorToInt(p.x / CELL), Mathf.FloorToInt(p.z / CELL));
+                    if (!cells.TryGetValue(key, out var list)) cells[key] = list = new List<CombineInstance>();
+                    list.Add(ci);
                 }
+                foreach (var list in cells.Values)
+                    for (int i = 0; i < list.Count; i += 512)
+                    {
+                        var merged = new Mesh { name = "baked", indexFormat = IndexFormat.UInt32 };
+                        merged.CombineMeshes(list.Skip(i).Take(512).ToArray(), true, true, false);
+                        merged.colors = null; merged.uv2 = null;
+                        if (set.mat.userData.TryGetValue("worldUV", out var tile)) Look.WorldUVs(merged, (float)tile);   // (surface detail tiles in world space)
+                        else merged.RecalculateTangents();
+                        merged.RecalculateBounds();
+                        merged.Optimize();               // (vertex cache order)
+                        merged.UploadMeshData(true);     // (the GPU keeps it; no copy stays in memory)
+                        var m = new TMesh(merged, set.mat) { cast = set.cast, receive = true };
+                        m.go.isStatic = true;
+                        scene.add(m);
+                    }
             }
             baked.Clear();
         }
