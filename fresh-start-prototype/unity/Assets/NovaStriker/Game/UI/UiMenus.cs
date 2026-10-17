@@ -347,7 +347,7 @@ namespace NovaStriker.Game.UI
             if (focusables.Count == 0) return;
             padnav = true;
             var el = focusables.Contains(focusEl) ? focusEl : null;
-            void Go(Selectable to) { if (to == null) return; focusEl = to; focusIdx = focusables.IndexOf(to); ScrollTo(to); }
+            void Go(Selectable to) { if (to == null) return; if (to != focusEl) Audio.Sound.Main?.Ui("move"); focusEl = to; focusIdx = focusables.IndexOf(to); ScrollTo(to); }
             if (el == null && (ev.type == "up" || ev.type == "down" || ev.type == "swap" || ev.type == "confirm")) { Go(focusables[Mathf.Clamp(focusIdx, 0, focusables.Count - 1)]); return; }
             if (ev.type == "swap" && el is Cycler cy) { cy.Step(ev.dir); return; }
             if (ev.type == "swap" && el is RangeCtl rc) { rc.SetValue(rc.value + rc.step * ev.dir); return; }
@@ -368,6 +368,7 @@ namespace NovaStriker.Game.UI
             }
             else if (ev.type == "confirm")
             {
+                Audio.Sound.Main?.Ui("confirm");
                 if (el is Button b) b.onClick.Invoke();
                 else if (el is Cycler c) c.Step(1, true);
                 else if (el is RangeCtl r) { float v = r.value + r.step * 2; r.SetValue(v > r.max + 1e-4f ? r.min : v); }
@@ -536,6 +537,7 @@ namespace NovaStriker.Game.UI
         {
             string label = Bindings.Of(listenId).label;
             var took = Bindings.Assign(listenId, listenSlot, v);
+            Audio.Sound.Main?.Ui("rebind");
             StopListen(v < 0 ? $"“{label}”: cleared." : took != null ? $"{name} now does “{label}” (taken from “{took}”)." : $"{name} now does “{label}”.");
         }
 
@@ -618,6 +620,7 @@ namespace NovaStriker.Game.UI
             }
             else if (!helpOpen && was)
             {
+                Audio.Sound.Main?.Ui("back");
                 StopListen(null);
                 if (paused) { Collect(); focusEl = pauseFocus != null && focusables.Contains(pauseFocus) ? pauseFocus : focusables.FirstOrDefault(); }
             }
