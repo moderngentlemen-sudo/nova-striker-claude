@@ -16,6 +16,8 @@ namespace NovaStriker.Game
         public readonly Transform root;
         // the layers
         public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze;
+        // (the weapons' energy layers: rings that spread or close, a closing haze, floor warp, rubble a well pulls up, hard-light chips)
+        public FxLayer ring, ringIn, hazeIn, warp, rubble, chip;
         readonly List<FxLayer> all = new List<FxLayer>();
 
         public Vfx(View view)
@@ -67,6 +69,30 @@ namespace NovaStriker.Game
             var shardMat = FxPool.Mat(lit, null, new Color(0.92f, 0.93f, 0.96f));
             shard = Add(new FxPool.Spec { name = "shards", mat = shardMat, max = 220, gravity = 1, collide = true, bounce = 0.35f, mesh3D = true,
                 meshes = new[] { Geo.Box(1, 0.15f, 0.7f), Geo.Tetrahedron(0.6f) }, fade = FxPool.Fade(white, white, 1, 1, 0, 0.85f) });
+            BuildWeaponLayers(add, lit, white);
+        }
+
+        // The weapons' energy layers (Fx.Weapons, CineLightning, CineDisc, CineWell)
+        void BuildWeaponLayers(Material add, Material lit, Color white)
+        {
+            // a crisp ring that spreads (impact and muzzle rings), and one that closes in (light bending into a well)
+            ring = Add(new FxPool.Spec { name = "rings", mat = FxPool.Mat(add, FxTex.Get("ring"), white), max = 200,
+                size = FxPool.Curve(0, 0.2f, 0.35f, 0.8f, 1, 1), fade = FxPool.Fade(white, white, 1, 0.85f, 0, 0.3f) });
+            ringIn = Add(new FxPool.Spec { name = "rings in", mat = FxPool.Mat(add, FxTex.Get("ring"), white), max = 120,
+                size = FxPool.Curve(0, 1, 0.6f, 0.45f, 1, 0.05f), fade = FxPool.Fade(white, white, 0, 1, 0.3f, 0.35f) });
+            // a haze that closes in (lensing around a black hole), and flat warps that lie on the floor under one
+            var hazeInMat = new Material(Templates.Distort); hazeInMat.SetTexture("_MainTex", FxTex.Get("ripple"));
+            hazeIn = Add(new FxPool.Spec { name = "haze in", mat = hazeInMat, max = 80, size = FxPool.Curve(0, 1.2f, 1, 0.25f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.5f) });
+            var warpMat = new Material(Templates.Distort); warpMat.SetTexture("_MainTex", FxTex.Get("ripple"));
+            warp = Add(new FxPool.Spec { name = "floor warp", mat = warpMat, max = 60, mesh3D = true, meshes = new[] { Geo.Plane(1, 1) },
+                size = FxPool.Curve(0, 1.15f, 1, 0.35f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.5f),
+                extra = ps => { var r = ps.GetComponent<ParticleSystemRenderer>(); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; } });
+            // floor rubble a well tears up and draws in (no gravity: the well holds it), shrinking as it is swallowed
+            rubble = Add(new FxPool.Spec { name = "rubble", mat = FxPool.Mat(lit, null, new Color(0.42f, 0.44f, 0.48f)), max = 160, mesh3D = true,
+                meshes = new[] { Geo.Box(1, 0.5f, 0.8f), Geo.Tetrahedron(0.7f) }, size = FxPool.Curve(0, 1, 0.75f, 0.9f, 1, 0.05f), fade = FxPool.Fade(white, white, 1, 1, 1, 0.5f) });
+            // hard-light chips: tiny bright shards of energy thrown off saw teeth and prisms (additive, unlit)
+            chip = Add(new FxPool.Spec { name = "chips", mat = FxPool.Mat(add, FxTex.Get("spark"), white), max = 400, gravity = 0.25f, drag = 1.2f, stretch = true, stretchK = 0.03f,
+                size = FxPool.Curve(0, 1, 1, 0.2f), fade = FxPool.Fade(white, white, 1, 1, 0, 0.5f) });
         }
 
         // Draws every effect once, unseen (a speck that dies at once), while the start screen is up: their shaders are

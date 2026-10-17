@@ -23,6 +23,9 @@ namespace NovaStriker.Game
         readonly Dictionary<Enemy, TMesh> auras = new Dictionary<Enemy, TMesh>();
         readonly Dictionary<Player, double> lastSt = new Dictionary<Player, double>();
         readonly Dictionary<Player, double> ghostTick = new Dictionary<Player, double>();
+        // Unity's effects for the Chain (CineLightning) unless Projectiles is Classic
+        CineLightning cineChain;
+        CineLightning CineChain => FxCfg.CineBeams && fx.view != null && fx.view.vfx != null ? (cineChain ??= new CineLightning(fx.view)) : null;
 
         public SubFX(Fx fx)
         {
@@ -77,7 +80,7 @@ namespace NovaStriker.Game
                     break;
                 }
                 case "cluster": F.Sprite(ev.x, ev.y + 0.3, "star", "#ffffff", 1.8f, 0.18f, 1.6f); F.Burst(ev.x, ev.y + 0.3, "#ffd28a", 18, 9, 0.3f, 0.3f, dir: Mathf.PI / 2, spread: 2.6f, grav: 10); break;
-                case "chain": Chain(ev); break;
+                case "chain": if (CineChain != null) CineChain.Fire(ev); else Chain(ev); break;
                 case "discThrow": F.Sprite(ev.x, ev.y, "ring", SUB_LOOK["disc"].tint, 0.5f + 0.1f * (float)ev.level, 0.16f, 2.2f); F.Burst(ev.x, ev.y, "#fff1c9", 6 + 2 * (float)ev.level, 4, 0.2f, 0.2f); break;
                 case "discRecall": F.Sprite(ev.x, ev.y, "ring", "#ffffff", 0.6f, 0.18f, 2.2f); break;
                 case "discCatch": F.Sprite(ev.x, ev.y, "star", "#fff4d6", 0.9f, 0.12f, 1.4f); F.Burst(ev.x, ev.y, SUB_LOOK["disc"].tint, 8, 3, 0.2f, 0.22f); break;
@@ -216,11 +219,14 @@ namespace NovaStriker.Game
                 b.core.Build(pts, cam, i => 0.035f + 0.01f * b.level, i => new Vector4(1.9f, 1.85f, 1.6f, k * fl));
             }
             SyncWells(world, view.alpha, dt);
+            cineChain?.Update(dt);
+            var chainFx = CineChain;
             var seen = new HashSet<Enemy>();
             foreach (var e in world.enemies)
             {
                 if (e.dead) continue;
-                if (e.shockT > 0 && S.Rnd() < 0.55f)
+                if (e.shockT > 0 && chainFx != null) chainFx.Crawl(e, dt);
+                else if (e.shockT > 0 && S.Rnd() < 0.55f)
                 {
                     var w = S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, 0.3);
                     var P = F.Particle(w, S.Rnd() < 0.5f ? "#ffffff" : SUB_LOOK["chain"].tint, 0.14f, 0.12f); P.v = new Vector3((S.Rnd() - 0.5f) * 6, (S.Rnd() - 0.5f) * 6, 0); P.drag = 0.8f;
