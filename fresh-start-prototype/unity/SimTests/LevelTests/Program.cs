@@ -129,6 +129,26 @@ static class P {
       Run(w, p, 12, i => new Cmd { lane = i == 1 ? -1 : 0 });
       Check(p.lane == 0 && p.laneT == 0 && LevelFeatures.Same(p, Enemies.CreateEnemy("swarmer", 54, 0)), "lanes off: no hops, everything reaches everything");
     }
+    // 5. Nova's Gravity Well: its pull grows with the charge level (reach, light enemies drawn in, heavy ones dragged)
+    { double Pull(int level, string type, double dist, int ticks, bool well) {
+        var w = Make(false, false, false, "gym"); var p = w.AddPlayer("pad0", "nova"); p.x = 26; p.y = 0;
+        double wx = 50, wy = SUB.well.lift;   // (open floor in the gym)
+        var e = Enemies.CreateEnemy(type, wx + dist, 0); e.hp = e.maxHp = 1e9; w.enemies.Add(e);
+        if (well) w.wells.Add(new Well { owner = p, x = wx, y = wy, px = wx, py = wy, phase = "open", level = level, r = SUB.well.r[level], life = 1000, mult = 1 });
+        Run(w, p, ticks, null, false);
+        return dist - System.Math.Abs(e.x - wx);   // (how much nearer it got)
+      }
+      double Net(int L, string type, double dist, int ticks) => Pull(L, type, dist, ticks, true) - Pull(L, type, dist, ticks, false);
+      var reach = new double[4]; var light = new double[4]; var heavy = new double[4]; var far = new double[4];
+      for (int L = 0; L < 4; L++) { reach[L] = SUB.well.r[L]; light[L] = Net(L, "swarmer", 2.8, 12); heavy[L] = Net(L, "brute", 2.8, 12); far[L] = Net(L, "swarmer", 4.4, 12); }
+      string F(double[] a) => string.Join(" / ", a.Select(v => v.ToString("0.00")));
+      Console.WriteLine($"     well reach {F(reach)} m; swarmer at 2.8 m drawn in {F(light)} m in 0.2 s; brute at 2.8 m dragged {F(heavy)} m in 0.2 s; swarmer at 4.4 m {F(far)} m");
+      Check(light[0] < light[1] && light[1] < light[2] && light[2] < light[3], "well: light enemies are drawn in faster at each level");
+      Check(heavy[0] < heavy[1] && heavy[1] < heavy[2] && heavy[2] < heavy[3] && heavy[3] > 2 * heavy[0], "well: heavy enemies are dragged harder at each level (level 3 over twice the tap's)");
+      Check(far[0] < 0.05 && far[1] < 0.05 && far[2] > 0.5 && far[3] > 0.5, "well: an enemy 4.4 m away is out of a tap's or level 1's reach, caught by levels 2 and 3");
+      double boss = Net(3, "warden", 3.0, 40);
+      Check(boss < 0.05, $"well: a boss is not drawn in even at level 3 ({boss:0.00} m)");
+    }
     Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
   }
 }

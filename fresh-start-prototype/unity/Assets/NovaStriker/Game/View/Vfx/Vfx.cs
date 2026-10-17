@@ -17,7 +17,7 @@ namespace NovaStriker.Game
         // the layers
         public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze;
         // (the weapons' energy layers: rings that spread or close, a closing haze, floor warp, rubble a well pulls up, hard-light chips)
-        public FxLayer ring, ringIn, hazeIn, warp, rubble, chip;
+        public FxLayer ring, ringIn, hazeIn, warp, rubble, chip, dark;
         readonly List<FxLayer> all = new List<FxLayer>();
 
         public Vfx(View view)
@@ -75,6 +75,8 @@ namespace NovaStriker.Game
         // The weapons' energy layers (Fx.Weapons, CineLightning, CineDisc, CineWell)
         void BuildWeaponLayers(Material add, Material lit, Color white)
         {
+            // an inky shadow (alpha blended) that darkens around a black hole's core
+            dark = Add(new FxPool.Spec { name = "dark", mat = FxPool.Mat(Templates.ParticleAlpha, FxTex.Get("glow"), Color.black), max = 40, fade = FxPool.Fade(white, white, 1, 1, 0, 0.6f) });
             // a crisp ring that spreads (impact and muzzle rings), and one that closes in (light bending into a well)
             ring = Add(new FxPool.Spec { name = "rings", mat = FxPool.Mat(add, FxTex.Get("ring"), white), max = 200,
                 size = FxPool.Curve(0, 0.2f, 0.35f, 0.8f, 1, 1), fade = FxPool.Fade(white, white, 1, 0.85f, 0, 0.3f) });

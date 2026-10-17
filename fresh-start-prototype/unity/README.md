@@ -160,6 +160,10 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   heat haze, a burning impact with sparks, embers, flame, smoke and scorch marks, lights at both ends, and a
   screen flash, a shockwave and a camera kick when they fire. *Screen flashes* (Settings › *Effects*) turns the
   flashes off. *Projectiles: Classic* keeps the old beams.
+- **Gravity Well pull grows with the charge** (gameplay): reach 3 / 3.8 / 4.8 / 6.2 m (was 3.2 / 3.6 / 4.2 / 5),
+  light enemies drawn in at up to 6 / 8.5 / 11.5 / 15 m/s (was 6 / 7 / 8 / 9.5), heavy ones dragged at 25 / 32 / 42 /
+  55% of that (was 30% at every level), enemy shots bent harder. Bosses still shrug it off. `SUB.well` in
+  `Sim/Config.cs`; `LevelTests` checks it.
 - **Thicker smoke** that builds fast, hangs for most of its life and keeps spreading; blasts leave a pall behind.
 - **Enemies break apart** into their own pieces (Debris: Physics): plates, limbs, heads and guns fly off as
   physics bodies, bounce off the level and cool before they shrink away; broken armour plates fly off too.

@@ -752,7 +752,7 @@ namespace NovaStriker.Sim
                     else
                     {
                         // Heavy: dragged along the ground toward it
-                        double step = ux * SUB.well.pull[L] * SUB.well.heavy * DT, nx = e.x + step;
+                        double step = ux * SUB.well.pull[L] * SUB.well.heavy[L] * DT, nx = e.x + step;
                         if (!Level.PointInSolid(nx + sign(step) * e.w / 2, e.y + 0.3)) e.x = nx;
                         e.wellT = 2;
                     }
@@ -763,7 +763,7 @@ namespace NovaStriker.Sim
                     double dx = w.x - pr.x, dy = w.y - pr.y, d = JMath.Hypot(dx, dy);
                     if (d > w.r) continue;
                     if (d < 0.6) { pr.dead = true; Emit("erase", new Ev { x = pr.x, y = pr.y }); continue; }
-                    double sp = JMath.Hypot(pr.vx, pr.vy); pr.vx += dx / d * 40 * DT; pr.vy += dy / d * 40 * DT;
+                    double sp = JMath.Hypot(pr.vx, pr.vy), g = SUB.well.bend[L]; pr.vx += dx / d * g * DT; pr.vy += dy / d * g * DT;
                     double s2 = or(JMath.Hypot(pr.vx, pr.vy), 1); pr.vx *= sp / s2; pr.vy *= sp / s2;
                 }
                 if (w.t >= w.life || w.collapse || gone)

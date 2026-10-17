@@ -491,9 +491,12 @@ namespace NovaStriker.Sim
             }
             public static class well
             {
-                public const double cd = 30, speed = 13, heavy = 0.3, tick = 12, lift = 1.1;
-                public static readonly double[] travel = { 24, 26, 28, 30 }, life = { 70, 90, 110, 130 }, r = { 3.2, 3.6, 4.2, 5 }, pull = { 6, 7, 8, 9.5 },
-                    tickDmg = { 0.35, 0.45, 0.6, 0.8 };
+                public const double cd = 30, speed = 13, tick = 12, lift = 1.1;
+                // The pull grows clearly with the charge (Unity: was r 3.2-5, pull 6-9.5, heavy 0.3 and shots bent at 40 at every level):
+                // reach (m), how fast light enemies are drawn in (m/s), the share of that heavy ones are dragged at, how hard
+                // enemy shots are bent toward it (m/s²). Bosses still shrug it off.
+                public static readonly double[] travel = { 24, 26, 28, 30 }, life = { 70, 90, 110, 130 }, r = { 3.0, 3.8, 4.8, 6.2 }, pull = { 6, 8.5, 11.5, 15 },
+                    heavy = { 0.25, 0.32, 0.42, 0.55 }, bend = { 30, 42, 58, 80 }, tickDmg = { 0.35, 0.45, 0.6, 0.8 };
                 public static readonly Blast[] implode = {
                     new Blast { r = 2.2, dmg = 3, poise = 40 }, new Blast { r = 2.6, dmg = 4.5, poise = 55 },
                     new Blast { r = 3.1, dmg = 6.5, poise = 75, armorBreak = true }, new Blast { r = 3.8, dmg = 9, poise = 100, armorBreak = true },
