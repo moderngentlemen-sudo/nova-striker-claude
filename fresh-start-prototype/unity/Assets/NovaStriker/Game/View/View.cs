@@ -499,9 +499,13 @@ namespace NovaStriker.Game
             string route = Level.RouteAt(camX).id;
             var A = Look.ATMOS.TryGetValue(route, out var at) ? at : Look.ATMOS["skyport"];
             float ka = 1 - Mathf.Exp(-dt * 2.5f);
-            fogColor = Color.Lerp(fogColor, Look.Lin(A.fog), ka); fogNear += (A.near - fogNear) * ka; fogFar += (A.far - fogFar) * ka;
-            skyTop = Color.Lerp(skyTop, Look.Lin(A.top), ka); skyMid = Color.Lerp(skyMid, Look.Lin(A.mid), ka); skyBot = Color.Lerp(skyBot, Look.Lin(A.bot), ka);
-            sunLin = Color.Lerp(sunLin, Look.Lin(A.sun), ka); hemiSky = Color.Lerp(hemiSky, Look.Lin(A.hemi), ka);
+            // ...moved toward the time of day (Settings: Time of day), which eases in the same way
+            var tod = TimeOfDay.Now(time, route); float tw = tod.w;
+            Color Tgt(uint hex, Color c) => TimeOfDay.Toward(Look.Lin(hex), c, tw);
+            fogColor = Color.Lerp(fogColor, Tgt(A.fog, tod.fog), ka); fogNear += (A.near - fogNear) * ka; fogFar += (A.far - fogFar) * ka;
+            skyTop = Color.Lerp(skyTop, Tgt(A.top, tod.top), ka); skyMid = Color.Lerp(skyMid, Tgt(A.mid, tod.mid), ka); skyBot = Color.Lerp(skyBot, Tgt(A.bot, tod.bot), ka);
+            sunLin = Color.Lerp(sunLin, Tgt(A.sun, tod.sun), ka); hemiSky = Color.Lerp(hemiSky, Tgt(A.hemi, tod.hemi), ka);
+            todKey += (tod.key - todKey) * ka; todFill += (tod.fill - todFill) * ka; todExposure += (tod.exposure - todExposure) * ka; todHeight += (tod.height - todHeight) * ka;
             RenderSettings.fogColor = fogColor.gamma; RenderSettings.fogStartDistance = fogNear; RenderSettings.fogEndDistance = fogFar;
             var sm = skyMat.m; sm.SetVector("_Top", skyTop); sm.SetVector("_Mid", skyMid); sm.SetVector("_Bot", skyBot);
             sun.color = sunLin.gamma;
@@ -526,9 +530,11 @@ namespace NovaStriker.Game
             if (ortho) camera.orthographicSize = d * Mathf.Tan((float)SETTINGS.fov * Mathf.PI / 360);
             else camera.fieldOfView = (float)SETTINGS.fov;
             // Keep the shadow frustum centred on the action
-            SetLightDir(sun, new Vector3(lookAt.x - 18, 30 + lookAt.y, lookAt.z + 22), lookAt);
+            // (lower and further round toward evening: long shadows)
+            SetLightDir(sun, new Vector3(lookAt.x - 18 - (1 - todHeight) * 26, 4 + 26 * todHeight + lookAt.y, lookAt.z + 22), lookAt);
         }
         Color sunLin = Look.Lin(0xffeed6);
+        float todKey = 1, todFill = 1, todExposure = 1, todHeight = 1;   // (the time of day's pull on the light, eased)
         int rendererIndex;
         static Cam Copy(Cam c) => new Cam { x = c.x, y = c.y, dist = c.dist, halfW = c.halfW, halfH = c.halfH };
 
@@ -549,7 +555,7 @@ namespace NovaStriker.Game
             Sx.rimColor = Color.Lerp(Sx.rimColor, Look.Lin(L.rimColor), k);
             Sx.lift = Vector3.Lerp(Sx.lift, L.lift, k); Sx.gamma = Vector3.Lerp(Sx.gamma, L.gamma, k); Sx.gain = Vector3.Lerp(Sx.gain, L.gain, k);
             if (envRoute != id && envMaps.ContainsKey(id)) envRoute = id;
-            sun.intensity = Sx.key / Mathf.PI; hemiIntensity = Sx.fill; rim.intensity = Sx.rim / Mathf.PI; rim.color = Sx.rimColor.gamma;
+            sun.intensity = Sx.key * todKey / Mathf.PI; hemiIntensity = Sx.fill * todFill; rim.intensity = Sx.rim / Mathf.PI; rim.color = Sx.rimColor.gamma;
             // Ambient: the hemisphere light plus the environment's radiance; reflections from the environment
             var env = lowLook == true ? null : envMaps[envRoute];
             var sh = Look.Hemi(hemiSky, hemiGround, hemiIntensity);
@@ -557,7 +563,7 @@ namespace NovaStriker.Game
             else RenderSettings.reflectionIntensity = 0;
             RenderSettings.ambientProbe = sh;
             bool low = SETTINGS.quality == "low";
-            grade.SetFloat("_Exposure", Sx.exposure);
+            grade.SetFloat("_Exposure", Sx.exposure * todExposure);
             // (Low quality draws without the grade, as the prototype does: tone mapping only)
             grade.SetVector("_Lift", low ? Vector3.zero : Sx.lift); grade.SetVector("_Gamma", low ? Vector3.one : Sx.gamma); grade.SetVector("_Gain", low ? Vector3.one : Sx.gain);
             grade.SetFloat("_Sat", low ? 1 : Sx.sat); grade.SetFloat("_Contrast", low ? 1 : Sx.contrast); grade.SetFloat("_Vignette", low ? 0 : Sx.vignette);
@@ -759,7 +765,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky, ambience.Cover); ZoneDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);
