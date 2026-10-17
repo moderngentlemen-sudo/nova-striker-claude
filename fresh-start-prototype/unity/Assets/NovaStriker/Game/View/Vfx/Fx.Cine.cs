@@ -49,6 +49,7 @@ namespace NovaStriker.Game
                 case "deflect": case "ricochet": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); break;
                 case "guardBreak": Shards(ev.x, ev.y, 10, new Color(1, 0.6f, 0.8f), 6); Flash(ev.x, ev.y, "#ffffff", 1.6f, 0.12f); break;
                 case "shot": Muzzle(ev, own); break;
+                case "discThrow": case "discRecall": case "discCatch": case "discFade": DiscEvent(ev); break;
                 case "breachBlast": Blast(ev.x, ev.y, Or(ev.r, 1.6), CHARS["ram"].energy, 0.9f); break;
                 case "rocketJump": Blast(ev.x, ev.y, 1.3f, CHARS["fix"].energy, 0.6f); break;
                 case "poundLand": Slam(ev.x, ev.y, 0.6f + 0.25f * Or(ev.level, 1), own); break;
@@ -277,7 +278,7 @@ namespace NovaStriker.Game
         // Each frame for each projectile in flight: a bright halo and a trail (Energy), or a streak (Tracer)
         void CineProjectile(Projectile pr, Vector3 at, Vector3 dir)
         {
-            if (V == null || FxCfg.Projectiles == "classic") return;
+            if (V == null || FxCfg.Projectiles == "classic" || pr.kind == "disc") return;   // (the disc: CineDisc)
             string kind = pr.deflected ? (pr.reflected ? "reflected" : "deflected") : pr.kind ?? "std";
             var c = S.Lin(TrailColor(pr));
             float trail = FxCfg.Trails == "long" ? 0.32f : FxCfg.Trails == "short" ? 0.14f : 0;

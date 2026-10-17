@@ -165,6 +165,8 @@ namespace NovaStriker.Game
         void SyncProjectiles(World world, float alpha)
         {
             var seen = new HashSet<Projectile>();
+            var discFx = CineDiscFx;
+            if (discFx == null) cineDisc?.Hide(); else discFx.Begin();
             foreach (var pr in world.projectiles)
             {
                 seen.Add(pr);
@@ -180,9 +182,10 @@ namespace NovaStriker.Game
                 double x = pr.px + (pr.x - pr.px) * alpha, y = pr.py + (pr.y - pr.py) * alpha;
                 m.position.copy(S.W(x, y, 0.1 + (pr.laneSet ? pr.lane : pr.owner != null ? pr.owner.laneTo : 0) * LevelFeatures.LANE_W));
                 var d = S.Dir(x, pr.vx, pr.vy).normalized;
-                if (pr.kind == "disc")
+                if (pr.kind == "disc" && discFx != null) { m.visible = false; discFx.Draw(pr, world, m.position.v, x, y, frameDt); }   // (the hard-light saw: CineDisc)
+                else if (pr.kind == "disc")
                 {
-                    st.spin += 0.55f;
+                    m.visible = true; st.spin += 0.55f;
                     m.rotation.set(Mathf.PI / 2 - 0.35f, st.spin, 0); m.scale.setScalar((float)pr.r / 0.4f);
                 }
                 else if (pr.kind != null && SPIN.Contains(pr.kind)) { if (!pr.rest) { m.rotation.x += 0.2f; m.rotation.y += 0.15f; } }
@@ -198,11 +201,12 @@ namespace NovaStriker.Game
                 if (pr.kind == "sentryRocket" && S.Rnd() < 0.7f) Smoke(x - pr.vx * 0.012, y - pr.vy * 0.012, "#8e97a3", 1, 0.3f, 0.25f, 0.4f, op: 0.4f, grav: -0.3f);
                 if (pr.kind == "missile" && S.Rnd() < 0.8f) Smoke(x - pr.vx * 0.012, y - pr.vy * 0.012, "#8e97a3", 1, 0.4f, 0.35f, 0.5f, op: 0.45f, grav: -0.3f);
                 if (pr.kind == "wave") { for (int i = 0; i < 3; i++) Burst(x - System.Math.Sign(pr.vx) * 0.2, y + (S.Rnd() - 0.5f) * 1.3f, S.Rnd() < 0.4f ? "#ffffff" : ECHO_ORANGE, 1, 1.5f, 0.24f, 0.2f); }
-                else if (S.Rnd() < (pr.kind == "pellet" ? 0.25f : 0.6f)) Burst(x, y, TrailColor(pr), 1, 0.6f, pr.kind == "rail" ? 0.5f : 0.22f, 0.18f);
+                else if (!(pr.kind == "disc" && discFx != null) && S.Rnd() < (pr.kind == "pellet" ? 0.25f : 0.6f)) Burst(x, y, TrailColor(pr), 1, 0.6f, pr.kind == "rail" ? 0.5f : 0.22f, 0.18f);
             }
             foreach (var kv in new List<KeyValuePair<Projectile, TObj>>(projMeshes))
                 if (!seen.Contains(kv.Key)) { kv.Value.destroy(); projMeshes.Remove(kv.Key); projState.Remove(kv.Key); }
             charge.OrphanUnseen(seen);
+            discFx?.End();
         }
         static string KindTint(string kind)
         {

@@ -66,7 +66,8 @@ namespace NovaStriker.Game
             for (int i = 0; i < CRAWLS; i++) crawls[i] = new Arc();
         }
 
-        // Soft across the line, even along it
+        // Soft across the line, even along it (CineDisc's trail uses it too)
+        internal static Texture2D SoftLine => Soft;
         static Texture2D Soft
         {
             get

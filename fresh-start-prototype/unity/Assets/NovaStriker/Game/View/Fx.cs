@@ -301,7 +301,7 @@ namespace NovaStriker.Game
         // ---- Per-frame update ----
         public void Update(float dt, World world, View view)
         {
-            this.view = view;
+            this.view = view; frameDt = dt;
             UpdateRings(dt);
             UpdateSmoke(dt);
             UpdateGhosts(world, view);
