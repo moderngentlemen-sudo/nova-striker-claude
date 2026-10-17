@@ -87,8 +87,9 @@ namespace NovaStriker.Game
             hazeIn = Add(new FxPool.Spec { name = "haze in", mat = hazeInMat, max = 80, size = FxPool.Curve(0, 1.2f, 1, 0.25f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.5f) });
             var warpMat = new Material(Templates.Distort); warpMat.SetTexture("_MainTex", FxTex.Get("ripple"));
             warp = Add(new FxPool.Spec { name = "floor warp", mat = warpMat, max = 60, mesh3D = true, meshes = new[] { Geo.Plane(1, 1) },
-                size = FxPool.Curve(0, 1.15f, 1, 0.35f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.5f),
-                extra = ps => { var r = ps.GetComponent<ParticleSystemRenderer>(); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; } });
+                size = FxPool.Curve(0, 1.15f, 1, 0.35f), fade = FxPool.Fade(white, white, 0, 1, 0, 0.5f) });
+            var wr = warp.ps.GetComponent<ParticleSystemRenderer>();   // (a see-through bend: no shadows, and plain mesh drawing so the shader gets each particle's colour)
+            wr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; wr.receiveShadows = false; wr.enableGPUInstancing = false;
             // floor rubble a well tears up and draws in (no gravity: the well holds it), shrinking as it is swallowed
             rubble = Add(new FxPool.Spec { name = "rubble", mat = FxPool.Mat(lit, null, new Color(0.42f, 0.44f, 0.48f)), max = 160, mesh3D = true,
                 meshes = new[] { Geo.Box(1, 0.5f, 0.8f), Geo.Tetrahedron(0.7f) }, size = FxPool.Curve(0, 1, 0.75f, 0.9f, 1, 0.05f), fade = FxPool.Fade(white, white, 1, 1, 1, 0.5f) });

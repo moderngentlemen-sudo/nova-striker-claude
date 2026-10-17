@@ -35,20 +35,23 @@ namespace NovaStriker.Game
                 case "splash": if (ev.r > 1.2) Blast(ev.x, ev.y, F(ev.r) * 0.75f, NOVA_GOLD, 0.45f); else Impact(ev.x, ev.y, NOVA_GOLD, 0.7f); return true;
                 case "bossSlam": Slam(ev.x, ev.y, ev.big ? 1.3f : 0.8f, HOSTILE); return true;
                 case "armorBreak": Shards(ev.x, ev.y + 0.4, 14, new Color(0.92f, 0.93f, 0.96f), 7); Flash(ev.x, ev.y + 0.4, HOSTILE, 1.4f, 0.12f); return true;
+                case "frag": Blast(ev.x, ev.y, Or(ev.r, 1.8), SUB_LOOK["grenade"].tint, 0.55f + 0.12f * Or(ev.level, 1)); return true;
+                case "rivetBlast": Blast(ev.x, ev.y, Or(ev.r, 1.2), "#ff9a4a", 0.6f); V.ring.Emit(W(ev.x, ev.y, 0.4f), Vector3.zero, Or(ev.r, 1.2) * 2.4f, 0.25f, Hdr(CHARS["fix"].energy, 3)); return true;
                 case "chargeCrash": { var e = ev.e; double x = e.x + e.facing * 0.8; Debris(x, e.y + 0.9, 10, new Color(0.85f, 0.87f, 0.9f), 6); Flash(x, e.y + 0.9, "#ffffff", 1.4f, 0.1f); DustWave(x, e.y, 0.7f); return true; }
                 // added on top of the classic reaction
                 case "hit":
                 {
                     float d = Or(ev.dmg, 1);
-                    Impact(ev.x, ev.y, own, (ev.heavy ? 1.3f : 0.7f) + Mathf.Min(1, d * 0.08f));
+                    if (!WeaponImpact(ev.pr, ev.x, ev.y, false)) Impact(ev.x, ev.y, own, (ev.heavy ? 1.3f : 0.7f) + Mathf.Min(1, d * 0.08f));
                     if (ev.heavy || d >= 6) V.lights.Flash(S.W(ev.x, ev.y, 0.3), Hdr(own, 1), 3, 4, 0.18f);
                     break;
                 }
                 case "playerHit": Impact(ev.x, ev.y, "#ffffff", 0.8f); break;
-                case "projWall": Impact(ev.x, ev.y, ev.pr != null ? TrailColor(ev.pr) : "#ffffff", 0.6f); break;
+                case "projWall": if (!WeaponImpact(ev.pr, ev.x, ev.y, true)) Impact(ev.x, ev.y, ev.pr != null ? TrailColor(ev.pr) : "#ffffff", 0.6f); break;
                 case "deflect": case "ricochet": case "blocked": case "plateHit": Impact(ev.x, ev.y, "#dff2ff", 0.6f); break;
                 case "guardBreak": Shards(ev.x, ev.y, 10, new Color(1, 0.6f, 0.8f), 6); Flash(ev.x, ev.y, "#ffffff", 1.6f, 0.12f); break;
-                case "shot": Muzzle(ev, own); break;
+                case "shot": if (!WeaponMuzzle(ev, own)) Muzzle(ev, own); break;
+                case "perfectRelease": case "split": case "burst": case "rivetStick": case "snipe": ArsenalEvent(ev); break;
                 case "discThrow": case "discRecall": case "discCatch": case "discFade": DiscEvent(ev); break;
                 case "breachBlast": Blast(ev.x, ev.y, Or(ev.r, 1.6), CHARS["ram"].energy, 0.9f); break;
                 case "rocketJump": Blast(ev.x, ev.y, 1.3f, CHARS["fix"].energy, 0.6f); break;
@@ -283,6 +286,7 @@ namespace NovaStriker.Game
             var c = S.Lin(TrailColor(pr));
             float trail = FxCfg.Trails == "long" ? 0.32f : FxCfg.Trails == "short" ? 0.14f : 0;
             var vel = S.Dir(pr.x, pr.vx, pr.vy);
+            if (WeaponBody(pr, kind, at, dir, vel, c, trail)) return;   // (each weapon's own look: Fx.Arsenal)
             if (FxCfg.Projectiles == "tracer" || SOLID.Contains(kind))
             {
                 // a hot streak stretched along its flight
