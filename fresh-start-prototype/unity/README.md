@@ -194,8 +194,15 @@ projected decals; distant landmarks have no level-of-detail models yet.
 ### Earlier additions
 
 - **Nova's absorbing shield** (Settings › *Nova's LT move, Marksman kit* › *Absorbing shield*). It replaces
-  his dodge on LT (Q or L). While held, a blue hard-light shield stands where he aims and blocks strikes, shots and
-  blasts from in front.
+  his dodge on LT (Q or L). While held, a personal energy shield wraps him in front, turned to where he aims, and
+  blocks strikes, shots and blasts from in front (it never covers his back).
+  - **Look.** A curved shell of hexagonal hard-light tiles (a honeycomb), wider and taller than him, covering
+    exactly the arc it blocks. It starts blue and turns gold tile by tile as the charge grows, from where hits
+    land and out from the front: almost all gold at 100%, and all gold and glowing hard at 150%. The tiles
+    shimmer, their edges glow brighter than their centres, its rim is brightest, and sparks crawl along its
+    edges (more as it fills). Each block sends a ripple across it with a flash and sparks at the impact; a
+    perfect block flashes the whole shell gold. As its stability wears down, tiles crack off its edges and
+    drift away; when it breaks, it shatters. Raised, it assembles from the edges in; lowered, its tiles scatter.
   - **Energy.** Every hit it blocks is absorbed as charge, which makes his attacks hit harder. A full 100%
     charge gives +100% damage. It keeps filling past full up to 150%, which gives +150% (2.5× damage); poise
     damage rises too. The HUD shows the charge and the bonus.
@@ -209,7 +216,7 @@ projected decals; distant landmarks have no level-of-detail models yet.
     spills half of it.
   - **Firing.** He can fire, tap or charged, from behind it. Melee, a dash or a Level 4 beam lowers it.
   - The tuning is `NOVA_SHIELD` in `Sim/Config.cs`, the sim is `Sim/PlayerSim.Nova.cs` and the look is
-    `Game/View/NovaShieldFx.cs`.
+    `Game/View/NovaShieldFx.cs` with the tiles in `Game/View/NovaShieldShell.cs`.
 - **Perfect parries stun** (Settings › *Nova's perfect parry or shield block stuns the attacker*). A perfect
   parry (Sentinel kit) or a perfect shield block leaves the attacker dizzy:
   - light enemies for 80 ticks;
