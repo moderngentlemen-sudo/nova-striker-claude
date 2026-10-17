@@ -167,7 +167,7 @@ namespace NovaStriker.Game
                 if (view.hitPause > 0) { view.hitPause -= dt; acc = 0; }   // an impact frame's hit-pause holds the world still
                 else
                 {
-                    acc += dt; int steps = 0;
+                    acc += dt * view.cine.TimeScale; int steps = 0;   // (a cinematic moment may slow the clock)
                     while (acc >= DT && steps < 5) { StepSim(); acc -= DT; steps++; }
                     if (steps == 5) acc = 0;
                 }

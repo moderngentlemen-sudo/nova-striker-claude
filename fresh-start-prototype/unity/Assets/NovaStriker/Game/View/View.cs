@@ -49,6 +49,7 @@ namespace NovaStriker.Game
         public TMat floor;
         public Sparks sparks; PlanarReflection reflection;
         public Vfx vfx; PostFx post; LevelFx levelFx; EnemyBreakup breakup;
+        public readonly CineCam cine = new CineCam();
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -495,6 +496,8 @@ namespace NovaStriker.Game
                 if (U.phase == "cast") { Tx = mx; Ty = my + 0.4; Td = System.Math.Max(8.5, Td * 0.6); rate = 9; }
                 else if (U.phase == "run") { Tx = Tx * 0.7 + mx * 0.3; Ty = Ty * 0.7 + my * 0.3; Td *= 1.04; }
             }
+            // A cinematic moment (CineCam) leans the frame toward its subject and in or out
+            if (cine.Focus > 0 || cine.Zoom != 1) { Tx += (cine.X - Tx) * cine.Focus; Ty += (cine.Y - Ty) * cine.Focus; Td *= cine.Zoom; rate = Mathf.Max(rate, 7); }
             float k = 1 - Mathf.Exp(-dt * rate);
             // Vertical follow speeds up the further behind it falls, so a big launch never leaves the frame
             float ky = 1 - Mathf.Exp(-dt * (rate + Mathf.Max(0, Mathf.Abs((float)(Ty - camY)) - 1.2f) * 5));
@@ -614,7 +617,7 @@ namespace NovaStriker.Game
             // an armour plate knocked off flies loose (the rig hides it on its next pose)
             if (T == "armorBreak" && ev.e != null && world != null && enemyRigs.TryGetValue(ev.e, out var AR) && AR.parts.plates != null && ev.e.armor >= 0 && ev.e.armor < AR.parts.plates.Count)
                 breakup.BreakPart(AR.parts.plates[(int)ev.e.armor], AR, ev.e, S.ToUnity(NearestPlayer(world, ev.e)));
-            weather.OnEvent(ev);
+            weather.OnEvent(ev); cine.OnEvent(ev);
             if (T == "boxBreak") trauma = Mathf.Min(1, trauma + (ev.box.tag == "pillar" ? 0.4f : ev.box.tag == "glass" ? 0.12f : 0.2f));
             // Shockwaves from the heaviest blows (an impact frame adds its own in StartImpact)
             if (T == "boxBreak" && ev.box.tag == "pillar") Shockwave(ev.x, ev.y, 0.7f);
@@ -774,6 +777,7 @@ namespace NovaStriker.Game
             if (Screen.width != w || Screen.height != h) Resize(Screen.width, Screen.height);
             SyncEntities(world, a, dt);
             HelmetFx.Update(dt);
+            cine.Update(dt, world);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
             reflection.Update(); sparks.Update(dt); vfx.Update(dt); breakup.Tick(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);

@@ -96,6 +96,8 @@ namespace NovaStriker.Sim
         public bool fxLights = true;          // dynamic light from shots and blasts
         public bool fxDistortion = true;      // heat haze and shockwave refraction
         public string keyBindings = "";     // presentation only (Unity only): changed controls, id:key/key:mouse:pad (Game/Input/Bindings.cs)
+        public bool cineCamera = true;        // presentation only (Unity only): camera shots and letterbox for boss entrances, falls, finishers
+        public bool slowMo = true;            // Unity only: slow motion on those moments (the whole game slows, so play stays fair)
         public string timeOfDay = "route";   // presentation only (Unity only): route (each route's own light), cycle, sunset, night
         public double fxSmokeLife = 1;        // presentation only (Unity only): how long smoke hangs, times its usual life
         public bool fxFlash = true;           // presentation only (Unity only): screen flashes from beams, ultimates and big blasts

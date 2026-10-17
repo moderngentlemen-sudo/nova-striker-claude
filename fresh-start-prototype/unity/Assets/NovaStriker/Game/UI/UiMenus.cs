@@ -55,6 +55,8 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "reflections", label = "Reflections on the deck (High and Ultra quality)", @bool = true },
             new SettingDef { key = "charModels", label = "Character models", opts = O("builtin", "Built-in rigs", "models", "3D models where available (Resources/NovaStriker/Models)") },
             new SettingDef { key = "quality", label = "Graphics quality", opts = O("ultra", "Ultra (adds ambient occlusion)", "high", "High (bloom, shadows, grading)", "low", "Low") },
+            new SettingDef { key = "cineCamera", label = "Cinematic camera on big moments (bosses, finishers, ultimates)", @bool = true },
+            new SettingDef { key = "slowMo", label = "Slow motion on big moments", @bool = true },
             new SettingDef { key = "timeOfDay", label = "Time of day", opts = O("route", "Each route's own light", "cycle", "Shifting: a full day every 12 minutes", "sunset", "Sunset", "night", "Night") },
             new SettingDef { key = "hdr", label = "HDR output (needs an HDR display with HDR on in the system)", @bool = true },
             new SettingDef { key = "volume", label = "Sound effects volume", range = new[] { 0f, 1, 0.05f } },
@@ -86,7 +88,7 @@ namespace NovaStriker.Game.UI
         static string SectionOf(string key) =>
             key.StartsWith("fx") || key == "weather" || key == "clouds" || key == "birds" || key == "enemyModels" || key == "perfOverlay" ? "Effects"
             : key == "levelTiers" || key == "levelHazards" || key == "depthLanes" ? "Level features"
-            : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "timeOfDay" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
+            : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "cineCamera" || key == "slowMo" || key == "timeOfDay" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
             : key == "aimAssist" || key == "lockOn" || key == "lockMode" || key == "dashCharge" || key == "haptics" || key == "hapticStrength" || key == "p1Aim" ? "Controls"
             : key == "volume" || key == "music" ? "Audio" : "Game";
         static readonly (string kind, string a, string b, string c)[] HELP_ROWS =

@@ -413,6 +413,21 @@ namespace NovaStriker.Game.UI
             barks.RemoveAll(b => b.t <= 0);
             if (debugText.transform.parent.gameObject.activeSelf) UpdateDebug(world, fps);
             UpdateMenus(dt);
+            Letterbox(view.cine.Bars);
+        }
+
+        // Letterbox bars for cinematic moments (CineCam), under the HUD and menus
+        Image barTop, barBot;
+        void Letterbox(float k)
+        {
+            if (barTop == null)
+            {
+                Image Bar(string n, float y) { var i = W.Box(root, Color.black, n, false); var r = i.rectTransform; r.anchorMin = new Vector2(0, y); r.anchorMax = new Vector2(1, y); r.pivot = new Vector2(0.5f, y); r.sizeDelta = new Vector2(0, 0); r.SetAsFirstSibling(); return i; }
+                barTop = Bar("letterbox top", 1); barBot = Bar("letterbox bottom", 0);
+            }
+            float h = k * 0.105f * root.rect.height;
+            barTop.gameObject.SetActive(k > 0.001f); barBot.gameObject.SetActive(k > 0.001f);
+            barTop.rectTransform.sizeDelta = new Vector2(0, h); barBot.rectTransform.sizeDelta = new Vector2(0, h);
         }
 
         void UpdateDebug(World world, float fps)
