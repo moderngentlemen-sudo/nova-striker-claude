@@ -108,7 +108,8 @@ The README's *Unity-only additions* has the full description.
     features off; `LevelTests` covers them. With them off, `parity.sh` still matches.
   - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
-    Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (all are well under).
+    Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (the detailed models use 70–95% of them).
+    `build_enemy_lib.py` has a detail kit (rivets, pistons, tubes, grilles, fins, thrusters, sensors, hull patches).
   - **Stage dressing:** `ZoneDressing.Build(view, zone)` loads `Env/<zone>_kit.json`. `SimTests/LevelDump`
     writes `Art/Blender/level_boxes.json`, which `zone_layout.py` places from (rerun it after changing the
     level). Build, export and render one stage with `build_zone_kit.py <zone> <out>`, `export_kit.py -- <json>
