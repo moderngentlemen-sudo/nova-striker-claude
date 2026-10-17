@@ -113,7 +113,7 @@ namespace NovaStriker.Game
             int L = Mathf.Clamp((int)pr.level, 0, 3); bool fresh = s.pr != pr;
             if (fresh)
             {
-                s.pr = pr; s.spin = Random.value * 6; s.t.gameObject.SetActive(true);
+                s.pr = pr; s.spin = Random.value * 6; s.t.position = Th.P(at); s.t.gameObject.SetActive(true);   // (placed first, so its trail starts here)
                 s.f0.sharedMesh = s.f1.sharedMesh = s.f2.sharedMesh = blades[L];
                 s.trail.time = (FxCfg.Trails == "long" ? 1 : 0.6f) * (0.07f + 0.07f * L); s.trail.widthMultiplier = (float)pr.r * 1.7f;
                 s.trail.Clear();
