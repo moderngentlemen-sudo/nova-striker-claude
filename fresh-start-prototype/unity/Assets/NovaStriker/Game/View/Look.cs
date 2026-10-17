@@ -430,6 +430,17 @@ namespace NovaStriker.Game
             mat.userData["worldUV"] = tile; mat.userData["surfaceKind"] = kind;
             return mat;
         }
+        // Surface detail on a model's own material (an enemy's, made per rig): the model's UVs already tile it, so no
+        // world UVs. The set's colour detail, and on the standard template its relief and roughness too (the clear-coat
+        // template takes only the colour, as with Wear). Not listed for SurfaceRelief: such materials come and go with
+        // their rigs, and each new one follows the quality setting of its moment.
+        public static TMat Detail(TMat mat, string kind, float tile = 1, float normal = 0.6f)
+        {
+            var S = Surface(kind);
+            mat.map = S.map; mat.repeat = new Vector2(tile, tile);
+            if (relief && mat.kind == TMat.Kind.Standard) { mat.normalScale = normal; mat.normalMap = S.normalMap; mat.roughnessMap = Gloss(S, mat.roughness, mat.metalness); }
+            return mat;
+        }
         // Battle-worn armour (RAM): the "worn" set's colour detail (scratches, chipped paint, grime) on lacquered
         // armour. Only the colour: the clear-coat template takes no relief or roughness maps.
         public static void Wear(TMat mat, float tile = 1) { mat.map = Surface("worn").map; mat.repeat = new Vector2(tile, tile); }

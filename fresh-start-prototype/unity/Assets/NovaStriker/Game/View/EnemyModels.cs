@@ -5,7 +5,9 @@
 // The rig's meshes under a modelled node are hidden and the model's added in their place. Where the node is itself a
 // mesh (an eye, a core, the state meshes `plates[i]`, `horns[i]`, `tubes[i]` that the rig hides or scales to show
 // armour and charge), the part in that mesh's material becomes its geometry, so that logic keeps working.
-// Materials map onto the rig's own (plate, joint, energy), so hit flashes and glows still drive them.
+// Materials map onto the rig's own (plate, joint, energy, and the models' metal, chrome, rubber and lens, made per rig
+// in EnemyRigs), so hit flashes and glows still drive them; a modelled rig's surfaces also get the game's surface
+// detail (Surfaces). Parts in another material under a state mesh are its children, so they hide and scale with it.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using UnityEngine;
@@ -42,7 +44,9 @@ namespace NovaStriker.Game
                             for (int k = 0; k < P.p.Length / 3; k++)
                                 g.V(new Vector3(P.p[3 * k], P.p[3 * k + 1], P.p[3 * k + 2]), new Vector3(P.n[3 * k], P.n[3 * k + 1], P.n[3 * k + 2]), new Vector2(P.uv[2 * k], P.uv[2 * k + 1]));
                             for (int k = 0; k + 2 < P.i.Length; k += 3) g.T(P.i[k], P.i[k + 1], P.i[k + 2]);
-                            list.Add(new Built { node = P.node, mat = P.mat, mesh = g.ToMesh("enemy_" + type + "-" + P.node + "-" + P.mat) });
+                            var mesh = g.ToMesh("enemy_" + type + "-" + P.node + "-" + P.mat);
+                            mesh.RecalculateTangents();   // (the surface detail's relief needs them)
+                            list.Add(new Built { node = P.node, mat = P.mat, mesh = mesh });
                         }
                     }
                 }
@@ -127,8 +131,22 @@ namespace NovaStriker.Game
                 case "Enemy_Plate": return R.mats.plate;
                 case "Enemy_Joint": case "Enemy_Glass": return R.mats.joint;
                 case "Enemy_Energy": return R.mats.energy;
+                case "Enemy_Metal": return R.mats.metal;
+                case "Enemy_Chrome": return R.mats.chrome;
+                case "Enemy_Rubber": return R.mats.rubber;
+                case "Enemy_Lens": return R.mats.lens;
             }
             return null;
+        }
+
+        // Surface detail like the rest of the game's (Look.Detail; the models' UVs repeat every 0.9 m): light paint under
+        // the plates' clear coat, worn gunmetal, painted graphite and pebbled rubber. Chrome, lenses and energy stay clean.
+        static void Surfaces(EnemyMats M)
+        {
+            Look.Detail(M.plate, "paint");
+            Look.Detail(M.joint, "paint", 1, 0.5f);
+            Look.Detail(M.metal, "worn", 1, 0.6f);
+            Look.Detail(M.rubber, "rubber", 1.5f, 0.8f);
         }
 
         // Hides the rig's meshes under a node: its own children and those in unnamed groups below it
@@ -157,6 +175,8 @@ namespace NovaStriker.Game
                 if (!byNode.TryGetValue(n, out var l)) { byNode[n] = l = new List<Built>(); order.Add(n); }
                 l.Add(b);
             }
+            if (order.Count == 0) return;
+            Surfaces(R.mats);
             foreach (var n in order) Hide(n, named);   // (all hidden first, so no model mesh is ever hidden)
             foreach (var n in order)
             {

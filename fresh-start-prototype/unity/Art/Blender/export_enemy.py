@@ -11,7 +11,7 @@ for o in bpy.data.objects:
     if o.type == 'CURVE': o.data.resolution_u = 3; o.data.bevel_resolution = 1
     for m in list(getattr(o, 'modifiers', [])):
         if m.type == 'SUBSURF': o.modifiers.remove(m)      # (removed, not applied: a zero-level one errors on apply)
-        elif m.type == 'BEVEL': m.segments = 1
+        elif m.type == 'BEVEL': m.segments = min(m.segments, 2)   # (two at most: rounded, not faceted, edges)
 dg = bpy.context.evaluated_depsgraph_get()
 parts = {}
 for o in sorted(bpy.data.objects, key=lambda o: o.name):
