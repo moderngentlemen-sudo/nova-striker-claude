@@ -128,6 +128,13 @@ namespace NovaStriker.Sim
             var held = new Buttons(); double mx = 0, my = 0, ax = 0, ay = 0; bool aimFree = false;
             Cmd Out()
             {
+                // never into a live hazard, whatever the fight asked for: out of one, or stop short of a tall one
+                if (SETTINGS.levelHazards && p.state != "downed" && p.state != "dead")
+                {
+                    var hz = HazardNear(world, p, mx, out bool inside, out bool low, out double way, out double ahead);
+                    if (hz != null && inside) { mx = way; if (low && p.onGround && !M.prev.jump) held.jump = true; }
+                    else if (hz != null && ahead < 0.8 && (!low || (p.onGround && M.jumpT <= 0 && !held.jump))) mx = 0;   // (a hop already under way may go)
+                }
                 var c = new Cmd { mx = mx, my = my, aimFree = aimFree, ax = ax, ay = ay, held = held };
                 for (int i = 0; i < 10; i++) { c.pressed[i] = held[i] && !M.prev[i]; c.released[i] = !held[i] && M.prev[i]; }
                 M.prev = held.Clone();
@@ -217,6 +224,17 @@ namespace NovaStriker.Sim
             if (shell != null) { goal = p.x + (p.x >= shell.Value ? 1 : -1) * 3; stopAt = 0.2; }
             double dx = goal - p.x;
             if (JMath.Abs(dx) > stopAt) mx = sign(dx);
+            // ---- 2. Level hazards (Settings: Level hazards): hop the live floor ones, wait out the tall ones ----
+            bool hop = false, waiting = false;
+            if (SETTINGS.levelHazards)
+            {
+                var hz = HazardNear(world, p, mx, out bool inside, out bool low, out double way, out double ahead);
+                if (hz != null && inside) { mx = way; hop = low; }
+                // (a floor hazard is jumped only when the goal is past it: if the goal is on it, wait beside it)
+                bool past = hz != null && (mx > 0 ? goal > hz.x1 + 0.3 : goal < hz.x0 - 0.3);
+                if (hz != null && low && past) hop = p.onGround && ahead < 1.1;
+                else if (hz != null && ahead < 1.6) { mx = 0; waiting = true; }
+            }
 
             // ---- Platforming ----
             double dir = or(mx, p.facing);
@@ -238,7 +256,7 @@ namespace NovaStriker.Sim
             // a wall in the way while airborne: climb kicks take it up a tall wall
             bool climb = !p.onGround && p.wallDir != 0 && p.wallDir == dir && (wall || goalY > p.y + 0.5);
             // (a jump only starts on a fresh press, so each one begins by letting go of the button if it is held)
-            if (M.jumpT <= 0 && p.onGround && (wave || wall || (gap && goalPastGap && goalY >= p.y - 0.5) || wantUp)) { M.jumpT = 14; M.jumpNew = true; }
+            if (M.jumpT <= 0 && p.onGround && (wave || hop || wall || (gap && goalPastGap && goalY >= p.y - 0.5) || wantUp)) { M.jumpT = 14; M.jumpNew = true; }
             else if (M.jumpT <= 0 && !p.onGround && (climb ? p.vy < 3 : p.vy < 1 && p.jumpsUsed < 1 && (wall || (goalY > p.y + 0.8 && JMath.Abs(dx) < 4) || (floorAhead < p.y - 3 && goalPastGap)))) { M.jumpT = 10; M.jumpNew = true; }
             if (M.jumpT > 0)
             {
@@ -249,7 +267,7 @@ namespace NovaStriker.Sim
             if (M.t % 60 == 0)
             {
                 bool below = goalY > p.y + 3, noHeadway = JMath.Abs(p.x - (M.lastX ?? p.x + 9)) < 0.6 && p.y < (M.lastY ?? -1e9) + 1;
-                M.stuck = tgt == null && (JMath.Abs(dx) > 3 || below) && noHeadway ? M.stuck + 1 : 0; M.lastX = p.x; M.lastY = p.y;
+                M.stuck = tgt == null && !waiting && (JMath.Abs(dx) > 3 || below) && noHeadway ? M.stuck + 1 : 0; M.lastX = p.x; M.lastY = p.y;
                 if (M.stuck >= 3) { M.stuck = 0; world.Recall(p, false); return Out(); }
             }
 
@@ -437,6 +455,44 @@ namespace NovaStriker.Sim
             if (p.gadgetSel != want) { if (p.modeCd == 0 && (M.t % 12) == 0) held.mode = true; return; }
             double cost = FIX.gadget[want].cost;
             if (p.scrap >= JMath.Max(55, cost + 10) && --M.gadgetT <= 0 && !world.gadgets.Exists(g => g.owner == p && !g.dead && g.kind != "pad")) { held.sig = true; M.gadgetT = 480; }
+        }
+
+        // The level hazard that matters to a bot now (null if none): one it stands in while it is dangerous (`way`: the
+        // way out), or a dangerous one in the way it is going (`ahead`: metres to it). Floor-height ones (shock panels,
+        // slag, low laser gates) are `low`: a jump clears them; tall ones (lightning, crushers, debris) are waited out.
+        // "Dangerous" includes the warning and about half a second before it.
+        static readonly HashSet<string> HARMFUL = new HashSet<string> { "shock", "slag", "laser", "lightning", "crusher", "debris" };
+        static Hazard HazardNear(World w, Player p, double mx, out bool inside, out bool low, out double way, out double ahead)
+        {
+            inside = false; low = false; way = 0; ahead = 99; Hazard best = null;
+            double half = p.w / 2;
+            foreach (var h in Level.HAZARDS)
+            {
+                if (!HARMFUL.Contains(h.kind) || h.x1 < p.x - 8 || h.x0 > p.x + 8) continue;
+                bool isLow = h.kind == "shock" || h.kind == "slag" || h.kind == "laser";
+                if (p.y > h.y1 + (isLow ? 4 : 0.3) || p.y + p.h < h.y0 - 0.2) continue;   // (not on its level; over a floor one counts: it lands there)
+                bool danger = h.kind == "slag" || h.state == "warn" || h.state == "on";
+                if (!danger && h.period > 0)
+                {
+                    long c = ((long)w.tick + h.phase) % h.period, idleEnd = h.period - h.warn - h.on;
+                    danger = idleEnd - c < 30;   // (about to warn)
+                }
+                if (!danger) continue;
+                if (p.x + half > h.x0 && p.x - half < h.x1)
+                {
+                    // (in the air over a live floor is safe for now, but keep steering off it: it will have to land)
+                    inside = true; low = isLow; best = h;
+                    double l = p.x - h.x0, r = h.x1 - p.x;
+                    way = !p.onGround && JMath.Abs(p.vx) > 0.5 ? (p.vx > 0 ? 1 : -1)   // (mid-jump: carry on the way it is flying)
+                        : mx != 0 && (mx > 0 ? r : l) < (mx > 0 ? l : r) + 1.5 ? (mx > 0 ? 1 : -1) : l < r ? -1 : 1;   // (onward if nearly as close)
+                    return best;
+                }
+                if (mx == 0) continue;
+                double gapTo = mx > 0 ? h.x0 - (p.x + half) : (p.x - half) - h.x1;
+                if (gapTo < 0 || gapTo > 2.4 || gapTo >= ahead) continue;
+                ahead = gapTo; low = isLow; best = h;
+            }
+            return best;
         }
 
         // Holding fire to a charge level: keep holding until the charge reaches `to` ticks, then let go

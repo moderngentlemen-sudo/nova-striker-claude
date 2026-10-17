@@ -70,6 +70,46 @@ static class P {
       Check(!ev.Any(e => e.type.StartsWith("hazard")), "hazards off: no hazard events");
     }
 
+    // 3b. AI teammates and hazards: a bot following the player hops the slag and waits out a crusher, and steps off a
+    // shock panel before it goes live, without being hurt
+    { (bool hurt, double x) Follow(string zone, double botX, double leadX, int ticks, Func<World, Hazard> pick) {
+        var w = Make(false, true, false, zone); var bots = new Bots();
+        var lead = w.AddPlayer("pad0", "nova"); lead.x = leadX; lead.y = 0;
+        bots.Sync(w, 1); var bot = w.players.First(Bots.IsBot); bot.x = botX; bot.y = 0; bot.vx = 0;
+        var h = pick(w); bool hurt = false;
+        for (int i = 0; i < ticks; i++) {
+          w.enemies.Clear(); lead.x = leadX; lead.vx = 0;
+          var cmds = new Dictionary<int, Cmd> { [lead.slot] = new Cmd() }; bots.Commands(w, cmds); w.Step(cmds);
+          if (w.events.Any(e => e.type == "hazardHit" && e.p == bot)) hurt = true; w.events.Clear();
+        }
+        return (hurt, bot.x);
+      }
+      var slag = Follow("foundry", 517, 533, 600, w => Level.HAZARDS.First(h => h.kind == "slag"));
+      Check(!slag.hurt && slag.x > 527.5, $"bots: a teammate crosses the slag channel unhurt (x {slag.x:0.0})");
+      // a crusher about to come down just ahead: walking straight on would be under it when it slams
+      { var w = Make(false, true, false, "foundry"); var bots = new Bots();
+        var cr = Level.HAZARDS.First(h => h.kind == "crusher" && h.x0 < 450);
+        var lead = w.AddPlayer("pad0", "nova"); lead.x = 452; lead.y = 0; bots.Sync(w, 1); var bot = w.players.First(Bots.IsBot);
+        void Tick() { w.enemies.Clear(); lead.x = 452; lead.vx = 0; var c = new Dictionary<int, Cmd> { [lead.slot] = new Cmd() }; bots.Commands(w, c); w.Step(c); }
+        for (int i = 0; i < 2000; i++) { long c = ((long)w.tick + cr.phase) % cr.period; if (c == cr.period - cr.on - 12) break; Tick(); w.events.Clear(); bot.x = 436; bot.vx = 0; }
+        bot.x = cr.x0 - 1.0; bot.y = 0; bot.vx = 0; bool hurt = false;
+        for (int i = 0; i < 400; i++) { Tick(); if (w.events.Any(e => e.type == "hazardHit" && e.p == bot)) hurt = true; w.events.Clear(); }
+        Check(!hurt && bot.x > cr.x1, $"bots: a teammate waits out a crusher about to slam, then passes unhurt (x {bot.x:0.0})");
+      }
+      // a bot dropped on a shock panel just as it starts to warn gets off before it is live
+      { var w = Make(false, true, false, "arena"); var bots = new Bots();
+        var shock = Level.HAZARDS.First(h => h.kind == "shock" && h.zone == "arena");
+        var lead = w.AddPlayer("pad0", "nova"); lead.x = 72; lead.y = 0; bots.Sync(w, 1); var bot = w.players.First(Bots.IsBot);   // (the player stands on the panel: a bot that just follows would too)
+        for (int i = 0; i < 2000 && shock.state != "warn"; i++) { w.enemies.Clear(); var c0 = new Dictionary<int, Cmd> { [lead.slot] = new Cmd() }; bots.Commands(w, c0); w.Step(c0); w.events.Clear(); bot.x = 62; lead.x = 72; lead.hp = lead.maxHp; }
+        bot.x = shock.x0 + 0.6; bot.y = 0; bot.vx = 0; bool hurt = false;
+        for (int i = 0; i < shock.warn + shock.on; i++) {
+          w.enemies.Clear(); lead.x = 72; lead.hp = lead.maxHp; var cmds = new Dictionary<int, Cmd> { [lead.slot] = new Cmd() }; bots.Commands(w, cmds); w.Step(cmds);
+          if (w.events.Any(e => e.type == "hazardHit" && e.p == bot)) hurt = true; w.events.Clear();
+        }
+        Check(!hurt, $"bots: a teammate on a shock panel leaves it before it is live (x {bot.x:0.0}, panel {shock.x0}-{shock.x1})");
+      }
+    }
+
     // 4. Depth lanes
     { var w = Make(false, false, true, "gym");
       var p = w.AddPlayer("pad0", "nova"); p.x = 52; p.y = 0;
