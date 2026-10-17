@@ -123,7 +123,17 @@ The README's *Unity-only additions* has the full description.
   - **Beams:** `Vfx/CineBeam.cs` draws the Level 4 beams (`BeamFx`), the Supernova (`UltFx`) and boss lasers
     (`FxEvents.SyncBossLasers`) unless Projectiles is Classic. `View.Flash` (a `ColorAdjustments` exposure
     spike, off with `fxFlash`) and `View.ShakeAtLeast` are its screen hooks.
-  - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
+  - **Enemy break-up:** `Vfx/EnemyBreakup.cs` (pieces on layer 10, colliding only with layer 9 and each other);
+    View calls it for dead enemies and on `armorBreak`.
+  - **Cinematic moments:** `Vfx/CineCam.cs` (focus, zoom, letterbox, time scale); `GameMain` scales the sim clock
+    by `view.cine.TimeScale`; the bars are in `Ui.Letterbox`.
+  - **Time of day:** `Vfx/TimeOfDay.cs` moves the atmosphere targets in `View.UpdateCamera`.
+  - **Bots and hazards:** `Bots.HazardNear` (used in the movement step and as a final guard in `Out()`);
+    `LevelTests` checks the slag, a crusher and a shock panel (each test fails without the avoidance).
+  - **Performance:** `Vfx/RenderScale.cs` (pipeline asset render scale and upscaler), `Vfx.WarmUp`,
+    `Vfx/LoadTimer.cs` (stage timings in the Console and the readout), IL2CPP in `NovaBuild` when the editor
+    has it for the target (`NOVA_BACKEND` overrides).
+  - **Limits:** decals are quads; landmarks have no LOD yet; the Windows and macOS GitHub builds are Mono.
 
 ## Open threads and ideas
 

@@ -161,6 +161,21 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   screen flash, a shockwave and a camera kick when they fire. *Screen flashes* (Settings › *Effects*) turns the
   flashes off. *Projectiles: Classic* keeps the old beams.
 - **Thicker smoke** that builds fast, hangs for most of its life and keeps spreading; blasts leave a pall behind.
+- **Enemies break apart** into their own pieces (Debris: Physics): plates, limbs, heads and guns fly off as
+  physics bodies, bounce off the level and cool before they shrink away; broken armour plates fly off too.
+- **Cinematic moments** (Settings › *Graphics*): boss entrances, second phases and falls, finishers and
+  ultimates get a camera shot with letterbox bars and slow motion. *Cinematic camera* and *Slow motion* turn
+  them off.
+- **Time of day** (Settings › *Graphics*): each route's own light, a day that keeps turning (golden hour, dusk,
+  night, dawn, about every 12 minutes), a fixed sunset or night.
+- **Smoke duration** (Settings › *Effects*): 25% to 300%.
+- **Performance:** *Render scale* (50–100%) with STP, FSR 1 or bilinear upscaling; every effect is drawn once
+  while the start screen is up, so the first fight doesn't stall; the Console (and the frame time readout) lists
+  how long each part of loading took. Builds use IL2CPP where the build machine has it (the GitHub Linux build);
+  the Windows and macOS downloads still use Mono, because the GitHub machines that make them can't compile
+  IL2CPP for those systems.
+- **AI teammates avoid hazards:** they hop live shock panels, slag and low laser gates, wait out lightning,
+  crushers and falling debris, and get off a panel about to go live.
 - **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
   and scuff marks fade where players land hard or slide.
 - **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.
@@ -173,7 +188,7 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
     only reach their own lane, except area attacks.
   - The data and rules are in `Sim/LevelFeatures.cs`; `SimTests/LevelTests` tests them.
 
-**Known limits:** the AI teammates don't avoid hazards yet; scorch marks are flat quads rather than
+**Known limits:** scorch marks are flat quads rather than
 projected decals; distant landmarks have no level-of-detail models yet.
 
 ### Earlier additions
