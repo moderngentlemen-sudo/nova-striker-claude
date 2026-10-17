@@ -56,6 +56,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "charModels", label = "Character models", opts = O("builtin", "Built-in rigs", "models", "3D models where available (Resources/NovaStriker/Models)") },
             new SettingDef { key = "animPolish", label = "Animation polish (secondary motion, squash and stretch)", @bool = true },
             new SettingDef { key = "quality", label = "Graphics quality", opts = O("ultra", "Ultra (adds ambient occlusion)", "high", "High (bloom, shadows, grading)", "low", "Low") },
+            new SettingDef { key = "fpsCounter", label = "Frame rate counter", @bool = true },
             new SettingDef { key = "renderScale", label = "Render scale (lower is faster; the interface stays sharp)", range = new[] { 0.5f, 1, 0.05f }, fmt = v => $"{v * 100:0}%" },
             new SettingDef { key = "upscaler", label = "Upscaling (below 100% render scale)", opts = O("stp", "STP: Unity's temporal upscaler, sharpest", "fsr", "FSR 1: AMD's, fast", "linear", "Bilinear: simplest") },
             new SettingDef { key = "cineCamera", label = "Cinematic camera on big moments (bosses, finishers, ultimates)", @bool = true },
@@ -92,7 +93,7 @@ namespace NovaStriker.Game.UI
         static string SectionOf(string key) =>
             key.StartsWith("fx") || key == "weather" || key == "clouds" || key == "birds" || key == "enemyModels" || key == "perfOverlay" ? "Effects"
             : key == "levelTiers" || key == "levelHazards" || key == "depthLanes" ? "Level features"
-            : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "animPolish" || key == "renderScale" || key == "upscaler" || key == "cineCamera" || key == "slowMo" || key == "timeOfDay" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
+            : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "animPolish" || key == "fpsCounter" || key == "renderScale" || key == "upscaler" || key == "cineCamera" || key == "slowMo" || key == "timeOfDay" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
             : key == "aimAssist" || key == "lockOn" || key == "lockMode" || key == "dashCharge" || key == "haptics" || key == "hapticStrength" || key == "p1Aim" ? "Controls"
             : key == "volume" || key == "music" || key == "sfxStyle" ? "Audio" : "Game";
         static readonly (string kind, string a, string b, string c)[] HELP_ROWS =

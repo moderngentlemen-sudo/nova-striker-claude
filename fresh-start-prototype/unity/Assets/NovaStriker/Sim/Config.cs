@@ -104,6 +104,7 @@ namespace NovaStriker.Sim
         public bool slowMo = true;            // Unity only: slow motion on those moments (the whole game slows, so play stays fair)
         public string timeOfDay = "route";   // presentation only (Unity only): route (each route's own light), cycle, sunset, night
         public double fxSmokeLife = 1;        // presentation only (Unity only): how long smoke hangs, times its usual life
+        public bool fpsCounter = false;       // presentation only (Unity only): a small frames-per-second counter in the corner
         public bool fxFlash = true;           // presentation only (Unity only): screen flashes from beams, ultimates and big blasts
         public bool fxDecals = true;          // scorch marks and scuffs
         public string fxScreen = "cinematic"; // cinematic (aberration kicks, lens dirt, grain) or clean
