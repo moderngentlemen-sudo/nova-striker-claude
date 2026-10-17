@@ -1,6 +1,6 @@
-// Synthesized placeholder audio (audio.js). Timing cues matter more than fidelity here: every threat
-// category and both parry grades have a distinct, unmistakable sound. Built on the Web Audio work-alike
-// (WebAudio.cs), call for call.
+// Synthesized audio (audio.js). Timing cues matter more than fidelity here: every threat category and both
+// parry grades have a distinct, unmistakable sound. Built on the Web Audio work-alike (WebAudio.cs), call for
+// call. With Sound effects set to Designed, Sound.Designed.cs plays layered samples in place of (or under) these.
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -11,7 +11,7 @@ using F = NovaStriker.Game.Audio.FilterType;
 
 namespace NovaStriker.Game.Audio
 {
-    public sealed class Sound
+    public sealed partial class Sound
     {
         // The pitch each secondary weapon hums at while it charges (and chimes at when selected)
         static double SubHum(string s) => s == "scatter" ? 130 : s == "grenade" ? 110 : s == "chain" ? 260 : s == "disc" ? 180 : s == "well" ? 70 : 0;
@@ -51,7 +51,7 @@ namespace NovaStriker.Game.Audio
         public void Unlock(Ctx c)
         {
             if (ctx != null) return;
-            ctx = c;
+            ctx = c; Main = this;
             // A gentle compressor keeps stacked blasts (rocket jump + splash + hits) from clipping
             var comp = c.createDynamicsCompressor();
             comp.threshold = -12; comp.knee = 8; comp.ratio = 5; comp.attack = 0.003; comp.release = 0.2;
@@ -134,7 +134,7 @@ namespace NovaStriker.Game.Audio
             if (ctx == null) return;
             lock (ctx.gate)
             {
-                var c = ctx; double now = c.currentTime, vol = Vol; var seen = new HashSet<Player>();
+                var c = ctx; double now = c.currentTime, vol = Vol; var seen = new HashSet<Player>(); this.seen = world;
                 var players = world != null ? world.players : new List<Player>();
                 foreach (var p in players)
                 {
@@ -179,6 +179,7 @@ namespace NovaStriker.Game.Audio
                 foreach (var p in hums.Keys.ToList()) if (!seen.Contains(p)) StopHum(p);
                 foreach (var p in grinds.Keys.ToList()) if (!seen.Contains(p)) { StopVoice(grinds[p], 0.04); grinds.Remove(p); }
                 Loops(world, players, now, vol);
+                DesignedLoops(world, players, now, vol);
             }
         }
 
@@ -190,7 +191,7 @@ namespace NovaStriker.Game.Audio
         void Loops(World world, List<Player> players, double now, double vol)
         {
             var c = ctx;
-            var want = new HashSet<Player>(); var wantA = new HashSet<Player>(); var wantW = new HashSet<Well>();
+            var want = new HashSet<Player>(); var wantA = new HashSet<Player>(); var wantW = new HashSet<Well>(); bool synthBeams = !DesignedBeams;
             // Each open gravity well: a deep pulsing drone that quickens as it nears its collapse
             if (world != null) foreach (var w in world.wells)
             {
@@ -210,7 +211,7 @@ namespace NovaStriker.Game.Audio
             foreach (var p in players)
             {
                 // Supernova: the Level 4 roar, an octave down, far louder and wider
-                if (p.state == "ult" && p.ultRun != null && p.ultRun.segs != null && vol > 0)
+                if (synthBeams && p.state == "ult" && p.ultRun != null && p.ultRun.segs != null && vol > 0)
                 {
                     want.Add(p);
                     if (!beamV.TryGetValue(p, out var v)) v = BeamVoice(p, now, vol, 46, 69, 0.13, beamV);
@@ -218,7 +219,7 @@ namespace NovaStriker.Game.Audio
                     v.o1.frequency.setTargetAtTime(44 + 18 * k, now, 0.05); v.o2.frequency.setTargetAtTime(66 + 26 * k, now, 0.05);
                     continue;
                 }
-                if (p.state == "beam" && p.beam != null && vol > 0)
+                if (synthBeams && p.state == "beam" && p.beam != null && vol > 0)
                 {
                     want.Add(p);
                     if (!beamV.TryGetValue(p, out var v)) v = BeamVoice(p, now, vol, 92, 139, 0.07, beamV);
@@ -301,6 +302,7 @@ namespace NovaStriker.Game.Audio
         public void Play(Ev ev)
         {
             if (ctx == null || SETTINGS.volume <= 0) return;
+            if (DesignedOn && Designed(ev)) return;
             switch (ev.type) {
               case "jump": if (limit("jump", 0.05)) tone(280, 460, 0.09, W.Triangle, 0.06); break;
               case "djump": tone(380, 640, 0.09, W.Triangle, 0.06); break;

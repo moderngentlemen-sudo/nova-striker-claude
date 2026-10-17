@@ -57,6 +57,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "quality", label = "Graphics quality", opts = O("ultra", "Ultra (adds ambient occlusion)", "high", "High (bloom, shadows, grading)", "low", "Low") },
             new SettingDef { key = "hdr", label = "HDR output (needs an HDR display with HDR on in the system)", @bool = true },
             new SettingDef { key = "volume", label = "Sound effects volume", range = new[] { 0f, 1, 0.05f } },
+            new SettingDef { key = "sfxStyle", label = "Sound effects", opts = O("designed", "Designed: layered effects", "classic", "Classic: the original synthesized sounds") },
             new SettingDef { key = "music", label = "Music volume", range = new[] { 0f, 1, 0.05f } },
             new SettingDef { key = "fxPreset", label = "Effects preset", opts = O("cinematic", "Cinematic: everything", "balanced", "Balanced: lighter on the GPU", "classic", "Classic: the original effects", "custom", "Custom: the settings below") },
             new SettingDef { key = "fxExplosions", label = "Explosions (Custom preset)", opts = O("volumetric", "Volumetric: fire, smoke, embers, debris", "plasma", "Plasma: energy implosion and burst", "stylised", "Stylised: crisp toon puffs", "classic", "Classic") },
@@ -87,7 +88,7 @@ namespace NovaStriker.Game.UI
             : key == "levelTiers" || key == "levelHazards" || key == "depthLanes" ? "Level features"
             : key == "camera" || key == "fov" || key == "quality" || key == "reflections" || key == "charModels" || key == "hdr" || key == "shake" || key.StartsWith("impact") ? "Graphics"
             : key == "aimAssist" || key == "lockOn" || key == "lockMode" || key == "dashCharge" || key == "haptics" || key == "hapticStrength" || key == "p1Aim" ? "Controls"
-            : key == "volume" || key == "music" ? "Audio" : "Game";
+            : key == "volume" || key == "music" || key == "sfxStyle" ? "Audio" : "Game";
         static readonly (string kind, string a, string b, string c)[] HELP_ROWS =
         {
             ("R", "Move · crouch", "Left stick", "{k1:moveLeft}/{k1:moveRight} · {k1:moveDown}"),

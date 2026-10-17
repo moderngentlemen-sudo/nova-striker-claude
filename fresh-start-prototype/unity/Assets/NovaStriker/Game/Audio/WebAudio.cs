@@ -2,9 +2,13 @@
 // for line: oscillators, noise sources, biquad filters, gains, a delay, a reverb and a compressor, joined into a
 // graph, with Web Audio's parameter automation (setValueAtTime, linear and exponential ramps, setTargetAtTime,
 // cancelScheduledValues) and audio-rate modulation of parameters (an LFO into a gain or a detune).
-// The graph renders in Unity's audio callback (AudioOut, on the listener's object) in mono, copied to every
-// channel. The main thread builds and schedules nodes under the context's lock; times are in the context's
-// clock (currentTime, seconds of audio rendered).
+// The graph renders in Unity's audio callback (AudioOut, on the listener's object). Nodes are mono unless made
+// stereo (a panner, a stereo gain, the mixer's buses); a mono node feeding a stereo one goes to both sides. The
+// main thread builds and schedules nodes under the context's lock; times are in the context's clock
+// (currentTime, seconds of audio rendered).
+// Sample playback (BufferSource, Web Audio's AudioBufferSourceNode) plays the designed effects (SampleBank.cs).
+// The mixer (Ctx): sfx, loops, big-moment, UI and music buses into a stereo master and a look-ahead limiter. The
+// loops and big-moment buses are the sidechain key that ducks the music and the other effects.
 // Differences from a browser: the reverb is algorithmic (comb and all-pass filters) instead of a convolution
 // with a generated impulse, and parameters are evaluated every 16 samples (Web Audio's k-rate is 128).
 using System;
@@ -73,23 +77,27 @@ namespace NovaStriker.Game.Audio
     {
         protected readonly Ctx c;
         internal readonly List<Node> inputs = new List<Node>();
-        internal readonly float[] buf;
+        internal readonly float[] buf, bufR;   // bufR: the right side, for a stereo node (null when mono)
         long stamp = -1;
         public bool keep;   // a bus that stays in the graph with nothing playing into it
-        protected Node(Ctx c) { this.c = c; buf = new float[Ctx.BLOCK]; }
+        protected Node(Ctx c, bool stereo = false) { this.c = c; buf = new float[Ctx.BLOCK]; if (stereo) bufR = new float[Ctx.BLOCK]; }
         public T connect<T>(T dest) where T : Node { lock (c.gate) dest.inputs.Add(this); return dest; }
         public void connect(Param p) { lock (c.gate) p.mods.Add(this); }
         internal float[] Pull(long block) { if (stamp != block) { stamp = block; Render(block); } return buf; }
         protected abstract void Render(long block);
         internal virtual bool Done => !keep && inputs.Count == 0;
-        // Sums the live inputs into buf (and drops the finished ones)
+        // Sums the live inputs into buf (and drops the finished ones). Mono into stereo goes to both sides; stereo
+        // into mono is averaged.
         protected void SumInputs(long block)
         {
             Array.Clear(buf, 0, buf.Length);
+            if (bufR != null) Array.Clear(bufR, 0, bufR.Length);
             for (int i = inputs.Count - 1; i >= 0; i--)
             {
-                var n = inputs[i]; var b = n.Pull(block);
-                for (int j = 0; j < buf.Length; j++) buf[j] += b[j];
+                var n = inputs[i]; var b = n.Pull(block); var r = n.bufR;
+                if (bufR != null) { var rr = r ?? b; for (int j = 0; j < buf.Length; j++) { buf[j] += b[j]; bufR[j] += rr[j]; } }
+                else if (r != null) for (int j = 0; j < buf.Length; j++) buf[j] += 0.5f * (b[j] + r[j]);
+                else for (int j = 0; j < buf.Length; j++) buf[j] += b[j];
                 if (n.Done) inputs.RemoveAt(i);
             }
         }
@@ -113,7 +121,7 @@ namespace NovaStriker.Game.Audio
     public abstract class Source : Node
     {
         protected double startT = double.MaxValue, stopT = double.MaxValue;
-        bool finished;
+        protected bool finished;
         protected Source(Ctx c) : base(c) { }
         public void start(double t = 0) { startT = Math.Max(t, 0); }
         public void stop(double t = 0) { stopT = t; }
@@ -178,7 +186,7 @@ namespace NovaStriker.Game.Audio
     public sealed class Gain : Node
     {
         public readonly Param gain = new Param(1);
-        public Gain(Ctx c, double g = 1) : base(c) { gain.value = g; }
+        public Gain(Ctx c, double g = 1, bool stereo = false) : base(c, stereo) { gain.value = g; }
         protected override void Render(long block)
         {
             SumInputs(block);
@@ -187,8 +195,140 @@ namespace NovaStriker.Game.Audio
             for (int i = 0; i < buf.Length; i++)
             {
                 if ((i & 15) == 0) g = gain.At(t0 + i * dt);
-                buf[i] *= (float)(g + (m != null ? m[i] : 0));
+                float k = (float)(g + (m != null ? m[i] : 0));
+                buf[i] *= k; if (bufR != null) bufR[i] *= k;
             }
+        }
+    }
+
+    // A sample player (AudioBufferSourceNode): plays a mono float[] recorded at `rate` Hz, at playbackRate (1 = as
+    // recorded, resampled to the context's rate by linear interpolation), once or looping between loopStart and
+    // loopEnd (seconds; loopEnd 0 = the end). It finishes when it reaches the end (not looping) or at stop().
+    public sealed class BufferSource : Source
+    {
+        public readonly float[] data; public readonly int rate;
+        public readonly Param playbackRate = new Param(1);
+        public bool loop; public double loopStart, loopEnd;
+        double pos;
+        public BufferSource(Ctx c, float[] data, int rate) : base(c) { this.data = data ?? new float[1]; this.rate = Math.Max(1, rate); }
+        // Starts at time t, `offset` seconds into the sample
+        public void start(double t, double offset) { start(t); pos = Math.Max(0, offset) * rate; }
+        protected override void Generate(long block, double t0, double dt)
+        {
+            double step0 = (double)rate / c.sampleRate, r = 1;
+            int n = data.Length; double ls = Math.Max(0, Math.Min(n - 2, loopStart * rate)), le = loopEnd > 0 ? Math.Min(n, loopEnd * rate) : n;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                double t = t0 + i * dt;
+                if ((i & 15) == 0) r = Math.Max(0, playbackRate.At(t));
+                if (!On(t) || finished) { buf[i] = 0; continue; }
+                int k = (int)pos; double f = pos - k;
+                // interpolate towards the next sample (across the loop point when looping)
+                float a = k < n ? data[k] : 0, b = k + 1 < (loop ? le : n) ? data[k + 1] : loop ? data[(int)ls] : 0;
+                buf[i] = (float)(a + (b - a) * f);
+                pos += step0 * r;
+                if (loop && le - ls > 1) { while (pos >= le) pos -= le - ls; }
+                else if (pos >= n) finished = true;
+            }
+        }
+    }
+
+    // StereoPannerNode: a mono (or downmixed) input placed between the speakers; pan -1 left, 0 centre, 1 right.
+    // Unity gain at the centre, so a centred voice is as loud as one fed straight to a stereo bus.
+    public sealed class Panner : Node
+    {
+        public readonly Param pan = new Param(0);
+        readonly float[] mono = new float[Ctx.BLOCK];
+        public Panner(Ctx c) : base(c, true) { }
+        protected override void Render(long block)
+        {
+            Array.Clear(mono, 0, mono.Length);
+            for (int i = inputs.Count - 1; i >= 0; i--)
+            {
+                var n = inputs[i]; var b = n.Pull(block); var r = n.bufR;
+                for (int j = 0; j < mono.Length; j++) mono[j] += r != null ? 0.5f * (b[j] + r[j]) : b[j];
+                if (n.Done) inputs.RemoveAt(i);
+            }
+            double t0 = c.BlockTime(block), dt = 1.0 / c.sampleRate; float gl = 1, gr = 1;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                if ((i & 15) == 0)
+                {
+                    double p = Math.Max(-1, Math.Min(1, pan.At(t0 + i * dt))), th = (p + 1) * Math.PI / 4;
+                    gl = (float)Math.Min(1, Math.Sqrt(2) * Math.Cos(th)); gr = (float)Math.Min(1, Math.Sqrt(2) * Math.Sin(th));
+                }
+                buf[i] = mono[i] * gl; bufR[i] = mono[i] * gr;
+            }
+        }
+    }
+
+    // Sidechain ducking (stereo): turns its input down while the key (another node, not part of this path) is
+    // loud. Above `threshold` the gain falls towards 1 - depth, reached when the key is at `full`; attack and
+    // release smooth it. `reduction` (0-1) is how far it is ducked right now, for meters and tests.
+    public sealed class Ducker : Node
+    {
+        public Node key;
+        public double depth = 0.5, threshold = 0.04, full = 0.35, attack = 0.006, release = 0.35;
+        double env, g = 1;
+        public double reduction => 1 - g;
+        public Ducker(Ctx c) : base(c, true) { keep = true; }
+        protected override void Render(long block)
+        {
+            SumInputs(block);
+            float[] kl = key?.Pull(block), kr = key?.bufR;
+            double dt = 1.0 / c.sampleRate, ka = 1 - Math.Exp(-dt / attack), kr2 = 1 - Math.Exp(-dt / release);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                double x = kl == null ? 0 : Math.Max(Math.Abs(kl[i]), kr != null ? Math.Abs(kr[i]) : 0);
+                env += (x - env) * (x > env ? ka : kr2);   // a peak follower
+                double want = 1 - depth * Math.Max(0, Math.Min(1, (env - threshold) / Math.Max(1e-6, full - threshold)));
+                g += (want - g) * (want < g ? ka : kr2);
+                buf[i] *= (float)g; bufR[i] *= (float)g;
+            }
+        }
+    }
+
+    // A look-ahead peak limiter (stereo) at the end of the chain: the signal is delayed by `lookahead` while the
+    // gain eases down ahead of any peak over `ceiling`, then recovers over `release`. A final soft clip catches
+    // what the look-ahead misses, so the output never clips. No allocation while rendering.
+    public sealed class Limiter : Node
+    {
+        public float ceiling = 0.94f; public double release = 0.12;
+        readonly float[] dl, dr, need; readonly int la; int w;
+        readonly int[] dq; int dqHead, dqCount;   // a monotonic queue of the window's smallest gains (indices)
+        double g = 1;
+        public double gain => g;
+        public Limiter(Ctx c, double lookahead = 0.003) : base(c, true)
+        {
+            keep = true; la = Math.Max(8, (int)(lookahead * c.sampleRate));
+            dl = new float[la]; dr = new float[la]; need = new float[la]; dq = new int[la];
+        }
+        protected override void Render(long block)
+        {
+            SumInputs(block);
+            double dt = 1.0 / c.sampleRate, ka = 1 - Math.Exp(-dt / (la * dt / 3)), kr = 1 - Math.Exp(-dt / release);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float l = buf[i], r = bufR[i];
+                if (float.IsNaN(l) || float.IsInfinity(l)) l = 0;
+                if (float.IsNaN(r) || float.IsInfinity(r)) r = 0;
+                float pk = Math.Max(Math.Abs(l), Math.Abs(r)), want = pk > ceiling ? ceiling / pk : 1;
+                // the window's minimum required gain: drop the slot leaving, push this one
+                if (dqCount > 0 && dq[dqHead] == w) { dqHead = (dqHead + 1) % la; dqCount--; }
+                while (dqCount > 0 && need[dq[(dqHead + dqCount - 1) % la]] >= want) dqCount--;
+                need[w] = want; dq[(dqHead + dqCount) % la] = w; dqCount++;
+                double target = need[dq[dqHead]];
+                g += (target - g) * (target < g ? ka : kr);
+                float ol = dl[w], or = dr[w]; dl[w] = l; dr[w] = r; w = (w + 1) % la;
+                buf[i] = Soft((float)(ol * g)); bufR[i] = Soft((float)(or * g));
+            }
+        }
+        float Soft(float x)
+        {
+            float a = Math.Abs(x), k = ceiling * 0.9f;
+            if (a <= k) return x;
+            float over = (a - k) / (1 - k);   // above 90% of the ceiling, bend smoothly towards 1.0
+            return Math.Sign(x) * (k + (1 - k) * (float)Math.Tanh(over));
         }
     }
 
@@ -315,20 +455,41 @@ namespace NovaStriker.Game.Audio
         }
     }
 
-    // The context: the clock, the graph's root and the lock shared with the audio thread
+    // The context: the clock, the mixer and the lock shared with the audio thread.
+    // The mixer: everything ends in `master` (stereo) and the limiter. Buses (stereo gains):
+    //   sfx    one-shot effects, ducked a little under big moments (`destination`, the old mono root, feeds it)
+    //   loops  sustained beams (Level 4 beam, Supernova, boss lasers): part of the sidechain key
+    //   big    the biggest one-shots (big blasts, ultimates, beam ignitions): part of the sidechain key
+    //   ui     menu sounds, never ducked
+    //   music  the score, ducked deeply under big moments
     public sealed class Ctx
     {
         public const int BLOCK = 128;
         public readonly int sampleRate;
         public readonly object gate = new object();
-        public readonly Gain destination;
+        public readonly Gain destination, master, sfx, loops, big, ui, music, key;
+        public readonly Ducker duckMusic, duckSfx;
+        public readonly Limiter limiter;
         internal readonly System.Random rng = new System.Random(7);
         long block;
         double now;
-        float[] pending = new float[0]; int pendingAt;
+        float[] pending = new float[0], pendingR = new float[0]; int pendingAt;
         readonly Dictionary<Param, float[]> scratchBufs = new Dictionary<Param, float[]>();
 
-        public Ctx(int sampleRate) { this.sampleRate = sampleRate; destination = new Gain(this) { keep = true }; }
+        public Ctx(int sampleRate)
+        {
+            this.sampleRate = sampleRate;
+            Gain Bus(double g = 1) => new Gain(this, g, true) { keep = true };
+            master = Bus(); sfx = Bus(); loops = Bus(); big = Bus(); ui = Bus(); music = Bus(); key = Bus();
+            destination = new Gain(this) { keep = true }; destination.connect(sfx);
+            loops.connect(key); big.connect(key);
+            duckMusic = new Ducker(this) { key = key, depth = 0.62, threshold = 0.04, full = 0.3, attack = 0.008, release = 0.45 };
+            duckSfx = new Ducker(this) { key = key, depth = 0.35, threshold = 0.06, full = 0.4, attack = 0.004, release = 0.25 };
+            music.connect(duckMusic); duckMusic.connect(master);
+            sfx.connect(duckSfx); duckSfx.connect(master);
+            loops.connect(master); big.connect(master); ui.connect(master);
+            limiter = new Limiter(this); master.connect(limiter);
+        }
         public double currentTime => System.Threading.Volatile.Read(ref now);
         internal double BlockTime(long b) => (double)b * BLOCK / sampleRate;
         internal float[] scratch(Param p) { if (!scratchBufs.TryGetValue(p, out var b)) scratchBufs[p] = b = new float[BLOCK]; return b; }
@@ -340,8 +501,11 @@ namespace NovaStriker.Game.Audio
         public Delay createDelay(double max) => new Delay(this, max);
         public Reverb createReverb(double seconds) => new Reverb(this, seconds);
         public Compressor createDynamicsCompressor() => new Compressor(this);
+        public BufferSource createBufferSource(float[] data, int rate) => new BufferSource(this, data, rate);
+        public Panner createStereoPanner() => new Panner(this);
 
-        // Unity's audio callback: render blocks into its buffer (mono, to every channel)
+        // Unity's audio callback: render blocks into its buffer (left and right into the first two channels; a
+        // mono output gets their average)
         public void Fill(float[] data, int channels)
         {
             int frames = data.Length / channels, f = 0;
@@ -351,14 +515,16 @@ namespace NovaStriker.Game.Audio
                 {
                     if (pendingAt >= pending.Length)
                     {
-                        pending = destination.Pull(block); pendingAt = 0; block++;
+                        pending = limiter.Pull(block); pendingR = limiter.bufR; pendingAt = 0; block++;
                         if (scratchBufs.Count > 4096) scratchBufs.Clear();
                     }
                     int n = Math.Min(frames - f, pending.Length - pendingAt);
                     for (int i = 0; i < n; i++)
                     {
-                        float s = Mathf.Clamp(pending[pendingAt + i], -1, 1);
-                        for (int ch = 0; ch < channels; ch++) data[(f + i) * channels + ch] += s;
+                        float l = Mathf.Clamp(pending[pendingAt + i], -1, 1), r = Mathf.Clamp(pendingR[pendingAt + i], -1, 1);
+                        int o = (f + i) * channels;
+                        if (channels == 1) data[o] += 0.5f * (l + r);
+                        else { data[o] += l; data[o + 1] += r; }
                     }
                     f += n; pendingAt += n;
                 }

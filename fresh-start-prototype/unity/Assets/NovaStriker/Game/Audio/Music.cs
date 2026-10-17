@@ -79,7 +79,7 @@ namespace NovaStriker.Game.Audio
                 @out = c.createGain(0); @out.keep = true;
                 var comp = c.createDynamicsCompressor();
                 comp.threshold = -16; comp.ratio = 3.5; comp.attack = 0.01; comp.release = 0.2;
-                @out.connect(comp); comp.connect(c.destination);
+                @out.connect(comp); comp.connect(c.music);   // the music bus (ducked under big moments)
                 // Reverb and a tempo-synced delay, shared by the melodic layers
                 verb = c.createReverb(2.6);
                 var verbOut = c.createGain(0.32); verbOut.keep = true; verb.connect(verbOut); verbOut.connect(@out);
