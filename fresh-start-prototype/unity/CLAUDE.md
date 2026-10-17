@@ -71,14 +71,21 @@ All run without Unity, from `SimTests/`:
 The README's *Unity-only additions* has the full description.
 
 - **Nova's absorbing shield.** Setting `novaDefense = "shield"`, Marksman kit; it replaces the LT dodge.
-  - **Look:** blue hard light (`#5fd4ff`, lighter than RAM's blue).
+  - **Look:** a personal energy shield: a curved honeycomb shell of hex tiles in front of him, over exactly the arc
+    the block covers (`World.GuardFaces`: everything ahead of a line 0.25 m behind his chest, so it wraps a
+    little past straight up and down). Blue (`#5fd4ff`) when empty, tiles turn gold (`CHARS["nova"].energy`)
+    as `p.absorb` rises (from hit points and outward from the front; ~86% of tiles at 100%, all at 150%, which
+    also glows hard). Hits ripple it, worn stability cracks edge tiles off, a break shatters it; it assembles
+    from the edges when raised and scatters when lowered. Only a future ultimate (Eclipse Armor) would cover
+    him completely. `NovaShieldShell` (no Unity types) holds the tiles, `NovaShieldFX` draws them as one mesh
+    with vertex colours and the procedural tile texture (no new shader).
   - **Firing:** he can fire from behind it. Melee, a dash or a Level 4 beam lowers it.
   - **Charge:** blocked hits build a charge that overfills to 150%. Damage bonus is +100% at 100% and +150%
     (2.5×) at 150%.
   - **Glow:** Nova glows brighter as the charge grows.
   - **Code:** tuning is `NOVA_SHIELD` in `Sim/Config.cs`; the simulation is `Sim/PlayerSim.Nova.cs`; the block
-    is in `Sim/Combat.cs`; the visuals are `Game/View/NovaShieldFx.cs` and `Anim.AbsorbGlow`; the HUD is
-    `Game/UI/HudChips.cs`.
+    is in `Sim/Combat.cs`; the visuals are `Game/View/NovaShieldFx.cs`, `NovaShieldShell.cs` and
+    `Anim.AbsorbGlow`; the HUD is `Game/UI/HudChips.cs`.
 - **Nova's design.** His rig follows the concept art the owner shared in chat:
   - **Head:** his face with swept-back dark hair, or the white helmet with the gold visor (`novaHead` setting).
   - **Suit:** pearl-white armour over navy, gold seams, the gold star on his chest, a high collar and a round
@@ -183,12 +190,12 @@ The README's *Unity-only additions* has the full description.
 - **Echo's look.** His rig was restyled from the same concept art: cream-white armour, bronze-gold trim, a
   charcoal undersuit, and his bare face with spiky blond hair as the default. The concept also shows his flowing
   cream scarf (drawn by the effects code) and his orange blades.
-- **Nova's shield colour.** The concept art shows a gold hexagonal (honeycomb) hard-light shield, but the absorbing
-  shield is blue, which the owner asked for earlier. Ask before changing it.
+- **Nova's shield colour.** The owner chose a blue honeycomb that turns gold as it charges (references: Mega Man
+  11's hex-tile shield, anime energy flares). `Anim.AbsorbGlow` still tints his armour rim blue (`ABSORB_RIM`);
+  it could follow the shell from blue to gold.
 
 - **Balance:** 2.5× damage at a full charge may be too strong. Offer to slow the charge or drain it sooner.
-- **Beam and shield:** the Level 4 beam currently lowers the shield. Ask whether the owner would rather it
-  stay up.
+- **Beam and shield:** the owner confirmed that a Level 4 beam keeps lowering the shield.
 - **Agreed direction for the Unity move.** The owner was told about these options:
   1. Try a real character model and animations for Nova, through the existing CharacterModel hook
      (Settings › Character models).
