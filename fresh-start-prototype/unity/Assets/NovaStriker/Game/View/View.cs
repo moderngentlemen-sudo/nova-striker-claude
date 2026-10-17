@@ -406,6 +406,7 @@ namespace NovaStriker.Game
                 R.root.position.copy(S.W(x, y, LevelFeatures.Depth(e)));
                 R.root.rotation.y = S.YawAt(x);
                 EnemyRigs.Animate(R, e, dt, t);
+                EnemyMotion.Apply(R, e, dt, t);
                 if (e.tagged > 0 && R.tag == null)
                 {
                     var tm = TMat.Sprite(fx.tex.star, 0xffa53a); tm.depthWrite = false;
