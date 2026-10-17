@@ -1,7 +1,8 @@
 // The Level 4 beams (beamfx.js): Nova's, and RAM's broader Breach Beam in his blue. A white-hot core inside a
 // surging sheath in the attachment's colour, following the sim's beam path (a Prism beam bounces once). It snaps
 // open, flickers and pulses along its length, pushes rings down its path, streams sparks, flares at the bracer and
-// throws sparks and smoke where it hits a wall; when it ends it narrows to nothing. Presentation only.
+// throws sparks and smoke where it hits a wall; when it ends it narrows to nothing. Unless Projectiles is Classic it is
+// drawn by CineBeam instead (Unity's effects: heat haze, a screen flash, a burning impact). Presentation only.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -17,7 +18,7 @@ namespace NovaStriker.Game
         {
             public Strip edge, sheath, core; public TMesh glow, core2, hit;
             public readonly List<Vector3> pts = new List<Vector3>(); public float age, end = -1, ringT, W; public Color tint; public bool ram;
-            public List<BeamSeg> segs; public double dx, dy, px;
+            public List<BeamSeg> segs; public double dx, dy, px; public CineBeam cine;
         }
         readonly Dictionary<Player, B> beams = new Dictionary<Player, B>();
         public BeamFX(Fx fx) { this.fx = fx; scene = fx.scene; }
@@ -65,11 +66,13 @@ namespace NovaStriker.Game
                 else if (b.end < 0 && b.pts.Count > 0) b.end = 0;
                 if (b.end >= 0) b.end += dt;
                 float closing = b.end >= 0 ? Mathf.Max(0, 1 - b.end / 0.16f) : 1;
-                if (b.pts.Count == 0 || closing <= 0)
+                bool cine = FxCfg.CineBeams && fx.view != null;
+                if (cine || (b.pts.Count > 0 && closing > 0 && b.cine != null)) Cine(p, b, live, closing, cine, dt);
+                if (b.pts.Count == 0 || closing <= 0 || cine)
                 {
                     b.edge.mesh.visible = b.sheath.mesh.visible = b.core.mesh.visible = b.glow.visible = b.core2.visible = b.hit.visible = false;
                     if (closing <= 0) b.pts.Clear();
-                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.destroy(); beams.Remove(p); }
+                    if (!world.players.Contains(p) && closing <= 0) { foreach (var o in new TObj[] { b.edge.mesh, b.sheath.mesh, b.core.mesh, b.glow, b.core2, b.hit }) o.destroy(); b.cine?.Destroy(); beams.Remove(p); }
                     continue;
                 }
                 float open = Mathf.Min(1, b.age / 0.07f), W = b.W; int n = b.pts.Count; var tint = b.tint;
@@ -112,6 +115,18 @@ namespace NovaStriker.Game
                 }
             }
             // a beam whose player has no entry yet appears on its start event (OnEvent makes it)
+        }
+
+        // The cinematic beam: RAM's is broader and heavier, an overcharged one hotter
+        void Cine(Player p, B b, bool live, float closing, bool on, float dt)
+        {
+            if (!on) { b.cine?.Hide(); return; }
+            b.cine ??= new CineBeam(fx.view, p.@char);
+            var C = b.cine; C.tint = b.tint; C.width = b.W * (b.ram ? 1.25f : 1); C.power = b.ram ? 1.3f : 1;
+            if (b.segs == null || b.segs.Count == 0) { C.Update(dt, null, 0, false, 0, 0, 0, 0, 0, 0, false); return; }
+            var g0 = b.segs[0]; var g1 = b.segs[b.segs.Count - 1];
+            float open = Mathf.Min(1, b.age / 0.07f);
+            C.Update(dt, b.pts, closing > 0 && b.pts.Count > 1 ? open * closing : 0, live, g0.x0, g0.y0, g1.x1, g1.y1, g1.nx, g1.ny, g1.wall);
         }
     }
 }

@@ -68,6 +68,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "fxLights", label = "Light from shots and blasts (Custom preset)", @bool = true },
             new SettingDef { key = "fxDistortion", label = "Heat haze and shockwave distortion (Custom preset)", @bool = true },
             new SettingDef { key = "fxDecals", label = "Scorch marks and scuffs (Custom preset)", @bool = true },
+            new SettingDef { key = "fxFlash", label = "Screen flashes (beams, ultimates, big blasts)", @bool = true },
             new SettingDef { key = "fxScreen", label = "Screen effects (Custom preset)", opts = O("cinematic", "Cinematic: lens dirt, grain, aberration kicks", "clean", "Clean") },
             new SettingDef { key = "weather", label = "Weather and atmosphere", @bool = true },
             new SettingDef { key = "clouds", label = "Clouds", opts = O("volumetric", "Volumetric, lit by the sun", "classic", "Classic") },

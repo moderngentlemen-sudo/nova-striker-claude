@@ -91,7 +91,7 @@ namespace NovaStriker.Game
             var at = W(ev.x, ev.y, 0.3f);
             V.flash.Emit(at, Vector3.zero, 0.8f * big, 0.06f, Hdr(css, 5));
             V.glow.Emit(at, Vector3.zero, 1.2f * big, 0.1f, Hdr(css, 1.4f));
-            if (big > 1) { V.lights.Flash(at, Hdr(css, 1), 2.5f * big, 3.5f * big, 0.1f); if (FxCfg.Smoke != "off") for (int i = 0; i < Count(3); i++) V.smokeDark.Emit(at, Rnd3() * 0.8f + Vector3.up * 0.6f, 0.6f, 0.9f, new Color(1, 1, 1, 0.5f)); }
+            if (big > 1) { V.lights.Flash(at, Hdr(css, 1), 2.5f * big, 3.5f * big, 0.1f); if (FxCfg.Smoke != "off") for (int i = 0; i < Count(4); i++) V.smokeDark.Emit(at, Rnd3() * 0.8f + Vector3.up * 0.6f, 0.7f, 1.8f + Random.value, new Color(1, 1, 1, 0.6f)); }
         }
 
         // A blast of radius r in a colour; power scales everything. The style follows the settings unless forced.
@@ -120,6 +120,7 @@ namespace NovaStriker.Game
             }
             if (FxCfg.Debris != "off" && style != "plasma") Debris(x, y + 0.2, 4 + r * 3 * p, new Color(0.5f, 0.52f, 0.56f), 5 + r * 2);
             view.Kick(Mathf.Min(1.2f, 0.25f + 0.2f * r * p));
+            if (r * p >= 2.5f) view.Flash(Color.Lerp(S.Lin(css), Color.white, 0.5f), Mathf.Min(0.6f, 0.08f * r * p));   // (only the biggest)
             view.Startle(Mathf.Min(1, 0.3f + r * 0.2f));
         }
 
@@ -133,12 +134,21 @@ namespace NovaStriker.Game
             }
             if (FxCfg.Smoke != "off")
             {
-                int ns = Count((FxCfg.Smoke == "rich" ? 8 : 4) + 4 * r * p);
+                bool rich = FxCfg.Smoke == "rich";
+                int ns = Count((rich ? 14 : 6) + 6 * r * p);
                 for (int i = 0; i < ns; i++)
                 {
                     var d = Rnd3(); d.y = Mathf.Abs(d.y) + 0.3f;
-                    var tint = Color.Lerp(new Color(0.42f, 0.41f, 0.4f), Color.white * 0.75f, Random.value * 0.4f); tint.a = 0.85f;
-                    V.smoke.Emit(at + d * r * 0.3f, d * (0.8f + r * 0.6f), r * (1.2f + Random.value * 0.8f), 1.8f + Random.value * 1.8f, tint, Random.value * 6.3f, (Random.value - 0.5f) * 0.6f);
+                    var tint = Color.Lerp(new Color(0.36f, 0.35f, 0.34f), Color.white * 0.7f, Random.value * 0.4f); tint.a = 0.95f;
+                    V.smoke.Emit(at + d * r * 0.3f, d * (0.8f + r * 0.6f), r * (1.5f + Random.value * 1f), 3.5f + Random.value * 3f, tint, Random.value * 6.3f, (Random.value - 0.5f) * 0.4f);
+                }
+                // the pall that hangs over the spot afterwards, drifting and spreading for several seconds
+                int nl = Count((rich ? 6 : 2) + 2 * r * p);
+                for (int i = 0; i < nl; i++)
+                {
+                    var d = Rnd3(); d.y = Mathf.Abs(d.y) * 0.4f + 0.15f;
+                    var tint = Color.Lerp(new Color(0.3f, 0.29f, 0.29f), new Color(0.55f, 0.54f, 0.53f), Random.value); tint.a = 0.8f;
+                    V.smoke.Emit(at + d * r * 0.5f + Vector3.up * r * 0.4f, d * 0.6f + Vector3.up * 0.25f, r * (2f + Random.value), 7 + Random.value * 4, tint, Random.value * 6.3f, (Random.value - 0.5f) * 0.15f);
                 }
             }
             int ne = Count(10 + 8 * r * p);
@@ -197,7 +207,7 @@ namespace NovaStriker.Game
                 float side = i % 2 == 0 ? 1 : -1;
                 var v = S.Dir(x, side * (3 + Random.value * 5) * k, 0.4f + Random.value * 0.8f);
                 var tint = new Color(0.8f, 0.78f, 0.74f, 0.6f);
-                V.smoke.Emit(W(x + side * Random.value * 0.6f, y + 0.15f, (Random.value - 0.5f) * 1.6f), v, 0.6f + 0.6f * k * Random.value, 1.0f + Random.value * 0.8f, tint, Random.value * 6.3f);
+                V.smoke.Emit(W(x + side * Random.value * 0.6f, y + 0.15f, (Random.value - 0.5f) * 1.6f), v, 0.7f + 0.8f * k * Random.value, 2.2f + Random.value * 1.8f, tint, Random.value * 6.3f);
             }
         }
 
@@ -243,7 +253,7 @@ namespace NovaStriker.Game
             V.lights.Flash(at, Hdr(c, 1), 4 * k, 4 * k, 0.25f);
             int ns = Count(10 * k);
             for (int i = 0; i < ns; i++) V.spark.Emit(at, Rnd3() * 9 + Vector3.up * 2, 0.06f, 0.4f + Random.value * 0.3f, Hdr(c, 3));
-            if (FxCfg.Smoke != "off") for (int i = 0; i < Count(4 * k); i++) V.smokeDark.Emit(at, Rnd3() * 1.2f + Vector3.up * 0.8f, 0.8f * k, 1.2f + Random.value, new Color(1, 1, 1, 0.6f));
+            if (FxCfg.Smoke != "off") for (int i = 0; i < Count(6 * k); i++) V.smokeDark.Emit(at, Rnd3() * 1.2f + Vector3.up * 0.8f, 0.9f * k, 2.5f + Random.value * 1.5f, new Color(1, 1, 1, 0.7f));
             if (e != null && !e.flier) DustWave(cx, e.y, 0.4f * k);
         }
 
@@ -276,14 +286,14 @@ namespace NovaStriker.Game
             {
                 // a hot streak stretched along its flight
                 V.streak.Emit(at, vel * 0.35f, kind == "pellet" ? 0.05f : 0.09f, 0.06f + trail * 0.25f, Hdr(c, kind == "hotRivet" ? 5 : 3.5f));
-                if (kind == "hotRivet" && Random.value < 0.4f && FxCfg.Smoke != "off") V.smokeDark.Emit(at, Vector3.up * 0.5f, 0.25f, 0.6f, new Color(1, 1, 1, 0.35f));
+                if (kind == "hotRivet" && Random.value < 0.4f && FxCfg.Smoke != "off") V.smokeDark.Emit(at, Vector3.up * 0.5f, 0.3f, 1.2f, new Color(1, 1, 1, 0.45f));
                 return;
             }
             if (EXPLOSIVE.Contains(kind))
             {
                 if (pr.rest) return;
                 V.fire.Emit(at - dir * 0.2f, -vel * 0.1f + Rnd3() * 0.3f, 0.3f, 0.18f, Hdr(new Color(1, 0.75f, 0.45f), 2));
-                if (FxCfg.Smoke != "off" && Random.value < 0.8f) V.smoke.Emit(at - dir * 0.3f, Rnd3() * 0.3f + Vector3.up * 0.3f, 0.35f, 0.8f + Random.value * 0.6f, new Color(0.8f, 0.8f, 0.82f, 0.6f), Random.value * 6.3f);
+                if (FxCfg.Smoke != "off" && Random.value < 0.8f) V.smoke.Emit(at - dir * 0.3f, Rnd3() * 0.3f + Vector3.up * 0.3f, 0.4f, 1.6f + Random.value * 1.0f, new Color(0.75f, 0.75f, 0.77f, 0.7f), Random.value * 6.3f);
                 return;
             }
             bool heavy = HEAVY.Contains(kind);

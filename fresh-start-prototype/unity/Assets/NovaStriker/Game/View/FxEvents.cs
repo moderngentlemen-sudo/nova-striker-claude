@@ -492,7 +492,7 @@ namespace NovaStriker.Game
         }
 
         // Boss lasers: a thin flickering line during the windup, then a thick beam with a white-hot core
-        sealed class BossBeam { public TMesh core, glow, feed; }
+        sealed class BossBeam { public TMesh core, glow, feed; public CineBeam cine; public readonly List<Vector3> pts = new List<Vector3>(); }
         readonly Dictionary<Enemy, BossBeam> bossBeams = new Dictionary<Enemy, BossBeam>();
         void SyncBossLasers(World world)
         {
@@ -518,7 +518,19 @@ namespace NovaStriker.Game
                 charge.Span(B.core, a, b); charge.Span(B.glow, a, b);
                 if (e.flier) { var c = S.W(e.x + e.facing * 1.3, e.y + 0.35, 0.2); charge.Span(B.feed, c, a); B.feed.material.opacity = live ? 0.75f : 0.25f; B.feed.scale.x = B.feed.scale.z = live ? 1 : 0.35f; }
                 else B.feed.visible = false;
-                if (live)
+                // live, unless Projectiles is Classic: a cinematic laser (Unity's effects), the windup's flicker as before
+                bool cine = live && FxCfg.CineBeams && view != null;
+                if (cine)
+                {
+                    B.cine ??= new CineBeam(view, "boss");
+                    B.cine.tint = S.Lin(HOSTILE); B.cine.width = 0.42f; B.cine.power = 1.25f;
+                    B.pts.Clear(); B.pts.Add(a); B.pts.Add(b);
+                    double sgn = L.x1 > L.x0 ? -1 : 1;
+                    B.cine.Update(Time.deltaTime, B.pts, 1, true, L.x0, L.y, L.x1, L.y, sgn, 0, true);
+                    B.core.visible = B.glow.visible = false;
+                }
+                else { B.cine?.Update(Time.deltaTime, null, 0, false, 0, 0, 0, 0, 0, 0, false); B.core.visible = B.glow.visible = true; }
+                if (live && !cine)
                 {
                     float f = 0.85f + S.Rnd() * 0.3f;
                     B.core.scale.x = B.core.scale.z = f; B.glow.scale.x = B.glow.scale.z = f * (1 + 0.1f * Mathf.Sin(Time.time * 1000 * 0.05f));
@@ -543,7 +555,8 @@ namespace NovaStriker.Game
             {
                 if (seen.Contains(kv.Key)) continue;
                 var B = kv.Value; B.core.visible = B.glow.visible = B.feed.visible = false;
-                if (kv.Key.dead || !world.enemies.Contains(kv.Key)) { B.core.destroy(); B.glow.destroy(); B.feed.destroy(); bossBeams.Remove(kv.Key); }
+                B.cine?.Update(Time.deltaTime, null, 0, false, 0, 0, 0, 0, 0, 0, false);
+                if (kv.Key.dead || !world.enemies.Contains(kv.Key)) { B.core.destroy(); B.glow.destroy(); B.feed.destroy(); B.cine?.Destroy(); bossBeams.Remove(kv.Key); }
             }
         }
 

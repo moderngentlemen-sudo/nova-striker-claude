@@ -10,15 +10,16 @@ namespace NovaStriker.Game
 {
     public sealed class PostFx
     {
-        readonly ChromaticAberration ca; readonly LensDistortion lens; readonly FilmGrain grain; readonly Bloom bloom;
+        readonly ChromaticAberration ca; readonly LensDistortion lens; readonly FilmGrain grain; readonly Bloom bloom; readonly ColorAdjustments adjust;
         readonly LensFlareComponentSRP flare;
-        float kick;
+        float kick, flash; Color flashTint = Color.white;
 
         public PostFx(VolumeProfile profile, Bloom bloom, Vector3 sunThree)
         {
             this.bloom = bloom;
             ca = profile.Add<ChromaticAberration>(true); ca.intensity.Override(0);
             lens = profile.Add<LensDistortion>(true); lens.intensity.Override(0);
+            adjust = profile.Add<ColorAdjustments>(true); adjust.postExposure.Override(0); adjust.colorFilter.Override(Color.white);
             grain = profile.Add<FilmGrain>(true); grain.type.Override(FilmGrainLookup.Thin1); grain.intensity.Override(0); grain.response.Override(0.8f);
             var dirt = FxTex.Get("lensdirt");
             if (dirt != null) { bloom.dirtTexture.Override(dirt); bloom.dirtIntensity.Override(0); }
@@ -50,11 +51,16 @@ namespace NovaStriker.Game
         }
 
         public void Kick(float k) => kick = Mathf.Max(kick, k);
+        // A flash of the whole screen toward a colour (beams firing, ultimates); off with Settings › Screen flashes
+        public void Flash(Color c, float k) { if (!FxCfg.Flash || k <= flash) return; flash = k; flashTint = c; }
 
         // Each frame: `sky` is 1 on the open-sky route, `cover` 1 when the sun is out
         public void Update(float dt, float sky, float cover)
         {
             kick = Mathf.Max(0, kick - dt * 3.5f);
+            flash = Mathf.Max(0, flash - dt * (2.5f + flash * 4));   // (a sharp spike that falls away fast)
+            adjust.postExposure.Override(flash * 1.6f);
+            adjust.colorFilter.Override(Color.Lerp(Color.white, Color.Lerp(Color.white, flashTint, 0.6f), Mathf.Clamp01(flash)));
             bool on = FxCfg.Screen == "cinematic";
             ca.intensity.Override(on ? Mathf.Min(0.6f, 0.04f + kick * 0.45f) : 0);
             lens.intensity.Override(on ? -Mathf.Max(0, kick - 0.6f) * 0.25f : 0);

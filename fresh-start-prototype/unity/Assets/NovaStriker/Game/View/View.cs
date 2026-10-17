@@ -565,6 +565,8 @@ namespace NovaStriker.Game
 
         // A blast's kick: a bloom swell (and Phase 4's screen effects), and the flocks scatter
         public void Kick(float k) { bloomKick = Mathf.Max(bloomKick, k); post?.Kick(k); }
+        public void Flash(Color c, float k) => post?.Flash(c, k);
+        public void ShakeAtLeast(float k) => trauma = Mathf.Max(trauma, Mathf.Min(1, k));
         public void Startle(float k) => ambience?.Startle(k);
 
         // A shockwave: a ring that bends the picture outward from a big hit (Grade.shader, at most four)

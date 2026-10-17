@@ -45,10 +45,11 @@ namespace NovaStriker.Game
                 size = FxPool.Curve(0, 0.4f, 0.25f, 1, 1, 1.4f), fade = FxPool.Fade(white, white, 1, 0.8f, 0, 0.2f) });
             fire = Add(new FxPool.Spec { name = "fire", mat = FxPool.Mat(add, FxTex.Get("fireball"), white), max = 500, flipbook = 8, gravity = -0.06f, drag = 1.6f, noise = 0.5f,
                 size = FxPool.Curve(0, 0.5f, 0.4f, 1, 1, 1.3f), fade = FxPool.Fade(white, white, 1, 1, 0, 0.6f) });
-            smoke = Add(new FxPool.Spec { name = "smoke", mat = FxPool.Mat(lit, FxTex.Get("smoke"), white), max = 700, flipbook = 8, gravity = -0.025f, drag = 1.1f, noise = 0.35f,
-                size = FxPool.Curve(0, 0.45f, 1, 1.6f), fade = FxPool.Fade(white, white, 0, 0.85f, 0, 0.12f) });
-            smokeDark = Add(new FxPool.Spec { name = "smoke dark", mat = FxPool.Mat(alpha, FxTex.Get("smoke"), new Color(0.22f, 0.21f, 0.2f)), max = 400, flipbook = 8, gravity = -0.03f, drag = 1.2f, noise = 0.4f,
-                size = FxPool.Curve(0, 0.5f, 1, 1.7f), fade = FxPool.Fade(white, white, 0, 0.8f, 0, 0.15f) });
+            // thick, slow smoke that billows out, holds for most of its life and only thins at the end
+            smoke = Add(new FxPool.Spec { name = "smoke", mat = FxPool.Mat(lit, FxTex.Get("smoke"), white), max = 1600, flipbook = 8, gravity = -0.012f, drag = 0.9f, noise = 0.3f,
+                size = FxPool.Curve(0, 0.4f, 0.2f, 1.1f, 1, 2.4f), fade = FxPool.Linger(0.95f, 0.6f) });
+            smokeDark = Add(new FxPool.Spec { name = "smoke dark", mat = FxPool.Mat(alpha, FxTex.Get("smoke"), new Color(0.2f, 0.19f, 0.18f)), max = 900, flipbook = 8, gravity = -0.016f, drag = 1f, noise = 0.35f,
+                size = FxPool.Curve(0, 0.45f, 0.2f, 1.1f, 1, 2.5f), fade = FxPool.Linger(0.92f, 0.55f) });
             // toon puffs for the Stylised explosions: hard-edged, two-tone
             toon = Add(new FxPool.Spec { name = "toon", mat = FxPool.Mat(alpha, FxTex.Get("glow"), white), max = 300, drag = 2.2f, gravity = -0.02f,
                 size = FxPool.Curve(0, 0.3f, 0.25f, 1, 1, 0.1f), fade = FxPool.Fade(white, new Color(0.35f, 0.35f, 0.4f), 1, 1, 1, 0.5f) });

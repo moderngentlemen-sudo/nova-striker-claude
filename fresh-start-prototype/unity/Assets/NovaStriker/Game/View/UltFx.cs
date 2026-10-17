@@ -16,7 +16,7 @@ namespace NovaStriker.Game
         static string GOLD => CHARS["nova"].energy;
         static string ORANGE => CHARS["echo"].energy;
         readonly Fx fx; readonly TObj scene; float t;
-        sealed class B { public Strip halo, sheath, core; public TMesh sun, sunCore, flare; public readonly List<Vector3> pts = new List<Vector3>(); public float ringT; }
+        sealed class B { public Strip halo, sheath, core; public TMesh sun, sunCore, flare; public readonly List<Vector3> pts = new List<Vector3>(); public float ringT; public CineBeam cine; }
         readonly Dictionary<Player, B> beams = new Dictionary<Player, B>();
         readonly List<(float t, System.Action fn)> pending = new List<(float, System.Action)>();
         readonly Dictionary<Player, (double x, double y)> lastCut = new Dictionary<Player, (double, double)>();
@@ -181,7 +181,7 @@ namespace NovaStriker.Game
                 var R = p.ultRun; bool live = p.state == "ult" && R != null && R.kind == "nova";
                 if (!live && !beams.ContainsKey(p)) continue;
                 var Bm = BeamOf(p);
-                if (!live) { foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.visible = false; continue; }
+                if (!live) { foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.visible = false; Bm.cine?.Update(dt, null, 0, false, p.x, p.y, 0, 0, 0, 0, false); continue; }
                 double cx = p.x, cy = p.y + p.h * 0.62;
                 if (R.t <= ULT.nova.gather + 2)
                 {
@@ -195,11 +195,21 @@ namespace NovaStriker.Game
                     }
                 }
                 else { Bm.sun.visible = false; Bm.sunCore.visible = false; }
-                if (R.segs == null) { Bm.halo.mesh.visible = Bm.sheath.mesh.visible = Bm.core.mesh.visible = Bm.flare.visible = false; continue; }
+                if (R.segs == null) { Bm.halo.mesh.visible = Bm.sheath.mesh.visible = Bm.core.mesh.visible = Bm.flare.visible = false; Bm.cine?.Update(dt, null, 0, false, p.x, p.y, 0, 0, 0, 0, false); continue; }
                 var g = R.segs[0]; double len = JMath.Hypot(g.x1 - g.x0, g.y1 - g.y0); int n = System.Math.Min(60, (int)System.Math.Ceiling(len / 0.8)); var pts = Bm.pts;
                 pts.Clear();
                 for (int i = 0; i <= n; i++) pts.Add(S.W(g.x0 + (g.x1 - g.x0) * i / n, g.y0 + (g.y1 - g.y0) * i / n, 0.25));
                 float bt = (float)(R.t - ULT.nova.gather), open = Mathf.Min(1, bt / 6), close = Mathf.Min(1, ((float)ULT.nova.beam - bt) / 8), bse = Mathf.Max(0, open * close), W = (float)ULT.nova.width;
+                // the cinematic Supernova (Unity's effects) unless Projectiles is Classic: everything the beams do, far bigger
+                if (FxCfg.CineBeams && F.view != null)
+                {
+                    Bm.cine ??= new CineBeam(F.view, "supernova");
+                    Bm.cine.tint = S.Lin(GOLD); Bm.cine.width = W; Bm.cine.power = 2.4f;
+                    Bm.cine.Update(dt, pts, bse, bse > 0.05f, g.x0, g.y0, g.x1, g.y1, -(g.x1 - g.x0) / System.Math.Max(1e-6, len), -(g.y1 - g.y0) / System.Math.Max(1e-6, len), g.wall);
+                    Bm.halo.mesh.visible = Bm.sheath.mesh.visible = Bm.core.mesh.visible = Bm.flare.visible = false;
+                    continue;
+                }
+                Bm.cine?.Hide();
                 Bm.halo.Build(pts, cam, i => W * 1.9f * bse * Mathf.Min(1, 0.35f + i * 0.2f), i => new Vector4(0.3f, 0.72f, 1.0f, 0.22f * Mathf.Min(1, 0.3f + i * 0.2f)));
                 Bm.sheath.Build(pts, cam, i => W * bse * Mathf.Min(1, 0.4f + i * 0.25f) * (1 + 0.14f * Mathf.Sin(t * 34 - i * 0.7f) + 0.05f * Mathf.Sin(t * 87 + i)), i => new Vector4(1.35f, 0.92f, 0.38f, 0.62f));
                 Bm.core.Build(pts, cam, i => W * 0.4f * bse * (0.9f + S.Rnd() * 0.2f) * Mathf.Min(1, 0.5f + i * 0.3f), i => new Vector4(2.1f, 2.0f, 1.75f, 1));
@@ -218,7 +228,7 @@ namespace NovaStriker.Game
                     if (fl != null) F.Smoke(x, fl.Value + 0.1, "#b9c1cb", 1, 3, 0.4f, 0.5f, dir: g.x1 >= g.x0 ? 0.35f : Mathf.PI - 0.35f, spread: 0.6f, grav: -0.5f, op: 0.35f);
                 }
             }
-            foreach (var p in new List<Player>(beams.Keys)) if (!world.players.Contains(p)) { var Bm = beams[p]; foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.destroy(); beams.Remove(p); }
+            foreach (var p in new List<Player>(beams.Keys)) if (!world.players.Contains(p)) { var Bm = beams[p]; foreach (var s in new TObj[] { Bm.halo.mesh, Bm.sheath.mesh, Bm.core.mesh, Bm.sun, Bm.sunCore, Bm.flare }) s.destroy(); Bm.cine?.Destroy(); beams.Remove(p); }
         }
     }
 }

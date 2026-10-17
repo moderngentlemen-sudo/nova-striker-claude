@@ -24,6 +24,8 @@ namespace NovaStriker.Game
         public static bool Distortion => !Low && Pick(true, false, false, SETTINGS.fxDistortion);
         public static bool Decals => !Low && Pick(true, true, false, SETTINGS.fxDecals);
         public static bool Classic => Explosions == "classic";
+        public static bool Flash => SETTINGS.fxFlash;   // (its own switch, whatever the preset: some players need flashes off)
+        public static bool CineBeams => Projectiles != "classic";
 
         // How much of everything: a share of the full particle counts the effects ask for
         public static float Amount => Density == "high" ? 1f : Density == "medium" ? 0.55f : 0.25f;

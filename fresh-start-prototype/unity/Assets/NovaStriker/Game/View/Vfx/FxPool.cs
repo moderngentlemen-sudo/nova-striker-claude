@@ -116,6 +116,14 @@ namespace NovaStriker.Game
             for (int i = 0; i < keys.Length; i++) c.SmoothTangents(i, 0);
             return c;
         }
+        // Builds up fast, then holds thick until `hold` of its life before thinning out (lingering smoke)
+        public static Gradient Linger(float peak, float hold)
+        {
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                      new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(peak, 0.06f), new GradientAlphaKey(peak * 0.9f, hold), new GradientAlphaKey(0, 1) });
+            return g;
+        }
         public static Gradient Fade(Color c0, Color c1, float a0, float aMid, float a1, float mid = 0.3f)
         {
             var g = new Gradient();

@@ -217,7 +217,7 @@ namespace NovaStriker.Game
             // mist drifting low across the deck
             n = Count("mist", 1.4f, dt);
             for (int i = 0; i < n; i++)
-                V.smoke.Emit(At(camX, -22, 22, camY - 3.5f, camY - 1, -7, 3), S.Dir(camX, 0.8f, 0.05f), Rn(6, 9), Rn(7, 10), new Color(0.78f, 0.83f, 0.9f, 0.16f));
+                V.smoke.Emit(At(camX, -22, 22, camY - 3.5f, camY - 1, -7, 3), S.Dir(camX, 0.8f, 0.05f), Rn(4, 6), Rn(7, 10), new Color(0.78f, 0.83f, 0.9f, 0.12f));   // (smoke grows and holds: kept small and faint)
             // dark clouds rolling past high behind the tower
             n = Count("storm", 2.2f, dt);
             for (int i = 0; i < n; i++)
@@ -289,7 +289,7 @@ namespace NovaStriker.Game
             {
                 var at = At(camX, -18, 18, camY - 3.5f, camY - 2.5f, -8, -3);
                 for (int k = 0; k < 6; k++)
-                    V.smoke.Emit(at + Random.insideUnitSphere * 0.4f, new Vector3(Rn(-0.3f, 0.3f), Rn(1.6f, 2.8f), Rn(-0.3f, 0.3f)), Rn(1.6f, 2.6f), Rn(2.5f, 3.6f), new Color(0.93f, 0.93f, 0.96f, 0.4f));
+                    V.smoke.Emit(at + Random.insideUnitSphere * 0.4f, new Vector3(Rn(-0.3f, 0.3f), Rn(1.6f, 2.8f), Rn(-0.3f, 0.3f)), Rn(1.3f, 2f), Rn(3f, 4.5f), new Color(0.93f, 0.93f, 0.96f, 0.4f));
             }
             // embers rising from the furnaces below
             n = Count("ember", 18, dt);
@@ -314,7 +314,7 @@ namespace NovaStriker.Game
             // low haze hanging over the street
             n = Count("haze", 1.1f, dt);
             for (int i = 0; i < n; i++)
-                V.smoke.Emit(At(camX, -22, 22, camY - 3.8f, camY - 2, -8, 3), S.Dir(camX, 0.4f, 0.02f), Rn(7, 10), Rn(8, 11), new Color(0.55f, 0.62f, 0.78f, 0.14f));
+                V.smoke.Emit(At(camX, -22, 22, camY - 3.8f, camY - 2, -8, 3), S.Dir(camX, 0.4f, 0.02f), Rn(4.5f, 6.5f), Rn(8, 11), new Color(0.55f, 0.62f, 0.78f, 0.1f));
             // the neon stutters: now and then a sign drops out for a moment
             float flick = Mathf.PerlinNoise(t * 7, 0.7f) > 0.8f ? 0.25f : 1;
             float hum = 0.92f + 0.08f * Mathf.Sin(t * 31);
