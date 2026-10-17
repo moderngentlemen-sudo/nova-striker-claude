@@ -125,7 +125,8 @@ jobs:
         if: steps.secrets.outputs.ok == 'true'
         run: |
           cd build/${{ matrix.targetPlatform }}
-          zip -q -r -y "$GITHUB_WORKSPACE/NovaStriker-${{ matrix.name }}.zip" .
+          # (IL2CPP builds leave a debug-symbol folder beside the game that is not to be shipped)
+          zip -q -r -y "$GITHUB_WORKSPACE/NovaStriker-${{ matrix.name }}.zip" . -x "*_BackUpThisFolder_ButDontShipItWithYourGame*"
           ls -la "$GITHUB_WORKSPACE/NovaStriker-${{ matrix.name }}.zip"
 
       - name: Upload
