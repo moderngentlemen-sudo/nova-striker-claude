@@ -69,8 +69,18 @@ namespace NovaStriker.Game
                 meshes = new[] { Geo.Box(1, 0.15f, 0.7f), Geo.Tetrahedron(0.6f) }, fade = FxPool.Fade(white, white, 1, 1, 0, 0.85f) });
         }
 
+        int smokeMax, smokeDarkMax; float smokeK = -1;
         public void Update(float dt)
         {
+            // Smoke duration: longer-lived smoke needs room for more puffs at once
+            float k = FxCfg.SmokeLife;
+            if (k != smokeK)
+            {
+                if (smokeK < 0) { smokeMax = smoke.ps.main.maxParticles; smokeDarkMax = smokeDark.ps.main.maxParticles; }
+                smokeK = k; smoke.lifeK = smokeDark.lifeK = k;
+                var m1 = smoke.ps.main; m1.maxParticles = (int)(smokeMax * Mathf.Max(1, k));
+                var m2 = smokeDark.ps.main; m2.maxParticles = (int)(smokeDarkMax * Mathf.Max(1, k));
+            }
             lights.Update(dt); decals.Update(dt); colliders.Update();
             int n = 0; foreach (var l in all) n += l.Count;
             PerfOverlay.Particles = n; PerfOverlay.Lights = lights.Active; PerfOverlay.Decals = decals.Active;

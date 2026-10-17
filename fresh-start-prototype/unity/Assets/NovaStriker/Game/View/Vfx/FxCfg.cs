@@ -24,6 +24,7 @@ namespace NovaStriker.Game
         public static bool Distortion => !Low && Pick(true, false, false, SETTINGS.fxDistortion);
         public static bool Decals => !Low && Pick(true, true, false, SETTINGS.fxDecals);
         public static bool Classic => Explosions == "classic";
+        public static float SmokeLife => UnityEngine.Mathf.Clamp((float)SETTINGS.fxSmokeLife, 0.25f, 3f);   // (any preset: a taste)
         public static bool Flash => SETTINGS.fxFlash;   // (its own switch, whatever the preset: some players need flashes off)
         public static bool CineBeams => Projectiles != "classic";
 

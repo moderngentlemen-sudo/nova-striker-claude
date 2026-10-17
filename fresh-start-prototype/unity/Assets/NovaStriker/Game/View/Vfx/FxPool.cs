@@ -12,14 +12,15 @@ namespace NovaStriker.Game
     {
         public readonly ParticleSystem ps;
         ParticleSystem.EmitParams ep;
+        public float lifeK = 1;   // every life emitted is scaled by this (Settings › Smoke duration for the smoke layers)
         public FxLayer(ParticleSystem ps) { this.ps = ps; ep = new ParticleSystem.EmitParams(); }
         public int Count => ps.particleCount;
 
         // One particle at a three.js point, moving at v (three.js space, m/s)
-        public void Emit(Vector3 at, Vector3 v, float size, float life, Color c, float rot = 0, float spin = 0)
+        public void Emit(Vector3 at, Vector3 v, float size, float life, Color c, float rot = 0, float spin = 0, bool keepLife = false)
         {
             ep.position = Th.P(at); ep.velocity = Th.P(v);
-            ep.startSize = size; ep.startLifetime = life; ep.startColor = c;
+            ep.startSize = size; ep.startLifetime = keepLife ? life : life * lifeK; ep.startColor = c;
             ep.rotation = rot * Mathf.Rad2Deg; ep.angularVelocity = spin * Mathf.Rad2Deg;
             ps.Emit(ep, 1);
         }
