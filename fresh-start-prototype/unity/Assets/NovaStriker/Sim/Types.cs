@@ -41,6 +41,8 @@ namespace NovaStriker.Sim
         public double mx, my, ax, ay;
         public bool aimFree;
         public int lane;   // a depth-lane hop asked for this tick: -1 toward the back, 1 toward the camera
+        // Right stick picks targets (Settings): a flick toward (px, py) locks the enemy that way; aimDown aims at the feet
+        public bool pick, aimDown; public double px, py;
         public Buttons held = new Buttons(), pressed = new Buttons(), released = new Buttons();
         public static readonly Cmd EMPTY = new Cmd();
     }

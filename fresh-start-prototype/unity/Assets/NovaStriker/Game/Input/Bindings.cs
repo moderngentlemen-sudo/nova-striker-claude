@@ -42,7 +42,7 @@ namespace NovaStriker.Game
             D("Combat", "sig", "Suit ability", K(Key.E, Key.I), mouse: 1, pad: 3),
             D("Combat", "mode", "Switch mode", K(Key.R, Key.U), mouse: 3, pad: 5),
             D("Combat", "sub", "Character action (weapon, Provoke, power-up)", K(Key.T, Key.Y), mouse: -1, pad: 4),
-            D("Combat", "lock", "Lock-on: switch target", K(Key.F, Key.O), mouse: 4, pad: 11),
+            D("Combat", "lock", "Lock-on: switch target (gamepad, with the right stick picking targets: hold to aim at your feet)", K(Key.F, Key.O), mouse: 4, pad: 11),
             D("Combat", "ult", "Ultimate (parry + fire together also works)", K(Key.V, Key.N), mouse: -1, pad: -1),
             D("Characters and team", "swap", "Next character", K(Key.Tab)),
             D("Characters and team", "pick1", "Play as Nova", K(Key.Digit1)),

@@ -155,6 +155,9 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   so. Each row has *Reset*, and *Reset all to defaults* restores everything. The guide tab, the start screen and
   the hints follow the changes. Esc, Enter, the arrows in menus, and the gamepad's Start, View, D-pad and sticks
   stay fixed. Code: `Game/Input/Bindings.cs`; saved with the settings (`keyBindings`).
+- **Right stick picks targets** (Settings › *Controls* › *Gamepad right stick*): instead of aiming, a flick of the
+  right stick toward an enemy locks it (shots go to it); another flick switches. Holding the lock-on button (R3)
+  then aims at your feet: charge and let go to rocket jump.
 - **Beam weapons** (the Level 4 beams, the Supernova, the bosses' lasers) are built from Unity's effects
   (`CineBeam.cs`): layered line renderers with a scrolling energy texture, streaks and motes racing along them,
   heat haze, a burning impact with sparks, embers, flame, smoke and scorch marks, lights at both ends, and a

@@ -18,6 +18,8 @@ namespace NovaStriker.Sim
             if (!SETTINGS.lockOn) { if (p.lockT != null) world.SetLock(p, null, "off"); p.lockSuspend = false; return; }
             bool auto = SETTINGS.lockMode != "manual";
             bool held = cmd.held != null && cmd.held.@lock, pressed = cmd.pressed != null && cmd.pressed.@lock;
+            // the right stick picking targets (Settings): a flick locks the enemy that way
+            if (cmd.pick) { var e = world.LockInDirection(p, cmd.px, cmd.py); if (e != null) { p.lockSuspend = false; world.SetLock(p, e, "cycle"); } }
             if (pressed)
             {
                 p.lockHeld = 1; p.lockHoldDone = false;

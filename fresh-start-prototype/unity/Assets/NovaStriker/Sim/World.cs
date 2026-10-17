@@ -1002,6 +1002,23 @@ namespace NovaStriker.Sim
             var c = Chest(p);
             return LockCandidates(p).Find(e => JMath.Hypot(e.x - c.x, e.y + e.h * 0.55 - c.y) <= LOCK.auto && !Level.SegmentBlocked(c.x, c.y, e.x, e.y + e.h * 0.55));
         }
+        // The enemy a flick of the stick points at: the lock candidate nearest that direction (within 60 degrees),
+        // nearer ones preferred; the current target is passed over so a flick always moves the lock
+        public Enemy LockInDirection(Player p, double dx, double dy)
+        {
+            var c = Chest(p); double m = JMath.Hypot(dx, dy); if (m < 1e-6) return null; dx /= m; dy /= m;
+            Enemy best = null; double bs = 1e9;
+            foreach (var e in LockCandidates(p))
+            {
+                if (e == p.lockT) continue;
+                double ex = e.x - c.x, ey = e.y + e.h * 0.55 - c.y, d = JMath.Hypot(ex, ey); if (d < 1e-6) continue;
+                double cos = (ex * dx + ey * dy) / d;
+                if (cos < 0.5) continue;   // (within 60 degrees)
+                double s = (1 - cos) * 3 + d * 0.025;
+                if (s < bs) { bs = s; best = e; }
+            }
+            return best;
+        }
         public Enemy NextLockTarget(Player p)
         {
             var list = LockCandidates(p);

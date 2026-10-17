@@ -140,6 +140,9 @@ The README's *Unity-only additions* has the full description.
     *Change controls* tab of the help card (`UiMenus.cs`, `UpdateControls` captures the input). Guide text uses
     tokens (`{k:id}`, `{k1:id}`, `{p:id}`) that `Bindings.Expand` fills in. Esc, Enter, ` and the pad's
     Start/View/D-pad are reserved.
+  - **Right stick targeting:** `Settings.padAim` ("target"): `Controls` turns a right-stick flick into `Cmd.pick`
+    (`px`, `py`) and the lock-on button into `Cmd.aimDown`; `World.LockInDirection` picks the enemy;
+    `PlayerSim.UpdateAim` aims at the feet. `LevelTests` covers picking, switching and the rocket jump.
   - **Beams:** `Vfx/CineBeam.cs` draws the Level 4 beams (`BeamFx`), the Supernova (`UltFx`) and boss lasers
     (`FxEvents.SyncBossLasers`) unless Projectiles is Classic. `View.Flash` (a `ColorAdjustments` exposure
     spike, off with `fxFlash`) and `View.ShakeAtLeast` are its screen hooks.

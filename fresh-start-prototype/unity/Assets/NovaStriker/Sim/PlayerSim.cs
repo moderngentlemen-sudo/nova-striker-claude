@@ -71,6 +71,8 @@ namespace NovaStriker.Sim
         static void UpdateAim(Player p, Cmd cmd, World world)
         {
             V2 d;
+            // holding the aim-down button (the right stick picking targets): straight at the feet, for a rocket jump
+            if (cmd.aimDown) { p.aimFree = true; p.aimX = 0; p.aimY = -1; return; }
             if (cmd.aimFree) { d = new V2(cmd.ax, cmd.ay); p.aimFree = true; }
             else
             {

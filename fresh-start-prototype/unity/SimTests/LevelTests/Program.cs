@@ -110,6 +110,25 @@ static class P {
       }
     }
 
+    // 3c. The right stick picking targets (Settings: Gamepad right stick): a flick locks the enemy that way, another
+    // flick switches; holding the aim-down button aims at the feet, so a charged shot launches (a rocket jump)
+    { var w = Make(false, false, false, "gym"); SETTINGS.padAim = "target";
+      var p = w.AddPlayer("pad0", "nova"); p.x = 20; p.y = 0;
+      Run(w, p, 5);
+      var right = Enemies.CreateEnemy("swarmer", 26, 0); var left = Enemies.CreateEnemy("swarmer", 14, 0);
+      w.enemies.Add(right); w.enemies.Add(left);
+      Run(w, p, 1, i => new Cmd { pick = true, px = 1, py = 0 }, false);
+      bool gotRight = p.lockT == right;
+      Run(w, p, 1, i => new Cmd { pick = true, px = -1, py = 0 }, false);
+      Check(gotRight && p.lockT == left, "stick targeting: a flick locks the enemy that way, another flick switches");
+      Run(w, p, 1, i => new Cmd { aimDown = true }, false);
+      Check(p.aimX == 0 && p.aimY == -1, "stick targeting: the aim-down button aims straight at the feet");
+      w.enemies.Clear(); double top = 0; int charge = (int)MARKSMAN.charge[2] + 2;
+      Run(w, p, charge + 60, i => { top = System.Math.Max(top, p.y); var c = new Cmd { aimDown = true }; c.held.fire = i < charge; c.pressed.fire = i == 0; c.released.fire = i == charge; return c; });
+      Check(top > 2.5, $"stick targeting: aim down, charge and let go rocket-jumps (up to {top:0.0} m)");
+      SETTINGS.padAim = "free";
+    }
+
     // 4. Depth lanes
     { var w = Make(false, false, true, "gym");
       var p = w.AddPlayer("pad0", "nova"); p.x = 52; p.y = 0;

@@ -25,7 +25,7 @@ namespace NovaStriker.Game
         static int B(string name) => System.Array.IndexOf(BTNS, name);
         const float ORDER_HOLD = 0.38f;   // s of D-pad up/down held for the second command (Cover me, Hold here)
 
-        sealed class DevState { public bool[] prevHeld = new bool[10]; public int grace; public double lfx = 1, lfy; public bool swallow, prevL3; }
+        sealed class DevState { public bool[] prevHeld = new bool[10]; public int grace; public double lfx = 1, lfy; public bool swallow, prevL3; public bool pickArmed = true; public double pdx, pdy; }
         int laneKb;   // a depth-lane hop asked for on the keyboard since the last sample: B toward the back, M toward the camera
         sealed class Rep { public float t0, next; public bool done; }
 
@@ -205,12 +205,25 @@ namespace NovaStriker.Game
                 if (Bt(12)) my = 1; if (Bt(13)) my = -1;
                 foreach (var b in BTNS) { int i = Bindings.Pad(b); if (i >= 0 && Bt(i)) held[B(b)] = true; }
                 double rm = System.Math.Sqrt(rx * rx + ry * ry);
-                if (rm > 0.35) { aimFree = true; ax = rx / rm; ay = ry / rm; st.grace = 18; st.lfx = ax; st.lfy = ay; }
+                bool pick = false, aimDown = false; double px = 0, py = 0;
+                if (Cfg.SETTINGS.padAim == "target")
+                {
+                    // The right stick picks targets: a flick from centre (or a swing well round from the last one) locks the
+                    // enemy that way. The lock-on button, held, aims at the feet instead (rocket jumps)
+                    if (rm < 0.3) st.pickArmed = true;
+                    else if (rm > 0.6)
+                    {
+                        double ux = rx / rm, uy = ry / rm;
+                        if (st.pickArmed || ux * st.pdx + uy * st.pdy < 0.64) { pick = true; px = ux; py = uy; st.pdx = ux; st.pdy = uy; st.pickArmed = false; }
+                    }
+                    aimDown = held[B("lock")]; held[B("lock")] = false;
+                }
+                else if (rm > 0.35) { aimFree = true; ax = rx / rm; ay = ry / rm; st.grace = 18; st.lfx = ax; st.lfy = ay; }
                 else if (st.grace > 0) { st.grace--; aimFree = true; ax = st.lfx; ay = st.lfy; }
                 // a depth-lane hop: click the left stick, pushed down for the front lane (up or level for the back)
                 int li = Bindings.Pad("laneHop");
                 bool l3 = li >= 0 && Bt(li); int lane = l3 && !st.prevL3 ? (l.y < -0.5f ? 1 : -1) : 0; st.prevL3 = l3;
-                var pc = Finish(st, held, extra, mx, my, aimFree, ax, ay); pc.lane = lane;
+                var pc = Finish(st, held, extra, mx, my, aimFree, ax, ay); pc.lane = lane; pc.pick = pick; pc.px = px; pc.py = py; pc.aimDown = aimDown;
                 return pc;
             }
             return Finish(st, held, extra, mx, my, aimFree, ax, ay);
