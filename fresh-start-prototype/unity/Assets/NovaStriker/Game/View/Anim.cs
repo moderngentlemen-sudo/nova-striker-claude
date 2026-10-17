@@ -619,7 +619,7 @@ namespace NovaStriker.Game
         }
     
         // The energy Nova's shield has absorbed (Settings: Nova's LT move): his energy lines burn brighter and his
-        // armour takes on a blue rim of light (the shield's colour), rising with each hit it takes and breathing slowly; a block makes it
+        // armour takes on a rim of light in the shield's colour (blue, turning gold as it fills, as the honeycomb does), rising with each hit it takes and breathing slowly; a block makes it
         // flare for a moment. Returns the energy lines' extra emission.
         static float AbsorbGlow(Rig rig, Player p, float t, float dt)
         {
@@ -633,12 +633,14 @@ namespace NovaStriker.Game
                     if (m.rim == null) continue;
                     float rb = (float)m.userData["rimBase"]; var rc = (Color)m.userData["rimCol"];
                     float w = Mathf.Min(1, g * 0.9f + rig.absorbFlash * 0.5f);
-                    m.SetRim(rb + (1.1f * g + 0.8f * rig.absorbFlash) * breathe, 0, w > 0.001f ? Color.Lerp(rc.linear, ABSORB_RIM.linear, w).gamma : rc);
+                    var tint = Color.Lerp(ABSORB_RIM.linear, ABSORB_GOLD.linear, Mathf.Clamp01(g));   // (gold from a full charge)
+                    m.SetRim(rb + (1.1f * g + 0.8f * rig.absorbFlash) * breathe, 0, w > 0.001f ? Color.Lerp(rc.linear, tint, w).gamma : rc);
                 }
             return (2.6f * g + 2 * rig.absorbFlash) * breathe;
         }
         public const float HELMET_OFF = 0.25f, HELMET_BACK = 0.4f;   // Nova's and RAM's helmets: knocked off at or below 25% health, back above 40%
         static readonly Color ABSORB_RIM = new Color(0.55f, 0.88f, 1f);   // (the shield's blue)
+        static readonly Color ABSORB_GOLD = new Color(1f, 0.8f, 0.4f);    // (and its gold at a full charge)
 }
 
     // ---- Animation polish (Settings: animPolish; presentation only) ----
