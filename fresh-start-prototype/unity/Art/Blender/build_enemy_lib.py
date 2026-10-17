@@ -164,6 +164,102 @@ def torus(what, m, c, R, r, nu=24, nv=6, rot=(0, 0, 0)):
             fs.append((i * nv + j, i2 * nv + j, i2 * nv + j2, i * nv + j2))
     return obj(what, m, _place(vs, c, rot), fs, sharp=70)
 
+# ---- The detail kit: the small pieces that make a part read as built rather than blocked out. Each is cheap
+# (low sides, no bevel unless asked) since every enemy is drawn many times over. ----
+def _frame(t):
+    t = Vector(t).normalized()
+    side = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
+    x = (side - t * side.dot(t)).normalized()
+    return x, t.cross(x)
+
+def bez(a, b, c, k=5):
+    """k + 1 points on the quadratic curve from a to c, pulled toward b (a cable's sag or a hose's bend)."""
+    a, b, c = Vector(a), Vector(b), Vector(c)
+    return [a * (1 - t) ** 2 + b * 2 * t * (1 - t) + c * t * t for t in (i / k for i in range(k + 1))]
+
+def tube(what, m, pts, r, n=6):
+    """A pipe along a polyline (cable runs, hydraulic lines), its rings carried along so it never twists."""
+    pts = [Vector(p) for p in pts]; vs, fs = [], []; x = None
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        if x is None: x, _ = _frame(t)
+        x = (x - t * x.dot(t)).normalized(); y = t.cross(x)
+        for k in range(n):
+            a = TAU * k / n; vs.append(p + (x * math.cos(a) + y * math.sin(a)) * r)
+    for i in range(len(pts) - 1):
+        for k in range(n):
+            a, b = i * n + k, i * n + (k + 1) % n; fs.append((a, b, b + n, a + n))
+    fs.append(tuple(reversed(range(n)))); fs.append(tuple(range((len(pts) - 1) * n, len(pts) * n)))
+    return obj(what, m, vs, fs, sharp=60)
+
+def rivets(m, pts, nrm, r=0.014, h=0.012, n=5, what='rivet'):
+    """Round bolt heads standing h proud of a surface whose outward normal is nrm (sunk a little into it)."""
+    d = Vector(nrm).normalized()
+    for p in pts: cyl(what, m, Vector(p) - d * h * 0.6, Vector(p) + d * h, r, r * 0.75, n=n, sharp=50)
+
+def piston(what, a, b, r, k=0.55, n=8, collar=True):
+    """A hydraulic ram from a to b: a graphite cylinder over the first k of it, a pale rod and (collar) a gland."""
+    a, b = Vector(a), Vector(b); m = a.lerp(b, k)
+    cyl(what, 'j', a, m, r, n=n)
+    cyl(what + '_rod', 'p', m - (b - a).normalized() * r, b, r * 0.5, n=n)
+    if collar: cyl(what + '_collar', 'p', m - (b - a).normalized() * r * 0.6, m + (b - a).normalized() * r * 0.4, r * 1.2, n=n)
+
+def grille(what, c, size, n=3, rot=(0, 0, 0), m='j', glow='e', bev=0.0):
+    """A vent on a surface facing +x (before rot): n slats of size (w, -, d) across a glowing recess, spaced
+    along y. Where glow is None the slats sit over nothing (a louvre on an open frame)."""
+    R = rot3(rot); c = Vector(c); w, h, d = size
+    if glow: box(what + '_glow', glow, R @ Vector((-w * 0.3, 0, 0)) + c, (w * 0.4, h * 0.96, d * 0.9), 0.0, rot=rot)
+    for k in range(n):
+        y = -h / 2 + h * (k + 0.5) / n
+        box(what, m, R @ Vector((0, y, 0)) + c, (w, h / n * 0.5, d), bev, rot=rot)
+
+def fins(what, m, c, size, n, rot=(0, 0, 0), bev=0.0):
+    """A heat sink: n thin fins of size (w, h, -) standing on +y, in a row along z across depth d."""
+    R = rot3(rot); c = Vector(c); w, h, d = size
+    for k in range(n):
+        z = -d / 2 + d * (k + 0.5) / n
+        box(what, m, R @ Vector((0, 0, z)) + c, (w, h, d / n * 0.38), bev, rot=rot, taper=(0.8, 1.0))
+
+def thruster(what, c, r, L, rot=(0, 0, 0), n=12):
+    """A thruster bell opening toward -y (before rot): a graphite bell with a turned-in lip and a glowing core."""
+    lathe(what, 'j', [(r * 0.72, 0.0), (r, -L * 0.3), (r, -L), (r * 0.8, -L), (r * 0.58, -L * 0.42), (0.0, -L * 0.42)],
+          n=n, c=c, rot=rot, sharp=35)
+    lathe(what + '_core', 'e', [(0.0, -L * 0.7), (r * 0.36, -L * 0.6), (r * 0.5, -L * 0.36)], n=n, c=c, rot=rot, sharp=35)
+
+def sensor(what, c, r, rot=(0, 0, 0), n=10, d=0.6):
+    """A sensor lens facing +x (before rot): a graphite collar round a glowing dome."""
+    R = rot3(rot); c = Vector(c)
+    cyl(what, 'j', c - R @ Vector((r * d, 0, 0)), c + R @ Vector((r * 0.25, 0, 0)), r * 1.3, r * 1.2, n=n)
+    sphere(what + '_lens', 'e', c + R @ Vector((r * 0.15, 0, 0)), (r * 0.5, r, r), nu=n, nv=4, v0=-90, v1=90, rot=rot)
+
+def patch(what, m, c, radii, s0, s1, w0, w1, ns=8, nw=1, k=1.012, t=0.02, ring=False):
+    """A raised strip or ring lying on an ellipsoid (centre c, radii along x, y, z): seam rings, glowing stripes and
+    armour skins that follow a curved hull. s runs along x (-1..1 from tail to nose) and w round it (0 at +z, pi/2 at
+    +y); the strip stands k - 1 proud of the surface and reaches t below it. ring: w spans the whole way round."""
+    rx, ry, rz = radii; c = Vector(c); vs = []
+    def pt(s, w, kk):
+        q = math.sqrt(max(0.0, 1 - s * s))
+        return c + Vector((rx * s * kk, ry * q * math.sin(w) * kk, rz * q * math.cos(w) * kk))
+    cols = nw if ring else nw + 1
+    for kk in (k, 1 - t / max(rx, ry, rz)):
+        for i in range(ns + 1):
+            for j in range(cols): vs.append(pt(s0 + (s1 - s0) * i / ns, w0 + (w1 - w0) * j / nw, kk))
+    N = (ns + 1) * cols; fs = []
+    def at_(L, i, j): return L * N + i * cols + j % cols
+    for L in (0, 1):
+        for i in range(ns):
+            for j in range(nw):
+                f = (at_(L, i, j), at_(L, i + 1, j), at_(L, i + 1, j + 1), at_(L, i, j + 1))
+                fs.append(f if L == 0 else tuple(reversed(f)))
+    for j in range(nw):                                 # (walls closing the ends along s ...)
+        fs.append((at_(0, 0, j), at_(0, 0, j + 1), at_(1, 0, j + 1), at_(1, 0, j)))
+        fs.append((at_(0, ns, j), at_(1, ns, j), at_(1, ns, j + 1), at_(0, ns, j + 1)))
+    if not ring:                                        # (... and the sides along w)
+        for i in range(ns):
+            fs.append((at_(0, i, 0), at_(1, i, 0), at_(1, i + 1, 0), at_(0, i + 1, 0)))
+            fs.append((at_(0, i, nw), at_(0, i + 1, nw), at_(1, i + 1, nw), at_(1, i, nw)))
+    return obj(what, m, vs, fs, sharp=40)
+
 def save(out, name):
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, f'enemy_{name}.blend'))
     print('built', name, len([o for o in bpy.data.objects if o.type == 'MESH']), 'parts')
