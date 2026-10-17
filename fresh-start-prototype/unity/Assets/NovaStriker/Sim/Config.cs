@@ -68,6 +68,7 @@ namespace NovaStriker.Sim
         public string quality = "high";
         public bool reflections = true;       // presentation only (Unity only): the deck's mirror sheen (High and Ultra)
         public string charModels = "models";  // 'builtin' rigs, or 'models' where one exists (Unity: Nova's comes with the project)
+        public bool animPolish = true;        // presentation only (Unity only): secondary motion, squash and stretch, recoil and hit reactions (Anim, EnemyMotion)
         public bool hitboxes = false;
         public bool barks = true;
         public double volume = 0.6;

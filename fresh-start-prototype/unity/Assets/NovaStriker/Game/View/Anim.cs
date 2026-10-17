@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using NovaStriker.Sim;
 using UnityEngine;
 using static NovaStriker.Sim.Cfg;
@@ -155,6 +156,8 @@ namespace NovaStriker.Game
                 for (int i = 0; i < src.Length; i++) { var q = new Pose().Copy(bse).Set(src[i].pose); ks[i] = new CKey { t = src[i].t, snap = src[i].snap, pose = q.v }; }
                 keyCache[id] = ks;
             }
+            // (the polish layer's anticipation and follow-through: the first snapping key and the one before it)
+            for (int i = 1; i < ks.Length; i++) if (ks[i].snap) { PlayerPolish.SetStrike(ks[i - 1].pose, ks[i - 1].t, ks[i].pose, ks[i].t, (float)(m.su + m.ac)); break; }
             float u = (float)p.st;
             if (u <= ks[0].t) { Array.Copy(ks[0].pose, o.v, NJ); return; }
             for (int i = 1; i < ks.Length; i++)
@@ -178,7 +181,7 @@ namespace NovaStriker.Game
         // ---- The pose for this frame ----
         public static void AnimatePlayer(Rig rig, Player p, float dt, float t)
         {
-            P.Set(REST);
+            P.Set(REST); PlayerPolish.ClearStrike();
             float speed = Mathf.Abs((float)p.vx); string st = p.state; bool echo = p.@char == "echo", ram = p.@char == "ram", fix = p.@char == "fix";
             bool mk = p.@char == "nova" && SETTINGS.novaKit == "marksman";
             float aimAng = Mathf.Atan2((float)p.aimY, Mathf.Abs((float)p.aimX) < 1e-3f ? 1e-3f : (float)(p.aimX * p.facing));
@@ -479,9 +482,15 @@ namespace NovaStriker.Game
             rig.lastRocketT = (float)p.rocketT; rig.wasGround = p.onGround; rig.wasCrouch = p.crouch; if (!p.onGround) rig.lastVy = pvy;
             rig.stretch *= Mathf.Exp(-dt * 10);
             float sy = 1 + rig.stretch, sxz = 1 / Mathf.Sqrt(sy);
-            rig.body.scale.set(sxz, sy, sxz);
+            // Animation polish (Settings): secondary motion, anticipation, follow-through, squash and stretch, recoil and
+            // hit reactions layered over the eased pose; presentation only, and off it leaves the pose exactly as eased
+            var pol = PlayerPolish.Of(rig); float[] o = cur;
+            if (SETTINGS.animPolish) { o = pol.Update(rig, p, cur, dt, t, shooting && !ram, yaw != 0 || roll != 0); sy *= 1 + pol.sqY; }
+            else pol.Off(rig);
+            if (pol.on) { float hx = 1 + pol.sqX; rig.body.scale.set(hx / Mathf.Sqrt(sy), sy / Mathf.Sqrt(hx), 1 / Mathf.Sqrt(sy * hx)); }
+            else rig.body.scale.set(sxz, sy, sxz);
 
-            float C(int j) => cur[j];
+            float C(int j) => o[j];
             rig.spine.rotation.set(0, C(1), -C(0));
             rig.head.rotation.z = -C(12);
             rig.armN.top.rotation.z = C(2); rig.armN.joint.rotation.z = C(3);
@@ -497,9 +506,10 @@ namespace NovaStriker.Game
             if (roll == 0 && Mathf.Abs(rig.roll) > 0.01f) { rig.roll = JsMod(rig.roll, PI * 2); if (rig.roll < -PI) rig.roll += PI * 2; }
             rig.hips.rotation.z = rig.roll;
             rig.body.position.y = st == "downed" || st == "dead" ? 0.1f : 0;
+            if (pol.on) pol.Write(rig);
 
             // ---- Suit details ----
-            if (ram || fix) { NewSuits(rig, p, cur, t, dt, aimAng, shooting); return; }
+            if (ram || fix) { NewSuits(rig, p, o, t, dt, aimAng, shooting); return; }
             var ex = rig.extra;
             if (!echo)
             {
@@ -627,4 +637,272 @@ namespace NovaStriker.Game
         public const float HELMET_OFF = 0.25f, HELMET_BACK = 0.4f;   // Nova's and RAM's helmets: knocked off at or below 25% health, back above 40%
         static readonly Color ABSORB_RIM = new Color(0.55f, 0.88f, 1f);   // (the shield's blue)
 }
+
+    // ---- Animation polish (Settings: animPolish; presentation only) ----
+    // A layer over the eased pose that makes each state read like hand-keyed animation: anticipation before a strike
+    // and follow-through past it, overlapping lag (head and arms trail the torso, forearms trail the upper arms), the
+    // body leaning into its acceleration, hips and shoulders counter-rotating in a run, weight shifting and breathing at
+    // idle, squash and stretch on take-offs, landings, ground pounds and dashes, a recoil kick on every shot (bigger
+    // with the charge), a jolt on melee contact, and a flinch away from each hit that grows with the damage. It reads
+    // only what the simulation already exposes (timers, phases, health, velocity) and never writes to it. Feet stay
+    // planted: whenever it moves the hips on the ground, the legs are re-solved (two-bone IK) so the feet keep the
+    // place and angle the unpolished pose gave them. Amplitudes are peak values (radians, or metres for the hips).
+    public sealed class PlayerPolish
+    {
+        // Lean into acceleration (whole-body tilt about the feet), and the arms swinging against it
+        const float LEAN_PER_ACCEL = 0.0045f, LEAN_MAX = 0.15f, LEAN_AIR = 0.35f, LEAN_HZ = 2.4f, LEAN_DAMP = 0.7f, ACCEL_SMOOTH = 10f;
+        const float ARMS_FROM_LEAN = 0.9f;
+        // Overlapping lag: the head and arms trail the torso's pitch, the forearms trail the upper arms (springs that
+        // overshoot and settle; the aiming arm is left alone while it aims)
+        const float HEAD_LAG = 0.5f, HEAD_HZ = 3.0f, HEAD_DAMP = 0.42f;
+        const float ARM_LAG = 0.35f, ARM_HZ = 2.4f, ARM_DAMP = 0.38f;
+        const float ELBOW_LAG = 0.3f, ELBOW_HZ = 3.4f, ELBOW_DAMP = 0.36f;
+        // Runs: the pelvis turns with the forward leg and the shoulders counter it a little more
+        const float RUN_HIP_YAW = 0.14f, RUN_SHOULDER_COUNTER = 1.3f;
+        // Idle: a slow weight shift fore and aft (the feet stay put, so the knees take it), breathing and a slow gaze
+        const float IDLE_SHIFT = 0.02f, IDLE_SHIFT_PERIOD = 5.5f, IDLE_BREATH_RATE = 2.2f, IDLE_BREATH_SPINE = 0.02f, IDLE_BREATH_ARMS = 0.03f;
+        const float IDLE_GAZE = 0.035f, IDLE_FADE = 3f;
+        // Squash and stretch (fractions of height), and the landing dip of the hips (metres), per m/s of fall speed
+        const float SQUASH_HZ = 4.2f, SQUASH_DAMP = 0.32f, STRETCH_X_HZ = 5f, STRETCH_X_DAMP = 0.45f;
+        const float LAND_SQUASH_PER_SPEED = 0.005f, LAND_SQUASH_MAX = 0.1f, LAND_DIP_PER_SPEED = 0.006f, LAND_DIP_MIN = 0.015f, LAND_DIP_MAX = 0.13f;
+        const float LAND_NOD = 0.14f, LAND_SPINE = 0.1f, DIP_HZ = 3.0f, DIP_DAMP = 0.5f;
+        const float TAKEOFF_STRETCH = 0.07f, TAKEOFF_KNEES = 0.35f, TAKEOFF_ARMS = 0.25f, TAKEOFF_VY = 6f;
+        const float POUND_DROP_STRETCH = 0.1f, POUND_LAND_SQUASH = 0.11f, POUND_LAND_SQUASH_PER_LEVEL = 0.03f, POUND_LAND_DIP = 0.1f;
+        const float DASH_STRETCH = 0.13f, DASH_LEAN = 0.1f, DASH_END_LEAN = 0.12f, DASH_END_ARMS = 0.3f;
+        // Attacks: the windup pushed further back just before the strike (a fraction of the windup-to-strike swing),
+        // and the strike carried past its key and settling back (follow-through), each joint capped
+        const float ANTICIPATION = 0.16f, FOLLOW_THROUGH = 0.14f, FOLLOW_RISE_TICKS = 2f, FOLLOW_DECAY_TICKS = 6f, KEY_JOINT_CAP = 0.25f;
+        const float ATTACK_LAG = 0.4f;   // (the lag springs' weight during keyed attacks, which carry their own overlap)
+        const float CONTACT_JOLT = 0.12f, CONTACT_HZ = 6f, CONTACT_DAMP = 0.45f;
+        // Shots: the arm kicks up and the forearm folds, the torso rocks back (bigger with the charge level)
+        const float RECOIL = 0.1f, RECOIL_PER_LEVEL = 0.07f, RECOIL_HZ = 5.5f, RECOIL_DAMP = 0.5f, RIVET_RECOIL = 0.5f;
+        const float RECOIL_SHOULDER = 0.6f, RECOIL_ELBOW = 1.1f, RECOIL_SPINE = 0.3f, RECOIL_HIPS = 0.035f, SHIELD_BLOCK_PUSH = 0.1f;
+        // Hits: a flinch away from the hit (from the knockback's direction), scaled by the damage as a share of
+        // health; past HEAVY_HIT the knees buckle into a stagger
+        const float HIT_FULL = 0.2f, HIT_FLINCH = 0.06f, HIT_FLINCH_PER = 0.12f, HIT_TILT = 0.06f, HIT_HEAD = 0.1f, HIT_ARMS = 0.18f, HIT_TWIST = 0.08f;
+        const float HEAVY_HIT = 0.55f, HEAVY_DIP = 0.09f, HEAVY_SQUASH = 0.07f, HIT_HZ = 3.4f, HIT_DAMP = 0.5f;
+        // RAM's Rampart trails his body and bounces on landings
+        const float SHIELD_FROM_LEAN = 0.5f, SHIELD_LAND = 0.004f, SHIELD_LAND_MAX = 0.1f;
+        // Leg lengths (Rigs.MakeLimb)
+        const float THIGH = 0.46f, SHIN = 0.46f;
+
+        struct Spr { public float x, v; }
+        const float TAU = Mathf.PI * 2;
+        static void Step(ref Spr s, float target, float hz, float damp, float dt)
+        {
+            float w = TAU * hz; int n = Mathf.Clamp(Mathf.CeilToInt(dt * 240), 1, 8); float h = dt / n;
+            for (int i = 0; i < n; i++) { s.v += (-w * w * (s.x - target) - 2 * damp * w * s.v) * h; s.x += s.v * h; }
+        }
+        // (an impulse sized to peak near amp)
+        static void Kick(ref Spr s, float amp, float hz) => s.v += amp * TAU * hz;
+
+        static readonly ConditionalWeakTable<Rig, PlayerPolish> ALL = new ConditionalWeakTable<Rig, PlayerPolish>();
+        public static PlayerPolish Of(Rig rig) { if (!ALL.TryGetValue(rig, out var s)) { s = new PlayerPolish(); ALL.Add(rig, s); } return s; }
+
+        // The current move's windup and strike keys (AttackPose fills them in, every frame of an attack)
+        static float[] sWind, sStrike; static float sWindT, sStrikeT, sActEnd; static bool sHas;
+        public static void ClearStrike() => sHas = false;
+        public static void SetStrike(float[] wind, float windT, float[] strike, float strikeT, float actEnd) { sWind = wind; sWindT = windT; sStrike = strike; sStrikeT = strikeT; sActEnd = actEnd; sHas = true; }
+
+        static readonly float[] OUT = new float[Anim.NJ], D = new float[Anim.NJ];
+        public bool on;
+        public float sqY, sqX, hipX, hipYaw, footN, footF;
+        Spr lean, headF, armFN, armFF, elFN, elFF, sq, sx, dip, nod, spineK, knees, armsK, rec, jolt, flinch, tilt, twistK, shX, shY, idle, run, aimW;
+        bool init, wasGround = true, lastConfirm; float accS, lastVxF, lastFacing, airVy, lastHp, lastFireCd, lastRifleCd, lastShootT, lastRivetQ, lastBlockT = 999, chargeLv, chargeAge;
+        string lastState; string lastPhase; int hits;
+
+        public void Off(Rig rig)
+        {
+            if (!on) return;
+            on = false; init = false; rig.hips.position.x = 0; rig.hips.rotation.y = 0; rig.legN.end.rotation.z = 0; rig.legF.end.rotation.z = 0;
+        }
+        public void Write(Rig rig)
+        {
+            rig.hips.position.x = hipX; rig.hips.rotation.y = hipYaw;
+            rig.legN.end.rotation.z = footN; rig.legF.end.rotation.z = footF;
+        }
+
+        static bool Is(string s, string a, string b = null, string c = null, string d = null) => s == a || (b != null && s == b) || (c != null && s == c) || (d != null && s == d);
+        static float Clamp(float v, float m) => Mathf.Clamp(v, -m, m);
+
+        public float[] Update(Rig rig, Player p, float[] cur, float dt, float t, bool aiming, bool spin)
+        {
+            on = true; dt = Mathf.Clamp(dt, 0, 0.1f);
+            string st = p.state; bool live = st != "downed" && st != "dead";
+            bool echo = p.@char == "echo", ram = p.@char == "ram", fix = p.@char == "fix";
+            float facing = (float)p.facing, vx = (float)p.vx, vy = (float)p.vy, speed = Mathf.Abs(vx);
+            if (!init)
+            {
+                init = true; lean = headF = armFN = armFF = elFN = elFF = sq = sx = dip = nod = spineK = knees = armsK = rec = jolt = flinch = tilt = twistK = shX = shY = idle = run = aimW = default;
+                headF.x = armFN.x = armFF.x = cur[0] - cur[11]; elFN.x = cur[2]; elFF.x = cur[4];
+                wasGround = p.onGround; lastFacing = facing; lastVxF = vx * facing; lastHp = (float)p.hp; lastFireCd = (float)p.fireCd; lastRifleCd = (float)p.rifleCd;
+                lastShootT = (float)p.shootT; lastRivetQ = (float)p.rivetQ; lastBlockT = (float)p.nshieldBlockT; lastState = st; lastPhase = p.pound?.phase; lastConfirm = p.hitConfirm;
+            }
+            Array.Clear(D, 0, D.Length);
+
+            // ---- Events, read from the simulation's own state changes ----
+            if (live && p.onGround && !wasGround)
+            {
+                float fall = Mathf.Max(0, -airVy), k = Mathf.Clamp01(fall / 22);
+                Kick(ref sq, -Mathf.Min(LAND_SQUASH_MAX, fall * LAND_SQUASH_PER_SPEED), SQUASH_HZ);
+                Kick(ref dip, Mathf.Clamp(fall * LAND_DIP_PER_SPEED, LAND_DIP_MIN, LAND_DIP_MAX), DIP_HZ);
+                Kick(ref nod, LAND_NOD * (0.3f + k), HEAD_HZ); Kick(ref spineK, LAND_SPINE * (0.3f + k), DIP_HZ);
+                if (ram) Kick(ref shY, -Mathf.Min(SHIELD_LAND_MAX, fall * SHIELD_LAND), DIP_HZ);
+            }
+            if (live && !p.onGround && wasGround && vy > TAKEOFF_VY)
+            {
+                Kick(ref sq, TAKEOFF_STRETCH, SQUASH_HZ); Kick(ref knees, -TAKEOFF_KNEES, ARM_HZ); Kick(ref armsK, TAKEOFF_ARMS, ARM_HZ);
+            }
+            if (!p.onGround) airVy = vy;
+            wasGround = p.onGround;
+            string phase = st == "pound" ? p.pound?.phase : null;
+            if (phase != lastPhase && phase == "drop") Kick(ref sq, POUND_DROP_STRETCH, SQUASH_HZ);
+            if (phase != lastPhase && lastPhase == "drop" && phase != null)
+            {
+                float lv = (float)p.pound.level;
+                Kick(ref sq, -(POUND_LAND_SQUASH + POUND_LAND_SQUASH_PER_LEVEL * lv), SQUASH_HZ); Kick(ref dip, POUND_LAND_DIP, DIP_HZ); Kick(ref nod, LAND_NOD, HEAD_HZ);
+            }
+            lastPhase = phase;
+            bool dashing = Is(st, "dash", "zip", "dashslash");
+            if (dashing && !Is(lastState, "dash", "zip", "dashslash")) { Kick(ref sx, DASH_STRETCH, STRETCH_X_HZ); Kick(ref lean, -DASH_LEAN, LEAN_HZ); }
+            if (!dashing && Is(lastState, "dash", "zip", "dashslash") && live) { Kick(ref sx, -DASH_STRETCH * 0.5f, STRETCH_X_HZ); Kick(ref lean, -DASH_END_LEAN, LEAN_HZ); Kick(ref armsK, DASH_END_ARMS, ARM_HZ); }
+            lastState = st;
+
+            // Shots: a new cooldown, a charged release (shootT set), a rifle shot or a rivet leaving the gun
+            bool charging = p.chargeT > 0 || p.burstT > 0;
+            if (charging) chargeLv = Mathf.Max(chargeLv, Mathf.Max(Lv(PlayerSim.ChargeStage(p)), p.@char == "nova" ? Lv(PlayerSim.BurstStage(p)) : 0));
+            bool shot = p.fireCd > lastFireCd + 0.5f || p.rifleCd > lastRifleCd + 0.5f || p.shootT > lastShootT + 0.5f, rivet = p.rivetQ < lastRivetQ - 0.5f;
+            if (live && (shot || rivet)) { Kick(ref rec, (RECOIL + RECOIL_PER_LEVEL * chargeLv) * (rivet && !shot ? RIVET_RECOIL : 1), RECOIL_HZ); chargeLv = 0; }
+            chargeAge = charging ? 0 : chargeAge + dt;
+            if (chargeAge > 0.2f) chargeLv = 0;   // (the level is kept a moment for a release that lands on a later tick)
+            lastFireCd = (float)p.fireCd; lastRifleCd = (float)p.rifleCd; lastShootT = (float)p.shootT; lastRivetQ = (float)p.rivetQ;
+            // Nova's shield taking a hit pushes his bracer arm back
+            if (p.nshieldBlockT < lastBlockT - 0.5f && live) Kick(ref jolt, SHIELD_BLOCK_PUSH, CONTACT_HZ);
+            lastBlockT = (float)p.nshieldBlockT;
+            // Melee contact: a jolt back through the striking arm
+            if (p.hitConfirm && !lastConfirm && st == "attack") Kick(ref jolt, CONTACT_JOLT, CONTACT_HZ);
+            lastConfirm = p.hitConfirm;
+
+            // Hits: health lost, the direction from the knockback (pushed back unless it clearly carries forward)
+            float hp = (float)p.hp;
+            if (live && hp < lastHp - 0.01f && p.maxHp > 0)
+            {
+                float sev = Mathf.Clamp01((lastHp - hp) / (float)p.maxHp / HIT_FULL), dir = vx * facing > 1.5f ? 1 : -1, amp = HIT_FLINCH + HIT_FLINCH_PER * sev;
+                Kick(ref flinch, dir * amp, HIT_HZ); Kick(ref tilt, -dir * HIT_TILT * (0.4f + sev), HIT_HZ);
+                Kick(ref nod, -dir * HIT_HEAD * (0.4f + sev), HEAD_HZ); Kick(ref armsK, -dir * HIT_ARMS * sev, ARM_HZ);
+                Kick(ref twistK, ((hits++ & 1) == 0 ? 1 : -1) * HIT_TWIST * sev, HIT_HZ);
+                if (sev >= HEAVY_HIT) { Kick(ref dip, HEAVY_DIP * sev, DIP_HZ); Kick(ref sq, -HEAVY_SQUASH * sev, SQUASH_HZ); Kick(ref knees, -0.25f * sev, ARM_HZ); }
+            }
+            lastHp = hp;
+
+            // ---- Acceleration in the facing frame (no spike when the facing flips) ----
+            float vxF = vx * facing;
+            if (facing != lastFacing) { lastVxF = vxF; lastFacing = facing; }
+            float acc = dt > 1e-5f ? (vxF - lastVxF) / dt : 0; lastVxF = vxF;
+            accS += (acc - accS) * (1 - Mathf.Exp(-dt * ACCEL_SMOOTH));
+            bool loco = Is(st, "normal", "nshield", "guard", "patch") || (st == "slide");
+            float leanT = live && !spin && loco ? Clamp(-accS * LEAN_PER_ACCEL, LEAN_MAX) * (p.onGround ? 1 : LEAN_AIR) : 0;
+
+            // ---- Springs ----
+            Step(ref lean, leanT, LEAN_HZ, LEAN_DAMP, dt);
+            Step(ref sq, 0, SQUASH_HZ, SQUASH_DAMP, dt); Step(ref sx, 0, STRETCH_X_HZ, STRETCH_X_DAMP, dt);
+            Step(ref dip, 0, DIP_HZ, DIP_DAMP, dt); Step(ref nod, 0, HEAD_HZ, HEAD_DAMP, dt); Step(ref spineK, 0, DIP_HZ, DIP_DAMP, dt);
+            Step(ref knees, 0, ARM_HZ, ARM_DAMP, dt); Step(ref armsK, 0, ARM_HZ, ARM_DAMP, dt);
+            Step(ref rec, 0, RECOIL_HZ, RECOIL_DAMP, dt); Step(ref jolt, 0, CONTACT_HZ, CONTACT_DAMP, dt);
+            Step(ref flinch, 0, HIT_HZ, HIT_DAMP, dt); Step(ref tilt, 0, HIT_HZ, HIT_DAMP, dt); Step(ref twistK, 0, HIT_HZ, HIT_DAMP, dt);
+            Step(ref shX, lean.x * SHIELD_FROM_LEAN, ARM_HZ, ARM_DAMP, dt); Step(ref shY, 0, DIP_HZ, DIP_DAMP, dt);
+            float fade = 1 - Mathf.Exp(-dt * IDLE_FADE);
+            bool idleNow = live && st == "normal" && p.onGround && speed < 0.6f && !p.crouch && !aiming;
+            idle.x += ((idleNow ? 1 : 0) - idle.x) * fade;
+            run.x += ((live && st == "normal" && p.onGround && speed > 0.6f && !p.crouch ? Mathf.Min(1, speed / 7) : 0) - run.x) * (1 - Mathf.Exp(-dt * 8));
+            aimW.x += ((aiming ? 1 : 0) - aimW.x) * (1 - Mathf.Exp(-dt * 16));
+
+            // ---- Attack keys: anticipation and follow-through ----
+            if (sHas && st == "attack" && p.move != null && live)
+            {
+                float u = (float)p.st, ts = sStrikeT, tp = Mathf.Max(sWindT, ts * 0.7f), e = 0, sign = -ANTICIPATION;
+                if (u < ts) { e = u <= tp ? Ease(Mathf.Clamp01(u / Mathf.Max(0.5f, tp))) : 1 - Ease(Mathf.Clamp01((u - tp) / Mathf.Max(0.5f, ts - tp))); }
+                else { float a = u - ts; e = a < FOLLOW_RISE_TICKS ? a / FOLLOW_RISE_TICKS : Mathf.Exp(-(a - FOLLOW_RISE_TICKS) / FOLLOW_DECAY_TICKS); sign = FOLLOW_THROUGH; }
+                if (e > 1e-3f)
+                    for (int j = 0; j < 13; j++) if (j != 10) D[j] += Clamp(sign * e * (sStrike[j] - sWind[j]), KEY_JOINT_CAP);
+            }
+            // (which arm strikes: the one that swings most between the two keys)
+            bool farStrikes = sHas && Mathf.Abs(sStrike[4] - sWind[4]) > Mathf.Abs(sStrike[2] - sWind[2]);
+
+            // ---- Lean, the torso and the springs' kicks ----
+            float L = lean.x;
+            D[11] += L + tilt.x;
+            D[0] += spineK.x + flinch.x - rec.x * RECOIL_SPINE - jolt.x * 0.4f;
+            D[1] += twistK.x;
+            D[12] += nod.x;
+            D[2] += L * ARMS_FROM_LEAN + armsK.x; D[4] += L * ARMS_FROM_LEAN + armsK.x;
+            D[7] += knees.x; D[9] += knees.x * 1.2f;
+            float hy = -dip.x, hx = -rec.x * RECOIL_HIPS;
+            // Recoil: the aiming arm (both of Echo's on the rifle), or the torso alone for RAM's shoulder cannon
+            if (!ram)
+            {
+                D[2] += rec.x * RECOIL_SHOULDER; D[3] += rec.x * RECOIL_ELBOW;
+                if (echo) { D[4] += rec.x * RECOIL_SHOULDER * 0.8f; D[5] += rec.x * RECOIL_ELBOW * 0.6f; }
+            }
+            // Contact jolt (and the shield's push): the striking arm folds back at the elbow
+            if (farStrikes) { D[4] -= jolt.x * 0.5f; D[5] += jolt.x; } else { D[2] -= jolt.x * 0.5f; D[3] += jolt.x; }
+            // Runs: the pelvis turns with the forward leg, the shoulders counter it
+            hipYaw = spin ? 0 : run.x * RUN_HIP_YAW * Mathf.Clamp((cur[6] - cur[8]) / 1.9f, -1, 1);
+            D[1] -= hipYaw * RUN_SHOULDER_COUNTER;
+            // Idle: weight shift, breathing, a slow gaze
+            if (idle.x > 1e-3f)
+            {
+                float w = idle.x, ph = p.slot * 1.7f, shift = Mathf.Sin(t * TAU / IDLE_SHIFT_PERIOD + ph), br = Mathf.Sin(t * IDLE_BREATH_RATE + ph);
+                hx += w * IDLE_SHIFT * shift; hy -= w * IDLE_SHIFT * 0.4f * (1 - Mathf.Cos(t * TAU / IDLE_SHIFT_PERIOD * 2 + ph)) * 0.5f;
+                D[0] += w * (IDLE_BREATH_SPINE * br - shift * 0.6f * IDLE_SHIFT * 2);
+                D[2] += w * IDLE_BREATH_ARMS * br; D[4] += w * IDLE_BREATH_ARMS * br * 0.8f;
+                D[12] += w * IDLE_GAZE * Mathf.Sin(t * 0.7f + ph);
+            }
+            if (ram) { D[13] += shX.x; D[14] += shY.x; }
+
+            // ---- Overlapping lag: the head and arms trail the torso's pitch, the forearms the upper arms ----
+            float torso = cur[0] + D[0] - (cur[11] + D[11]);
+            Step(ref headF, torso, HEAD_HZ, HEAD_DAMP, dt); Step(ref armFN, torso, ARM_HZ, ARM_DAMP, dt); Step(ref armFF, torso, ARM_HZ, ARM_DAMP, dt);
+            float lagOk = live && !spin ? (st == "attack" || st == "dashslash" ? ATTACK_LAG : 1) : 0;
+            D[12] += lagOk * HEAD_LAG * (headF.x - torso);
+            float aimN = 1 - aimW.x, aimF = echo ? 1 - aimW.x : 1;
+            D[2] += lagOk * aimN * ARM_LAG * (armFN.x - torso); D[4] += lagOk * aimF * ARM_LAG * (armFF.x - torso);
+            float shN = cur[2] + D[2], shF = cur[4] + D[4];
+            Step(ref elFN, shN, ELBOW_HZ, ELBOW_DAMP, dt); Step(ref elFF, shF, ELBOW_HZ, ELBOW_DAMP, dt);
+            D[3] += lagOk * aimN * ELBOW_LAG * (elFN.x - shN); D[5] += lagOk * aimF * ELBOW_LAG * (elFF.x - shF);
+
+            for (int j = 0; j < Anim.NJ; j++) OUT[j] = cur[j] + D[j];
+            // (elbows never bend past straight)
+            OUT[3] = Mathf.Max(OUT[3], Mathf.Min(cur[3], 0)); OUT[5] = Mathf.Max(OUT[5], Mathf.Min(cur[5], 0));
+            OUT[10] += hy; hipX = hx;
+            sqY = sq.x; sqX = sx.x;
+
+            // ---- Feet: re-solve the legs for the polished hips so the feet keep their place and angle ----
+            footN = footF = 0;
+            if (live && !spin && p.onGround)
+            {
+                footN = Plant(cur[6], cur[7], cur[10], hx, OUT, 6) - D[11];
+                footF = Plant(cur[8], cur[9], cur[10], hx, OUT, 8) - D[11];
+            }
+            else { footN = -D[11] * (p.onGround ? 1 : 0); footF = footN; }
+            return OUT;
+        }
+
+        // Two-bone IK in the side view: the foot of a leg posed (h, k) from hips at (0, y0) is kept where it was with
+        // the hips moved to (dx, OUT[10]); writes the new angles and returns the ankle turn that keeps the foot's angle
+        static float Plant(float h, float k, float y0, float dx, float[] o, int j)
+        {
+            float fx = THIGH * Mathf.Sin(h) + SHIN * Mathf.Sin(h + k), fy = y0 - THIGH * Mathf.Cos(h) - SHIN * Mathf.Cos(h + k);
+            float tx = fx - dx, ty = fy - o[10];
+            float r = Mathf.Clamp(Mathf.Sqrt(tx * tx + ty * ty), 0.05f, THIGH + SHIN - 1e-3f);
+            float ck = Mathf.Clamp((r * r - THIGH * THIGH - SHIN * SHIN) / (2 * THIGH * SHIN), -1, 1);
+            float k2 = Mathf.Acos(ck) * (k > 0 ? 1 : -1);
+            float h2 = Mathf.Atan2(tx, -ty) - Mathf.Atan2(SHIN * Mathf.Sin(k2), THIGH + SHIN * Mathf.Cos(k2));
+            o[j] = h2; o[j + 1] = k2;
+            return (h + k) - (h2 + k2);
+        }
+
+        static float Ease(float k) => k * k * (3 - 2 * k);
+        static int Lv(string s) => s == "L1" ? 1 : s == "L2" ? 2 : s == "L3" || s == "perfect" ? 3 : s == "L4" ? 4 : 0;
+    }
 }
