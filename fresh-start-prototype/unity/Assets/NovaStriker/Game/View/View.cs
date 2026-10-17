@@ -48,7 +48,7 @@ namespace NovaStriker.Game
         public readonly List<(TMat m, float k)> lamps = new List<(TMat, float)>(), neon = new List<(TMat, float)>();
         public TMat floor;
         public Sparks sparks; PlanarReflection reflection;
-        public Vfx vfx; PostFx post; LevelFx levelFx;
+        public Vfx vfx; PostFx post; LevelFx levelFx; EnemyBreakup breakup;
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -125,7 +125,7 @@ namespace NovaStriker.Game
             foreach (var zone in new[] { "gym", "arena", "tower", "skyline", "foundry", "undercity" }) ZoneDressing.Build(this, zone);
             Landmarks.Build(this); FlushBaked();
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
-            vfx = new Vfx(this); levelFx = new LevelFx(this); weather = new Weather(this);
+            vfx = new Vfx(this); levelFx = new LevelFx(this); breakup = new EnemyBreakup(); weather = new Weather(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
@@ -350,6 +350,13 @@ namespace NovaStriker.Game
 
         // ---- Entities ----
         static void DisposeRig(TObj root) => root.destroy();
+        // Where the nearest player is (three.js space): the side a killing blow most likely came from
+        static Vector3 NearestPlayer(World world, Enemy e)
+        {
+            Player best = null; double bd = 1e9;
+            foreach (var p in world.players) { double d = System.Math.Abs(p.x - e.x) + System.Math.Abs(p.y - e.y); if (d < bd) { bd = d; best = p; } }
+            return best != null ? S.W(best.x, best.y + best.h * 0.5, 0) : S.W(e.x - 1, e.y, 0);
+        }
 
         void SyncEntities(World world, float a, float dt)
         {
@@ -413,8 +420,9 @@ namespace NovaStriker.Game
                 }
                 if (R.tag != null) R.tag.visible = e.tagged > 0 && !e.dead;
                 StunMarker(R, e, t);
+                if (e.dead) breakup.Update(R, e, S.ToUnity(NearestPlayer(world, e)));   // (falls apart into its own pieces)
             }
-            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeRig(enemyRigs[e].root); enemyRigs.Remove(e); }
+            foreach (var e in enemyRigs.Keys.ToList()) if (!seenE.Contains(e)) { DisposeRig(enemyRigs[e].root); enemyRigs.Remove(e); breakup.Forget(e); }
 
             foreach (var (mesh, tag) in gateMeshes)
             {
@@ -603,6 +611,9 @@ namespace NovaStriker.Game
             string T = ev.type;
             if (T == "boxChip" || T == "boxBreak" || T == "liftBounce") breakables.OnEvent(ev);
             if (T == "laneHop" || T.StartsWith("hazard")) levelFx.OnEvent(ev);
+            // an armour plate knocked off flies loose (the rig hides it on its next pose)
+            if (T == "armorBreak" && ev.e != null && world != null && enemyRigs.TryGetValue(ev.e, out var AR) && AR.parts.plates != null && ev.e.armor >= 0 && ev.e.armor < AR.parts.plates.Count)
+                breakup.BreakPart(AR.parts.plates[(int)ev.e.armor], AR, ev.e, S.ToUnity(NearestPlayer(world, ev.e)));
             weather.OnEvent(ev);
             if (T == "boxBreak") trauma = Mathf.Min(1, trauma + (ev.box.tag == "pillar" ? 0.4f : ev.box.tag == "glass" ? 0.12f : 0.2f));
             // Shockwaves from the heaviest blows (an impact frame adds its own in StartImpact)
@@ -765,7 +776,7 @@ namespace NovaStriker.Game
             HelmetFx.Update(dt);
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); breakup.Tick(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);

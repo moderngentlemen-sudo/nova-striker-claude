@@ -64,7 +64,7 @@ namespace NovaStriker.Game.UI
             new SettingDef { key = "fxProjectiles", label = "Projectiles (Custom preset)", opts = O("energy", "Energy: glowing cores and trails", "tracer", "Tracer: bright streaks", "classic", "Classic") },
             new SettingDef { key = "fxTrails", label = "Projectile trails (Custom preset)", opts = O("long", "Long", "short", "Short", "off", "Off") },
             new SettingDef { key = "fxDensity", label = "Particle density (Custom preset)", opts = O("high", "High", "medium", "Medium", "low", "Low") },
-            new SettingDef { key = "fxDebris", label = "Debris (Custom preset)", opts = O("physics", "Physics: chunks bounce off the level", "simple", "Simple", "off", "Off") },
+            new SettingDef { key = "fxDebris", label = "Debris (Custom preset)", opts = O("physics", "Physics: chunks bounce; enemies break into their own pieces", "simple", "Simple", "off", "Off") },
             new SettingDef { key = "fxSmoke", label = "Smoke (Custom preset)", opts = O("rich", "Rich", "light", "Light", "off", "Off") },
             new SettingDef { key = "fxLights", label = "Light from shots and blasts (Custom preset)", @bool = true },
             new SettingDef { key = "fxDistortion", label = "Heat haze and shockwave distortion (Custom preset)", @bool = true },
