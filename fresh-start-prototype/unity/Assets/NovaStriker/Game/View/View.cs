@@ -50,6 +50,7 @@ namespace NovaStriker.Game
         public Sparks sparks; PlanarReflection reflection;
         public Vfx vfx; PostFx post; LevelFx levelFx; EnemyBreakup breakup;
         public readonly CineCam cine = new CineCam();
+        MotionFx motionFx;
         readonly List<TMesh> farClouds = new List<TMesh>();
         Color hemiSky, hemiGround = Look.Lin(0x7a6f63);
         float hemiIntensity = 0.95f;
@@ -129,7 +130,7 @@ namespace NovaStriker.Game
             Landmarks.Build(this); LoadTimer.Mark("landmarks");
             FlushBaked(); LoadTimer.Mark("merging meshes");
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
-            vfx = new Vfx(this); levelFx = new LevelFx(this); breakup = new EnemyBreakup(); weather = new Weather(this);
+            vfx = new Vfx(this); levelFx = new LevelFx(this); breakup = new EnemyBreakup(); weather = new Weather(this); motionFx = new MotionFx(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
@@ -788,7 +789,7 @@ namespace NovaStriker.Game
             if (!warmed) { warmed = true; vfx.WarmUp(S.W(camX, camY, 0)); LoadTimer.Done(); }   // (first frame: every effect drawn once, unseen)
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
-            reflection.Update(); sparks.Update(dt); vfx.Update(dt); breakup.Tick(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
+            reflection.Update(); sparks.Update(dt); vfx.Update(dt); breakup.Tick(dt); motionFx.Update(dt, world); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
             fx.Update(dt, world, this);
             breakables.Update(dt, world);
             UpdateImpact(dt, world);

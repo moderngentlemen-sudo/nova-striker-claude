@@ -402,7 +402,10 @@ namespace NovaStriker.Game
             }
             else if (!p.onGround)
             {
-                if (p.wallSliding) P.Set(shF: -2.2f, elF: 0.35f, shN: 0.55f, elN: 0.9f, hipN: 0.75f, knN: -1.25f, hipF: -0.35f, knF: -0.45f, spine: -0.12f, head: 0.1f);
+                // Wall slide (the owner's references: the classic blue-bomber wall slide): the far hand flat on the wall high
+                // overhead, the blaster arm held out away from it, the near knee tucked high, the far leg reaching down the
+                // wall, the body turned a little toward the camera
+                if (p.wallSliding) P.Set(shF: -2.7f, elF: 0.2f, shN: 1.45f, elN: 0.12f, hipN: 1.15f, knN: -1.6f, hipF: -0.3f, knF: -0.22f, spine: -0.15f, twist: 0.25f, head: 0.05f);
                 else if (p.rocketT > 0 && pvy > 4) P.Set(hipN: 0.45f, knN: -0.95f, hipF: -0.25f, knF: -0.6f, shN: -0.55f, shF: -0.75f, elN: 0.2f, elF: 0.2f, spine: -0.08f, head: 0.15f);
                 else if (pvy > 3) P.Set(hipN: 0.95f, knN: -1.45f, hipF: 0.2f, knF: -0.85f, shN: 1.7f, shF: 1.25f, elN: 0.5f, spine: 0.12f, head: 0.05f);
                 else if (pvy > -3) P.Set(hipN: 0.7f, knN: -1.2f, hipF: 0.35f, knF: -1.1f, shN: 1.2f, shF: 1.4f, elN: 0.6f, elF: 0.6f, spine: 0.08f);

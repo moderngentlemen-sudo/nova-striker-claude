@@ -103,6 +103,7 @@ namespace NovaStriker.Sim
         public bool cineCamera = true;        // presentation only (Unity only): camera shots and letterbox for boss entrances, falls, finishers
         public bool slowMo = true;            // Unity only: slow motion on those moments (the whole game slows, so play stays fair)
         public string timeOfDay = "route";   // presentation only (Unity only): route (each route's own light), cycle, sunset, night
+        public string fxSmokeStyle = "stylized";   // presentation only (Unity only): stylized (3D puffs) or realistic (flipbook sprites)
         public double fxSmokeLife = 1;        // presentation only (Unity only): how long smoke hangs, times its usual life
         public bool fpsCounter = false;       // presentation only (Unity only): a small frames-per-second counter in the corner
         public bool fxFlash = true;           // presentation only (Unity only): screen flashes from beams, ultimates and big blasts

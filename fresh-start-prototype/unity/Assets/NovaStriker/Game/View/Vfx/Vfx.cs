@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using UnityEngine;
+using static NovaStriker.Sim.Cfg;
 
 namespace NovaStriker.Game
 {
@@ -17,6 +18,8 @@ namespace NovaStriker.Game
         // the layers
         public FxLayer spark, ember, glow, fire, smoke, smokeDark, debris, shard, streak, mote, flash, toon, haze;
         readonly List<FxLayer> all = new List<FxLayer>();
+        // the smoke's two looks (Settings › Effects › Smoke style): `smoke`/`smokeDark` point at the one in use
+        FxLayer smokeSprite, smokeDarkSprite, puff, puffDark;
 
         public Vfx(View view)
         {
@@ -50,6 +53,16 @@ namespace NovaStriker.Game
                 size = FxPool.Curve(0, 0.4f, 0.2f, 1.1f, 1, 2.4f), fade = FxPool.Linger(0.95f, 0.6f) });
             smokeDark = Add(new FxPool.Spec { name = "smoke dark", mat = FxPool.Mat(alpha, FxTex.Get("smoke"), new Color(0.2f, 0.19f, 0.18f)), max = 900, flipbook = 8, gravity = -0.016f, drag = 1f, noise = 0.35f,
                 size = FxPool.Curve(0, 0.45f, 0.2f, 1.1f, 1, 2.5f), fade = FxPool.Linger(0.92f, 0.55f) });
+            smokeSprite = smoke; smokeDarkSprite = smokeDark;
+            // the stylized look: soft, rounded 3D puffs, lit by the sun so they have body, that billow up and swell
+            // (every emitter uses whichever look is chosen)
+            var ball = Geo.Sphere(0.5f, 14, 10);
+            puff = Add(new FxPool.Spec { name = "smoke puffs", mat = FxPool.Mat(lit, null, new Color(0.9f, 0.9f, 0.92f)), max = 1600, gravity = -0.012f, drag = 0.9f, noise = 0.25f,
+                meshes = new[] { ball }, size = FxPool.Curve(0, 0.35f, 0.15f, 1.0f, 1, 2.1f), fade = FxPool.Linger(0.9f, 0.62f),
+                extra = ps => { var r = ps.GetComponent<ParticleSystemRenderer>(); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; } });
+            puffDark = Add(new FxPool.Spec { name = "smoke puffs dark", mat = FxPool.Mat(lit, null, new Color(0.26f, 0.25f, 0.25f)), max = 900, gravity = -0.016f, drag = 1f, noise = 0.3f,
+                meshes = new[] { ball }, size = FxPool.Curve(0, 0.4f, 0.15f, 1.0f, 1, 2.2f), fade = FxPool.Linger(0.88f, 0.58f),
+                extra = ps => { var r = ps.GetComponent<ParticleSystemRenderer>(); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; } });
             // toon puffs for the Stylised explosions: hard-edged, two-tone
             toon = Add(new FxPool.Spec { name = "toon", mat = FxPool.Mat(alpha, FxTex.Get("glow"), white), max = 300, drag = 2.2f, gravity = -0.02f,
                 size = FxPool.Curve(0, 0.3f, 0.25f, 1, 1, 0.1f), fade = FxPool.Fade(white, new Color(0.35f, 0.35f, 0.4f), 1, 1, 1, 0.5f) });
@@ -85,14 +98,16 @@ namespace NovaStriker.Game
         int smokeMax, smokeDarkMax; float smokeK = -1;
         public void Update(float dt)
         {
+            bool stylized = (SETTINGS.fxSmokeStyle ?? "stylized") == "stylized";
+            smoke = stylized ? puff : smokeSprite; smokeDark = stylized ? puffDark : smokeDarkSprite;
             // Smoke duration: longer-lived smoke needs room for more puffs at once
             float k = FxCfg.SmokeLife;
             if (k != smokeK)
             {
-                if (smokeK < 0) { smokeMax = smoke.ps.main.maxParticles; smokeDarkMax = smokeDark.ps.main.maxParticles; }
-                smokeK = k; smoke.lifeK = smokeDark.lifeK = k;
-                var m1 = smoke.ps.main; m1.maxParticles = (int)(smokeMax * Mathf.Max(1, k));
-                var m2 = smokeDark.ps.main; m2.maxParticles = (int)(smokeDarkMax * Mathf.Max(1, k));
+                if (smokeK < 0) { smokeMax = smokeSprite.ps.main.maxParticles; smokeDarkMax = smokeDarkSprite.ps.main.maxParticles; }
+                smokeK = k;
+                foreach (var (l, cap) in new[] { (smokeSprite, smokeMax), (puff, smokeMax), (smokeDarkSprite, smokeDarkMax), (puffDark, smokeDarkMax) })
+                { l.lifeK = k; var m = l.ps.main; m.maxParticles = (int)(cap * Mathf.Max(1, k)); }
             }
             lights.Update(dt); decals.Update(dt); colliders.Update();
             int n = 0; foreach (var l in all) n += l.Count;
