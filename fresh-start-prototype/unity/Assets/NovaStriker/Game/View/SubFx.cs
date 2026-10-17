@@ -23,6 +23,12 @@ namespace NovaStriker.Game
         readonly Dictionary<Enemy, TMesh> auras = new Dictionary<Enemy, TMesh>();
         readonly Dictionary<Player, double> lastSt = new Dictionary<Player, double>();
         readonly Dictionary<Player, double> ghostTick = new Dictionary<Player, double>();
+        // Unity's effects for the Chain (CineLightning) unless Projectiles is Classic
+        CineLightning cineChain;
+        CineLightning CineChain => FxCfg.CineBeams && fx.view != null && fx.view.vfx != null ? (cineChain ??= new CineLightning(fx.view)) : null;
+        // ...and for the Gravity Well (CineWell; its launch, opening and collapse: Fx.WellEvent)
+        CineWell cineWell;
+        CineWell CineWellFx => FxCfg.CineBeams && fx.view != null && fx.view.vfx != null ? (cineWell ??= new CineWell(fx, fx.view)) : null;
 
         public SubFX(Fx fx)
         {
@@ -77,11 +83,12 @@ namespace NovaStriker.Game
                     break;
                 }
                 case "cluster": F.Sprite(ev.x, ev.y + 0.3, "star", "#ffffff", 1.8f, 0.18f, 1.6f); F.Burst(ev.x, ev.y + 0.3, "#ffd28a", 18, 9, 0.3f, 0.3f, dir: Mathf.PI / 2, spread: 2.6f, grav: 10); break;
-                case "chain": Chain(ev); break;
+                case "chain": if (CineChain != null) CineChain.Fire(ev); else Chain(ev); break;
                 case "discThrow": F.Sprite(ev.x, ev.y, "ring", SUB_LOOK["disc"].tint, 0.5f + 0.1f * (float)ev.level, 0.16f, 2.2f); F.Burst(ev.x, ev.y, "#fff1c9", 6 + 2 * (float)ev.level, 4, 0.2f, 0.2f); break;
                 case "discRecall": F.Sprite(ev.x, ev.y, "ring", "#ffffff", 0.6f, 0.18f, 2.2f); break;
                 case "discCatch": F.Sprite(ev.x, ev.y, "star", "#fff4d6", 0.9f, 0.12f, 1.4f); F.Burst(ev.x, ev.y, SUB_LOOK["disc"].tint, 8, 3, 0.2f, 0.22f); break;
                 case "discFade": F.Burst(ev.x, ev.y, SUB_LOOK["disc"].tint, 10, 3, 0.2f, 0.3f); break;
+                case "wellLaunch" when CineWellFx != null: case "wellOpen" when CineWellFx != null: case "wellCollapse" when CineWellFx != null: F.WellEvent(ev); break;
                 case "wellLaunch": F.Sprite(ev.x, ev.y, "glow", GOLD, 0.8f, 0.16f, 1.6f); break;
                 case "wellOpen":
                 {
@@ -172,6 +179,8 @@ namespace NovaStriker.Game
         void SyncWells(World world, float alpha, float dt)
         {
             var seen = new HashSet<Well>(); var F = fx;
+            var cw = CineWellFx;
+            if (cw == null) cineWell?.Hide(); else cw.Begin();
             foreach (var w in world.wells)
             {
                 seen.Add(w);
@@ -181,17 +190,32 @@ namespace NovaStriker.Game
                 if (w.phase == "orb")
                 {
                     M.core.scale.setScalar(0.13f); M.glow.scale.setScalar(0.9f + 0.15f * Mathf.Sin(t * 30)); M.disc.visible = M.rim.visible = M.halo.visible = false;
-                    if (S.Rnd() < 0.7f) F.Burst(x, y, S.Rnd() < 0.5f ? "#ffffff" : GOLD, 1, 1, 0.16f, 0.2f);
+                    if (cw != null) F.WellOrb(w, x, y);
+                    else if (S.Rnd() < 0.7f) F.Burst(x, y, S.Rnd() < 0.5f ? "#ffffff" : GOLD, 1, 1, 0.16f, 0.2f);
                     continue;
                 }
                 float L = (float)w.level, open = Mathf.Min(1, (float)w.t / 8), left = Mathf.Max(0, (float)(w.life - w.t)), fade = Mathf.Min(1, left / 12);
                 float pulse = left < 20 ? 1 + 0.15f * Mathf.Sin(t * 40) : 1;
-                M.core.scale.setScalar((0.26f + 0.06f * L) * open * pulse);
                 M.disc.visible = M.rim.visible = M.halo.visible = true;
                 M.spin += dt * (7 + 2 * L);
+                if (cw != null)
+                {
+                    // a black hole that grows with the level: a bigger core, a wider disc, a photon ring hugging the core;
+                    // in its last moments it implodes (core and disc drawn in, the ring flaring)
+                    bool implode = left < 14 || w.collapse; float shrink = implode ? Mathf.Max(0.35f, left / 14) : 1;
+                    float coreR = (0.3f + 0.1f * L) * open * shrink;
+                    M.core.scale.setScalar(coreR);
+                    M.disc.rotation.set(1.18f, 0, M.spin * 1.4f); M.disc.scale.setScalar(coreR * (3.1f + 0.35f * L) * (0.6f + 0.4f * fade));
+                    M.rim.scale.setScalar(coreR * 2.85f * (implode ? 1.15f : 1)); M.rim.material.opacity = implode ? 1 : 0.85f;
+                    M.glow.scale.setScalar(coreR * (3.6f + 0.5f * L) * (implode ? 1.5f : 1));
+                    M.halo.scale.setScalar((float)w.r * 2 * open); M.halo.material.rotation = t * 0.6f; M.halo.material.opacity = 0.06f + 0.03f * L;
+                    cw.Draw(w, x, y, coreR, open, implode, dt);
+                    continue;
+                }
+                M.core.scale.setScalar((0.26f + 0.06f * L) * open * pulse);
                 M.disc.rotation.set(1.18f, 0, M.spin); M.disc.scale.setScalar((1.4f + 0.22f * L) * open * (0.5f + 0.5f * fade));
                 M.rim.scale.setScalar((0.85f + 0.12f * L) * open); M.glow.scale.setScalar((1.6f + 0.3f * L) * open);
-                M.halo.scale.setScalar((float)w.r * 2 * open); M.halo.material.rotation = t * 0.6f;
+                M.halo.scale.setScalar((float)w.r * 2 * open); M.halo.material.rotation = t * 0.6f; M.halo.material.opacity = 0.09f; M.rim.material.opacity = 0.8f;
                 for (int i = 0; i < 3 + L; i++)
                 {
                     float a = S.Rnd() * Mathf.PI * 2, r = (float)w.r * (0.55f + S.Rnd() * 0.45f); var wp = S.W(x + Mathf.Cos(a) * r, y + Mathf.Sin(a) * r, 0.2);
@@ -200,6 +224,7 @@ namespace NovaStriker.Game
                 }
             }
             foreach (var kv in new List<KeyValuePair<Well, WellM>>(wells)) if (!seen.Contains(kv.Key)) { kv.Value.g.destroy(); wells.Remove(kv.Key); }
+            cw?.End();
         }
 
         public void Update(float dt, World world, View view)
@@ -216,11 +241,14 @@ namespace NovaStriker.Game
                 b.core.Build(pts, cam, i => 0.035f + 0.01f * b.level, i => new Vector4(1.9f, 1.85f, 1.6f, k * fl));
             }
             SyncWells(world, view.alpha, dt);
+            cineChain?.Update(dt);
+            var chainFx = CineChain;
             var seen = new HashSet<Enemy>();
             foreach (var e in world.enemies)
             {
                 if (e.dead) continue;
-                if (e.shockT > 0 && S.Rnd() < 0.55f)
+                if (e.shockT > 0 && chainFx != null) chainFx.Crawl(e, dt);
+                else if (e.shockT > 0 && S.Rnd() < 0.55f)
                 {
                     var w = S.W(e.x + (S.Rnd() - 0.5f) * e.w, e.y + S.Rnd() * e.h, 0.3);
                     var P = F.Particle(w, S.Rnd() < 0.5f ? "#ffffff" : SUB_LOOK["chain"].tint, 0.14f, 0.12f); P.v = new Vector3((S.Rnd() - 0.5f) * 6, (S.Rnd() - 0.5f) * 6, 0); P.drag = 0.8f;

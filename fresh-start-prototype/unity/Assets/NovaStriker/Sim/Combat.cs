@@ -149,7 +149,7 @@ namespace NovaStriker.Sim
             else e.hitstop = JMath.Max(e.hitstop, 2);
             if (e.boss) e.hitstop = JMath.Min(e.hitstop, 2);   // a combo never freezes a boss in place
 
-            world.Emit("hit", new Ev { x = cx, y = cy, e = e, owner = owner, heavy = heavyHit, tier = hit.vbTier, source = source, dmg = dmg });
+            world.Emit("hit", new Ev { x = cx, y = cy, e = e, owner = owner, heavy = heavyHit, tier = hit.vbTier, source = source, dmg = dmg, pr = hit as Projectile });   // (pr: what kind of shot, for its impact look)
             if (hit.vbTier == 3 || (hit.rail && (e.type == "brute" || e.boss))) world.Emit("impact", new Ev { x = cx, y = cy, big = true });
 
             if (ambush) { world.Emit("ambush", new Ev { x = cx, y = cy, e = e, owner = owner }); world.Bark(op, "ambush", 0.3); }

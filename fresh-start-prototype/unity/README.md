@@ -163,6 +163,26 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   heat haze, a burning impact with sparks, embers, flame, smoke and scorch marks, lights at both ends, and a
   screen flash, a shockwave and a camera kick when they fire. *Screen flashes* (Settings › *Effects*) turns the
   flashes off. *Projectiles: Classic* keeps the old beams.
+- **Weapon effects** (Projectiles: *Energy*; *Classic* keeps the old looks). Every weapon has its own muzzle
+  flash, body and impact, with light:
+  - **Chain:** real lightning: jagged, forked bolts that race from Nova to each enemy in turn and re-strike
+    several times, a flash and a light on each enemy struck, sparks, and arcs crawling over enemies while they
+    are stunned (`CineLightning.cs`).
+  - **Disc:** a spinning saw of hard-light teeth with motion blur and a trail, throwing sparks wherever it
+    bites an enemy or scrapes a wall; more, longer and brighter teeth at each level, and a grinding shower when
+    it hovers (`CineDisc.cs`).
+  - **Gravity Well:** a small black hole: an inky core, a bright accretion disc and photon ring, motes
+    spiralling in, heat-haze lensing, rings of light closing in, the floor rippling under it and, from level 2,
+    rubble torn up and drawn in; it implodes and bursts with a shockwave (`CineWell.cs`).
+  - **Everything else** (`Fx.Arsenal.cs`): Lance spears wrapped in a spiral (shedding rings as a Rail), Volley
+    needles, Arc's pulsing lobbed sun, Prism's glinting crystal with spectral chips, Scatter's cone of sparks, the
+    Grenade's blinking fuse, RAM's slug and Breach Shot (shock rings, a heat wake, a shockwave when it fires),
+    Fix's rivets and hissing Hot Rivets, and Echo's bolts, tracer rounds, rifle shot, snares and glaive wave. A
+    Perfect Release bursts white with rings, a screen flash and a kick.
+- **Gravity Well pull grows with the charge** (gameplay): reach 3 / 3.8 / 4.8 / 6.2 m (was 3.2 / 3.6 / 4.2 / 5),
+  light enemies drawn in at up to 6 / 8.5 / 11.5 / 15 m/s (was 6 / 7 / 8 / 9.5), heavy ones dragged at 25 / 32 / 42 /
+  55% of that (was 30% at every level), enemy shots bent harder. Bosses still shrug it off. `SUB.well` in
+  `Sim/Config.cs`; `LevelTests` checks it.
 - **Thicker smoke** that builds fast, hangs for most of its life and keeps spreading; blasts leave a pall behind.
 - **Enemies break apart** into their own pieces (Debris: Physics): plates, limbs, heads and guns fly off as
   physics bodies, bounce off the level and cool before they shrink away; broken armour plates fly off too.

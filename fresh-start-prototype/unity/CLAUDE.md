@@ -146,6 +146,11 @@ The README's *Unity-only additions* has the full description.
   - **Beams:** `Vfx/CineBeam.cs` draws the Level 4 beams (`BeamFx`), the Supernova (`UltFx`) and boss lasers
     (`FxEvents.SyncBossLasers`) unless Projectiles is Classic. `View.Flash` (a `ColorAdjustments` exposure
     spike, off with `fxFlash`) and `View.ShakeAtLeast` are its screen hooks.
+  - **Weapons:** `Vfx/CineLightning.cs` (Chain), `Vfx/CineDisc.cs` (Disc), `Vfx/CineWell.cs` (Gravity Well; SubFX
+    still draws its core, disc and ring) and `Vfx/Fx.Arsenal.cs` (every other weapon's muzzle, body and impact,
+    keyed by projectile kind; the sim's `hit` event carries the shot as `pr` for this). Off with Projectiles
+    Classic; Tracer keeps plain streaks. New particle layers (rings, closing rings and haze, floor warp, rubble,
+    chips, dark) are appended in `Vfx.BuildWeaponLayers`.
   - **Enemy break-up:** `Vfx/EnemyBreakup.cs` (pieces on layer 10, colliding only with layer 9 and each other);
     View calls it for dead enemies and on `armorBreak`.
   - **Cinematic moments:** `Vfx/CineCam.cs` (focus, zoom, letterbox, time scale); `GameMain` scales the sim clock
