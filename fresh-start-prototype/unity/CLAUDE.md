@@ -108,8 +108,21 @@ The README's *Unity-only additions* has the full description.
     features off; `LevelTests` covers them. With them off, `parity.sh` still matches.
   - **Enemy models:** `EnemyModels.Apply` swaps each rig node's meshes for the model's parts (named
     `<node>__<what>` in Blender) and keeps the rig's materials, so flashes, armour and tube scaling still work.
-    Budgets: small enemies about 3k triangles, heavy 7k, bosses 18k (the detailed models use 70–95% of them).
-    `build_enemy_lib.py` has a detail kit (rivets, pistons, tubes, grilles, fins, thrusters, sensors, hull patches).
+    Budgets: small enemies (swarmer, sniper, post, turret, drone, shield, charger) about 8k triangles, heavy (brute,
+    mortar) 14k, bosses 30k; the models use 84–95% of them. `build_enemy_lib.py` sets the finish (round parts get
+    sides by size, `seg`; two-segment bevels on big edges, which `export_enemy.py` keeps) and has a detail kit
+    (`armour` plates over gunmetal undercuts, `joint` hinge drums, `piston` actuators with chrome rods, `cables`,
+    louvred `grille`s, `sensor`/`lenses` clusters, `panel`s, thrusters, bolt rings, hull patches). The rig mirrors
+    enemies in x, so +z always faces the camera: put detail there.
+    - **Materials:** seven, each a Blender material, a name in `EnemyModels.Mat` and a per-rig `TMat` in
+      `EnemyRigs.Mats`: `Enemy_Plate` (pearl, clear coat), `Enemy_Joint` (graphite), `Enemy_Metal` (gunmetal),
+      `Enemy_Chrome`, `Enemy_Rubber`, `Enemy_Lens` (tinted glass that glows with the energy) and `Enemy_Energy`.
+      `EnemyRigs.Lit` flashes all the solid ones together (hit flash, a dying boss's flicker); a new material must
+      join it. `EnemyModels.Surfaces` gives modelled rigs surface detail (`Look.Detail`:
+      paint on the plates, worn metal, rubber).
+    - **Review renders:** `render_enemy.py` renders a built `enemy_<type>.blend` with the game's look (surface
+      sets from `make_textures.py`'s previews in `NS_TEX`, rim, outlines), or beside Nova with `NOVA=<nova.blend>`.
+      Keep its material values in step with `EnemyRigs.Mats`.
   - **Stage dressing:** `ZoneDressing.Build(view, zone)` loads `Env/<zone>_kit.json`. `SimTests/LevelDump`
     writes `Art/Blender/level_boxes.json`, which `zone_layout.py` places from (rerun it after changing the
     level). Build, export and render one stage with `build_zone_kit.py <zone> <out>`, `export_kit.py -- <json>

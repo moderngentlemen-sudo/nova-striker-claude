@@ -1,4 +1,6 @@
-// Enemy construct rigs (enemyRigs.js): pale ceramic plating, graphite joints, reserved hostile magenta energy.
+// Enemy construct rigs (enemyRigs.js): pale ceramic plating, graphite joints, reserved hostile magenta energy. The
+// modelled enemies (EnemyModels) add gunmetal, chrome, rubber and tinted lens surfaces, made per rig like the rest so
+// each enemy's flash lights all of them together.
 using System.Collections.Generic;
 using NovaStriker.Game.Three;
 using NovaStriker.Sim;
@@ -7,7 +9,10 @@ using static NovaStriker.Sim.Cfg;
 
 namespace NovaStriker.Game
 {
-    public sealed class EnemyMats { public TMat plate, joint, energy; }
+    public sealed class EnemyMats
+    {
+        public TMat plate, joint, energy, metal, chrome, rubber, lens;   // (a new one joins EnemyRigs.Lit)
+    }
     public sealed class EnemyParts
     {
         public TObj core, eye, torso, shield, gun, muzzle, head, armN, armF, arm, rotor, tube, ram, chest, pod, hammer, blade, hull, cannon;
@@ -35,10 +40,27 @@ namespace NovaStriker.Game
         static EnemyMats Mats() => new EnemyMats
         {
             plate = new TMat(TMat.Kind.Physical) { colorHex = 0xe6e9f0, roughness = 0.36f, metalness = 0.15f, clearcoat = 0.5f, clearcoatRoughness = 0.2f, emissiveHex = 0xffffff, emissiveIntensity = 0 },
-            joint = new TMat { colorHex = 0x2b2f3a, roughness = 0.6f, metalness = 0.2f },
+            joint = new TMat { colorHex = 0x2b2f3a, roughness = 0.6f, metalness = 0.2f, emissiveHex = 0xffffff, emissiveIntensity = 0 },
             energy = new TMat { colorCss = HOSTILE, emissiveCss = HOSTILE, emissiveIntensity = 2.2f, roughness = 0.3f },
+            // (the models' own surfaces; the same values as their Blender materials, Art/Blender/build_enemy_lib.py)
+            metal = new TMat { colorHex = 0x464d5a, roughness = 0.38f, metalness = 0.8f, emissiveHex = 0xffffff, emissiveIntensity = 0 },
+            chrome = new TMat { colorHex = 0xdfe3ea, roughness = 0.14f, metalness = 1, emissiveHex = 0xffffff, emissiveIntensity = 0 },
+            rubber = new TMat { colorHex = 0x16181c, roughness = 0.82f, metalness = 0, emissiveHex = 0xffffff, emissiveIntensity = 0 },
+            lens = new TMat { colorHex = 0x1c0c18, roughness = 0.06f, metalness = 0.3f, emissiveCss = HOSTILE, emissiveIntensity = 0.33f },
         };
-        static EnemyMats RimAll(EnemyMats M) { Rigs.AddRim(M.plate, "#ff9cc5", 0.35f); Rigs.AddRim(M.joint, "#ff7fb2", 0.3f); return M; }
+        static EnemyMats RimAll(EnemyMats M)
+        {
+            Rigs.AddRim(M.plate, "#ff9cc5", 0.35f); Rigs.AddRim(M.joint, "#ff7fb2", 0.3f);
+            Rigs.AddRim(M.metal, "#ff7fb2", 0.3f); Rigs.AddRim(M.chrome, "#ff7fb2", 0.25f); Rigs.AddRim(M.rubber, "#ff7fb2", 0.2f);
+            return M;
+        }
+        // The hit flash (and a dying boss's flicker) lights every painted, metal and rubber surface together, white over
+        // its own colour, so no part of a model stays dark while the rest flashes; the tinted lenses glow with the energy
+        static void Lit(EnemyMats M, float k)
+        {
+            M.plate.emissiveIntensity = M.joint.emissiveIntensity = M.metal.emissiveIntensity = M.chrome.emissiveIntensity = M.rubber.emissiveIntensity = k;
+            M.lens.emissiveIntensity = M.energy.emissiveIntensity * 0.15f + k * 1.5f;
+        }
         static TMesh Add(TObj parent, Mesh geo, TMat mat, float x = 0, float y = 0, float z = 0)
         {
             var m = new TMesh(geo, mat, x, y, z); m.cast = true; parent.add(m); return m;
@@ -243,7 +265,7 @@ namespace NovaStriker.Game
             R.lean += (lean - R.lean) * 0.35f;
             R.body.rotation.z = -R.lean;
             M.energy.emissiveIntensity = glow;
-            M.plate.emissiveIntensity = e.flash > 0 ? 0.9f : 0;
+            float lit = e.flash > 0 ? 0.9f : 0;
             float evx = (float)e.vx;
 
             switch (e.type)
@@ -312,7 +334,7 @@ namespace NovaStriker.Game
                 float k = Mathf.Min(1, (float)e.deathT / 68), gone = Mathf.Max(0, ((float)e.deathT - 68) / 8);
                 R.body.position.x = Mathf.Sin(t * 60) * 0.06f * (1 - gone); R.body.rotation.z = -0.35f * k + Mathf.Sin(t * 23) * 0.04f;
                 R.root.scale.setScalar(Mathf.Max(0.01f, 1 - Mathf.Min(1, gone)));
-                M.energy.emissiveIntensity = 4 + Mathf.Sin(t * 40) * 3; M.plate.emissiveIntensity = Mathf.Max(0, Mathf.Sin(t * 25)) * 0.8f;
+                M.energy.emissiveIntensity = 4 + Mathf.Sin(t * 40) * 3; lit = Mathf.Max(0, Mathf.Sin(t * 25)) * 0.8f;
             }
             else if (e.dead)
             {
@@ -320,6 +342,7 @@ namespace NovaStriker.Game
                 R.root.scale.setScalar(Mathf.Max(0.01f, 1 - k * 0.9f));
                 R.body.rotation.z = -0.8f * k;
             }
+            Lit(M, lit);   // (last: the glow it follows is set above, per type)
         }
 
         // The Lockwarden: walks with heavy, bobbing strides; each attack has its own windup and strike pose
