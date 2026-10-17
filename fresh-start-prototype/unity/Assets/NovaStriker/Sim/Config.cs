@@ -72,6 +72,7 @@ namespace NovaStriker.Sim
         public bool barks = true;
         public double volume = 0.6;
         public double music = 0.6;
+        public string sfxStyle = "designed";  // presentation only (Unity only): 'designed' layered samples, or 'classic' synthesized sounds
         public string p1Aim = "mouse";
         public bool lockOn = true;
         public string lockMode = "auto";      // 'auto' or 'manual'
