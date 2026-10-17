@@ -78,7 +78,7 @@ namespace NovaStriker.Game
             var devices = input.PollJoins(new HashSet<string>(world.players.Select(p => p.device)));
             foreach (var dev in devices)
             {
-                if (paused) break;
+                if (paused || ui.Listening) break;   // (a button pressed to change a control doesn't join)
                 if (world.players.Count >= 4 && !bots.MakeRoom(world)) break;   // a person joining a full team takes an AI teammate's place
                 // Each new player takes the next character no one is playing yet (Nova, Echo, RAM, Fix)
                 var used = new HashSet<string>(world.players.Select(p => p.@char));
@@ -107,12 +107,14 @@ namespace NovaStriker.Game
         {
             foreach (var ev in input.TakeMenuEvents())
             {
-                // The controls screen closes with any controller's B, A, Start or View (H or Esc on the keyboard); the
+                // The controls screen: while a control is being changed it takes every input; otherwise it closes with any
+                // controller's B, Start or View (the help key or Esc on the keyboard), and the rest moves through it. The
                 // buttons that closed it don't also act in the game
-                if (started && ui.helpOpen)
+                if (ui.helpOpen)
                 {
-                    if (ev.type == "back" || ev.type == "confirm" || ev.type == "pause" || ev.type == "help") { ui.ToggleHelp(false); input.SwallowAll(); }
-                    else if (ev.type == "up" || ev.type == "down") ui.ScrollHelp(ev.type == "down" ? 1 : -1);   // the D-pad scrolls it
+                    if (ui.Listening) continue;
+                    if (ev.type == "back" || ev.type == "pause" || ev.type == "help") { ui.ToggleHelp(false); input.SwallowAll(); }
+                    else ui.HelpNav(ev);
                     continue;
                 }
                 var p = world.players.FirstOrDefault(q => q.device == ev.dev);

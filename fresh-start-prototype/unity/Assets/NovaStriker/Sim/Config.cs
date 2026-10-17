@@ -95,6 +95,7 @@ namespace NovaStriker.Sim
         public string fxSmoke = "rich";       // rich, light, off
         public bool fxLights = true;          // dynamic light from shots and blasts
         public bool fxDistortion = true;      // heat haze and shockwave refraction
+        public string keyBindings = "";     // presentation only (Unity only): changed controls, id:key/key:mouse:pad (Game/Input/Bindings.cs)
         public bool fxFlash = true;           // presentation only (Unity only): screen flashes from beams, ultimates and big blasts
         public bool fxDecals = true;          // scorch marks and scuffs
         public string fxScreen = "cinematic"; // cinematic (aberration kicks, lens dirt, grain) or clean

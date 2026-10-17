@@ -84,6 +84,8 @@ namespace NovaStriker.Game.UI
             orderEl.gameObject.SetActive(name != null);
             if (name != null) { orderText.text = $"<b><color={W.Hex(PC(slot))}>{PLAYER_MARKS[slot]} P{slot + 1}</color></b>  Team order · <b><color=#f3f7fc>{name.ToUpperInvariant()}</color></b>"; orderEl.sizeDelta = new Vector2(orderText.preferredWidth + 28, 28); }
         }
+        // How this player fires their ultimate, with their controls
+        static string UltHint(Player p) => p.device == "kbm" ? "press " + Bindings.KbmText("ult", true) : $"pull {Bindings.PadText("parry")} + {Bindings.PadText("fire")}";
         public void Toast(string text)
         {
             toastText.text = text; toastEl.sizeDelta = new Vector2(Mathf.Min(1100, toastText.preferredWidth + 32), 32);
@@ -117,7 +119,7 @@ namespace NovaStriker.Game.UI
                 case "wipe": ShowBanner("Team down", "Returning to the last checkpoint"); break;
                 case "bark": BarkAt(ev.p, ev.text); break;
                 case "swap": Toast($"Player {ev.p.slot + 1} is now {CHARS[ev.p.@char].name}"); break;
-                case "ultReady": if (Bots.IsBot(ev.p)) break; Toast($"P{ev.p.slot + 1} ultimate ready: {(ev.p.device == "kbm" ? "press V" : "pull both triggers")}"); break;
+                case "ultReady": if (Bots.IsBot(ev.p)) break; Toast($"P{ev.p.slot + 1} ultimate ready: {UltHint(ev.p)}"); break;
             }
         }
 
@@ -159,7 +161,7 @@ namespace NovaStriker.Game.UI
                 {
                     var j = W.Rect(ujoin, "join"); var bg = j.gameObject.AddComponent<Image>(); bg.sprite = W.Round; bg.type = Image.Type.Sliced; bg.color = Pal.C("#03060c", 0.85f);
                     var le = j.gameObject.AddComponent<LayoutElement>();
-                    var t = W.Txt(j, $"P{q.slot + 1}: {(q.device == "kbm" ? "press V" : "pull both triggers")} to join".ToUpperInvariant(), 18, Color.white, true, FontStyle.Bold, TextAnchor.MiddleCenter); W.Fill(t.rectTransform);
+                    var t = W.Txt(j, $"P{q.slot + 1}: {UltHint(q)} to join".ToUpperInvariant(), 18, Color.white, true, FontStyle.Bold, TextAnchor.MiddleCenter); W.Fill(t.rectTransform);
                     W.Outline(t, PC(q.slot), 1);
                     le.preferredWidth = t.preferredWidth + 32; le.preferredHeight = 36;
                 }

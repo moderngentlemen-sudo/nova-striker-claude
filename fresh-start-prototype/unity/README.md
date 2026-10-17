@@ -149,6 +149,18 @@ After pulling it, run *Nova Striker › Set Up Project* once: it adds new shader
   - **Helix Foundry:** glowing furnaces, crucibles, pipework, valves, cranes and warning stripes.
   - **Undercity Descent:** fire escapes, neon signs, wet pavement, dumpsters, crates, poles and hanging cables.
   - **The gym's sign** now has a scrolling ticker under it.
+- **Changeable controls** (pause menu › *Controls*, or the help key): the *Change controls* tab lists every
+  action with two keyboard keys, a mouse button and a gamepad button. Click a box (or move to it and press A),
+  then press the new input; Esc cancels, Delete or Backspace clears it. An input moved from another action says
+  so. Each row has *Reset*, and *Reset all to defaults* restores everything. The guide tab, the start screen and
+  the hints follow the changes. Esc, Enter, the arrows in menus, and the gamepad's Start, View, D-pad and sticks
+  stay fixed. Code: `Game/Input/Bindings.cs`; saved with the settings (`keyBindings`).
+- **Beam weapons** (the Level 4 beams, the Supernova, the bosses' lasers) are built from Unity's effects
+  (`CineBeam.cs`): layered line renderers with a scrolling energy texture, streaks and motes racing along them,
+  heat haze, a burning impact with sparks, embers, flame, smoke and scorch marks, lights at both ends, and a
+  screen flash, a shockwave and a camera kick when they fire. *Screen flashes* (Settings › *Effects*) turns the
+  flashes off. *Projectiles: Classic* keeps the old beams.
+- **Thicker smoke** that builds fast, hangs for most of its life and keeps spreading; blasts leave a pall behind.
 - **The world reacts:** deck lights stutter when something heavy lands, flags whip when someone dashes past,
   and scuff marks fade where players land hard or slide.
 - **Faster level drawing:** the level's meshes are merged in 48 m blocks, so off-screen blocks are skipped.

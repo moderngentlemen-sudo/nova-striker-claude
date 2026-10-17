@@ -114,6 +114,14 @@ The README's *Unity-only additions* has the full description.
     level). Build, export and render one stage with `build_zone_kit.py <zone> <out>`, `export_kit.py -- <json>
     <zone>` and `render_zone.py`. Placed triangles: about 54k (Concourse) to 320k (Foundry, Undercity) per
     stage, over the plan's 80k, but the 48 m blocks mean only a slice is drawn at a time.
+  - **Controls:** `Game/Input/Bindings.cs` holds every rebindable action (`DEFS`) and the saved changes
+    (`Settings.keyBindings`, only what differs from the defaults). `Controls` reads it; the editor is the
+    *Change controls* tab of the help card (`UiMenus.cs`, `UpdateControls` captures the input). Guide text uses
+    tokens (`{k:id}`, `{k1:id}`, `{p:id}`) that `Bindings.Expand` fills in. Esc, Enter, ` and the pad's
+    Start/View/D-pad are reserved.
+  - **Beams:** `Vfx/CineBeam.cs` draws the Level 4 beams (`BeamFx`), the Supernova (`UltFx`) and boss lasers
+    (`FxEvents.SyncBossLasers`) unless Projectiles is Classic. `View.Flash` (a `ColorAdjustments` exposure
+    spike, off with `fxFlash`) and `View.ShakeAtLeast` are its screen hooks.
   - **Limits:** the AI teammates don't avoid hazards; decals are quads; landmarks have no LOD yet.
 
 ## Open threads and ideas

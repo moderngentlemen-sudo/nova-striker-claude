@@ -284,6 +284,9 @@ namespace NovaStriker.Game.UI
         }
     }
 
+    // Keeps clicks on a card from reaching the overlay behind it (which closes the card)
+    public sealed class ClickSink : MonoBehaviour, IPointerClickHandler { public void OnPointerClick(PointerEventData e) { } }
+
     // A button in the prototype's style (.btn), with a highlighted state for controller focus
     public static class Btn
     {
