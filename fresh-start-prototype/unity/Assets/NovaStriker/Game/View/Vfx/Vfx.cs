@@ -69,6 +69,19 @@ namespace NovaStriker.Game
                 meshes = new[] { Geo.Box(1, 0.15f, 0.7f), Geo.Tetrahedron(0.6f) }, fade = FxPool.Fade(white, white, 1, 1, 0, 0.85f) });
         }
 
+        // Draws every effect once, unseen (a speck that dies at once), while the start screen is up: their shaders are
+        // compiled then rather than in the middle of the first fight
+        public void WarmUp(Vector3 at)
+        {
+            var c = new Color(1, 1, 1, 0.002f);
+            foreach (var l in all)
+            {
+                if (l.ps.GetComponent<ParticleSystemRenderer>().renderMode == ParticleSystemRenderMode.Mesh) l.Emit3D(at, Vector3.zero, Vector3.one * 0.001f, 0.05f, c, Vector3.zero, Vector3.zero);
+                else l.Emit(at, Vector3.zero, 0.001f, 0.05f, c, 0, 0, true);
+            }
+            lights.Flash(at, Color.black, 0.001f, 0.1f, 0.05f);
+        }
+
         int smokeMax, smokeDarkMax; float smokeK = -1;
         public void Update(float dt)
         {

@@ -31,6 +31,7 @@ namespace NovaStriker.Game
 
         void Awake()
         {
+            LoadTimer.Begin();
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 1;
             SettingsStore.Load();

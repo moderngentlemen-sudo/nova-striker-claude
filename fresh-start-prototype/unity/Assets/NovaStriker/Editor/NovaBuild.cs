@@ -7,6 +7,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -38,6 +39,18 @@ namespace NovaStriker.EditorTools
                 AssetDatabase.SaveAssets();
 
                 var target = EditorUserBuildSettings.activeBuildTarget;
+                // IL2CPP (game code compiled to native code: faster) wherever this Unity has it for the target; else
+                // Mono. The GitHub Linux image has it; its Windows and macOS images (built on Linux) don't. Set
+                // NOVA_BACKEND=mono or il2cpp to choose.
+                bool il2cpp = (Environment.GetEnvironmentVariable("NOVA_BACKEND") ?? "auto") switch { "mono" => false, "il2cpp" => true, _ => HasIl2Cpp(target) };
+                PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, il2cpp ? ScriptingImplementation.IL2CPP : ScriptingImplementation.Mono2x);
+                if (il2cpp)
+                {
+                    PlayerSettings.SetIl2CppCompilerConfiguration(NamedBuildTarget.Standalone, Il2CppCompilerConfiguration.Release);
+                    PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Standalone, ManagedStrippingLevel.Minimal);   // (the settings menu finds fields by name)
+                }
+                Debug.Log($"Nova Striker: scripting backend {(il2cpp ? "IL2CPP" : "Mono")}");
+                AssetDatabase.SaveAssets();
                 string path = Arg("-customBuildPath") ?? DefaultPath(target);
                 // (GameCI names the macOS and Linux builds without an extension: give them the usual ones)
                 if (target == BuildTarget.StandaloneOSX && !path.EndsWith(".app")) path += ".app";
@@ -65,6 +78,18 @@ namespace NovaStriker.EditorTools
                 Debug.LogException(e);
                 if (batch) EditorApplication.Exit(1);
             }
+        }
+
+        // Whether this editor has the IL2CPP player for a target (its playback engine has an il2cpp variation)
+        static bool HasIl2Cpp(BuildTarget t)
+        {
+            try
+            {
+                var dir = BuildPipeline.GetPlaybackEngineDirectory(t, BuildOptions.None);
+                var v = Path.Combine(dir ?? "", "Variations");
+                return Directory.Exists(v) && Directory.GetDirectories(v, "*il2cpp*").Length > 0;
+            }
+            catch (Exception) { return false; }
         }
 
         static string DefaultPath(BuildTarget t)

@@ -103,7 +103,7 @@ namespace NovaStriker.Game
             RenderSettings.ambientMode = AmbientMode.Skybox;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
             RenderSettings.skybox = null;
-            envMaps = Look.BuildEnvMaps();
+            envMaps = Look.BuildEnvMaps(); LoadTimer.Mark("startup, camera and environment maps");
 
             // Post: bloom (the prototype's UnrealBloomPass: strength 0.65, radius 0.5, threshold 1.5 linear), no
             // tone mapping here (the Grade pass does three.js's ACES itself)
@@ -122,16 +122,21 @@ namespace NovaStriker.Game
             BuildSky(); BuildBackdrop();
             ambience = new Ambience(this, sun, sunGlow);
             foreach (var c in farClouds) ambience.AddCloud(c);
-            BuildLevel(); BuildProps();
+            LoadTimer.Mark("sky and ambience");
+            BuildLevel(); BuildProps(); LoadTimer.Mark("level");
             foreach (var zone in new[] { "gym", "arena", "tower", "skyline", "foundry", "undercity" }) ZoneDressing.Build(this, zone);
-            Landmarks.Build(this); FlushBaked();
+            LoadTimer.Mark("stage dressing");
+            Landmarks.Build(this); LoadTimer.Mark("landmarks");
+            FlushBaked(); LoadTimer.Mark("merging meshes");
             sparks = new Sparks(scene, camera); reflection = new PlanarReflection(this, camera);
             vfx = new Vfx(this); levelFx = new LevelFx(this); breakup = new EnemyBreakup(); weather = new Weather(this);
             post = new PostFx(volume.sharedProfile, bloom, sunGlow.position.v);
             breakables = new Breakables(scene, fx);
             new GameObject("Perf Overlay").AddComponent<PerfOverlay>();
             Resize(Screen.width, Screen.height);
+            LoadTimer.Mark("effects");
         }
+        bool warmed;
 
         static Light MakeLight(string name, uint color, float threeIntensity, bool shadows)
         {
@@ -778,6 +783,8 @@ namespace NovaStriker.Game
             SyncEntities(world, a, dt);
             HelmetFx.Update(dt);
             cine.Update(dt, world);
+            RenderScale.Apply();
+            if (!warmed) { warmed = true; vfx.WarmUp(S.W(camX, camY, 0)); LoadTimer.Done(); }   // (first frame: every effect drawn once, unseen)
             UpdateCamera(world, dt);
             ambience.Update(dt, camera.transform.position.x);
             reflection.Update(); sparks.Update(dt); vfx.Update(dt); breakup.Tick(dt); if (world != null) levelFx.Update(dt, world, time); weather.Update(dt, world, (float)camX, (float)camY); post.Update(dt, ambience.Sky * Mathf.Clamp01((todKey - 0.4f) / 0.5f), ambience.Cover);   // (no sun flare at night) ZoneDressing.Animate(time);
